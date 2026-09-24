@@ -6,8 +6,9 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0E7490">
 <link rel="icon" href="icon-192.png">
-<title>Budget Keluarga — Planner Modern v2</title>
+<title>Budget Keluarga — Planner per Menu</title>
 <style>
+
 :root{
   --bg:#EEF2FB; --card:#FFFFFF; --border:#E1E7F5; --text:#1F2430; --muted:#6B7A99;
   --accent:#0E7490; --accent2:#06B6D4; --accentHover:#0c5f77;
@@ -137,191 +138,247 @@ body{font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif; backgroun
 hr.sep{border:none; border-top:1px solid var(--border); margin:14px 0}
 .kpi{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
 .kpi span{background:#F1F5F9; border:1px solid var(--border); padding:6px 10px; border-radius:999px; font-size:.73rem; font-weight:700; color:#334155}
+
+/* NAV */
+.nav-wrap{position:sticky; top:0; z-index:20; background:rgba(238,242,251,.92); backdrop-filter:blur(10px); border-bottom:1px solid var(--border)}
+.nav{max-width:1040px; margin:0 auto; padding:10px 16px; display:flex; gap:8px; overflow-x:auto; scrollbar-width:none}
+.nav::-webkit-scrollbar{display:none}
+.nav-btn{flex-shrink:0; display:inline-flex; align-items:center; gap:7px; padding:10px 15px; border-radius:999px; border:1px solid var(--border); background:#fff; font-weight:800; font-size:.82rem; cursor:pointer; white-space:nowrap; transition:.15s}
+.nav-btn.active{background:var(--accent); color:#fff; border-color:var(--accent); box-shadow:0 4px 14px rgba(14,116,144,.22)}
+.nav-btn .ico{font-size:15px}
+.page{display:none; animation:fade .18s ease}
+.page.active{display:block}
+@keyframes fade{from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:translateY(0)}}
+.page-title{display:flex; align-items:center; gap:10px; margin:18px 0 12px}
+.page-title h2{margin:0; font-size:1.25rem; font-weight:850}
+.page-title p{margin:2px 0 0; color:var(--muted); font-size:.84rem}
+.bottom-nav{display:none}
+@media(max-width:720px){
+  .nav{padding:10px 12px}
+  .nav-btn{padding:9px 12px; font-size:.79rem}
+  .bottom-nav{position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1px solid var(--border); display:flex; justify-content:space-around; padding:6px 0 calc(6px + env(safe-area-inset-bottom)); z-index:30; box-shadow:0 -4px 18px rgba(15,23,42,.06)}
+  .bnav-btn{flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; font-size:.66rem; font-weight:800; color:var(--muted); background:none; border:none; cursor:pointer; padding:4px}
+  .bnav-btn.active{color:var(--accent)}
+  .bnav-btn span.i{font-size:18px; line-height:1}
+  .wrap{padding-bottom:84px}
+}
+
 </style>
 </head>
 <body>
+
 <header class="header">
   <div class="header-inner">
     <div class="brand">
       <h1><span class="logo">💹</span> Budget Keluarga</h1>
-      <p>Will <b>3,7jt</b> + Istri <b>5jt</b> = <b>8,7jt</b>. Kelola tetap, anak, <b>variabel dinamis</b> & <b>rencana masa depan</b> — sisa auto-kehitung.</p>
+      <p>Will <b>3,7jt</b> + Istri <b>5jt</b> = <b>8,7jt</b>. Kelola per menu — dashboard, pemasukan, variabel, rencana & alokasi.</p>
       <div class="kpi">
         <span>🏠 1,5jt</span><span>🚗 1,5jt</span><span>⛽ 1jt</span><span>👶 196rb</span><span>🥛 762rb</span><span id="kpiVariabel">📦 Variabel 0</span><span id="kpiRencana">🎯 Rencana 0</span>
       </div>
     </div>
     <div class="header-stats">
       <div class="stat-chip"><div class="k">Pemasukan</div><div class="v" id="hIncome">Rp8.700.000</div></div>
-      <div class="stat-chip"><div class="k">Tetap (46%)</div><div class="v" id="hFixed">Rp4.000.000</div></div>
+      <div class="stat-chip"><div class="k">Tetap</div><div class="v" id="hFixed">Rp4.000.000</div></div>
       <div class="stat-chip good"><div class="k">Sisa Bersih</div><div class="v" id="hSisa">Rp3.742.000</div></div>
     </div>
   </div>
 </header>
 
-<div class="wrap">
-  <div class="grid3">
-    <div class="card">
-      <div class="card-head"><div class="icon teal">💰</div><div><h2>Pemasukan</h2><p>Gaji bulanan</p></div><span class="badge live">● sinkron</span></div>
-      <div class="row"><label>Will</label><input class="money" id="incWill" inputmode="numeric"></div>
-      <div class="row"><label>Istri</label><input class="money" id="incWife" inputmode="numeric"></div>
-      <div class="total-row"><span>Total Pemasukan</span><span id="totalIncome">Rp0</span></div>
-    </div>
-    <div class="card">
-      <div class="card-head"><div class="icon violet">🏠</div><div><h2>Pengeluaran Tetap</h2><p>Wajib tiap bulan</p></div><span class="badge" id="pctFixed">46%</span></div>
-      <div class="row"><label>⛽ Bensin mobil</label><input class="money" id="fixBensin" inputmode="numeric"></div>
-      <div class="row"><label>🚗 Cicilan mobil</label><input class="money" id="fixCicilan" inputmode="numeric"></div>
-      <div class="row"><label>🏡 Rumah</label><input class="money" id="fixRumah" inputmode="numeric"></div>
-      <div class="total-row"><span>Total Tetap</span><span id="totalFixed">Rp0</span></div>
-    </div>
-    <div class="card">
-      <div class="card-head"><div class="icon amber">👶</div><div><h2>Kebutuhan Anak</h2><p>Popok & susu</p></div><span class="badge" id="badgeAnak">~958rb</span></div>
-      <div class="row"><label>Popok <span>pack × harga</span></label><div class="inp-wrap"><input class="qty" id="popokQty" type="number" min="0"><input class="money" id="popokHarga" style="width:112px" inputmode="numeric"></div></div>
-      <div class="row"><label>Susu <span>karton × harga</span></label><div class="inp-wrap"><input class="qty" id="susuQty" type="number" min="0"><input class="money" id="susuHarga" style="width:112px" inputmode="numeric"></div></div>
-      <div class="total-row"><span>Total Anak</span><span id="totalAnak">Rp0</span></div>
-    </div>
-  </div>
-
-  <!-- SISA -->
-  <div class="card sisa-card" style="margin-top:14px">
-    <div class="card-head" style="margin-bottom:4px"><div class="icon" style="background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.25)">✨</div><div><h2 style="color:#fff">Sisa Budget — Bruto vs Bersih</h2><p style="color:rgba(255,255,255,.85)">Bruto = Pemasukan − Tetap − Anak &nbsp;|&nbsp; Bersih = Bruto − Variabel − Rencana</p></div></div>
-    <div class="sisa-grid">
-      <div class="sisa-box"><div class="k">Sisa Bruto</div><div class="v" id="sisa">Rp0</div></div>
-      <div class="sisa-box"><div class="k">Setelah Variabel</div><div class="v" id="sisaSetelahVariabel">Rp0</div></div>
-      <div class="sisa-box"><div class="k">Sisa Bersih (untuk alokasi)</div><div class="v" id="sisaBersih">Rp0</div></div>
-      <div class="sisa-box"><div class="k">Per hari (bersih)</div><div class="v" id="perHari">Rp0</div></div>
-      <div class="sisa-box"><div class="k">Per minggu</div><div class="v" id="perMinggu">Rp0</div></div>
-      <div class="sisa-box"><div class="k">Terpakai Alokasi</div><div class="v" id="pctAlokasiHero">0%</div></div>
-    </div>
-    <div class="progress"><div id="barFill" style="width:0%"></div></div>
-    <div class="status" id="statusText"><span class="dot"></span><span>Memuat…</span></div>
-  </div>
-
-  <!-- PENGELUARAN VARIABEL -->
-  <div class="card" style="margin-top:14px">
-    <div class="card-head">
-      <div class="icon sky">📦</div>
-      <div><h2>Pengeluaran Variabel & Tambahan</h2><p>Kuota, servis, pajak, susu Morinaga, sekolah — nominal bisa beda tiap bulan</p></div>
-      <span class="badge" id="badgeVariabel">Rp0 /bulan</span>
-    </div>
-
-    <div class="var-form" id="varForm">
-      <div><label>Nama pengeluaran</label><input class="txt" id="varNama" placeholder="cth: Kuota Internet"></div>
-      <div><label>Kategori</label><select id="varKategori">
-        <option>Komunikasi</option><option>Kendaraan</option><option>Pajak & STNK</option><option>Anak & Susu</option><option>Pendidikan</option><option>Perawatan</option><option>Langganan</option><option>Lainnya</option>
-      </select></div>
-      <div><label>Nominal (Rp)</label><input class="txt" id="varNominal" inputmode="numeric" placeholder="200000"></div>
-      <div><label>Periode</label><select id="varPeriode">
-        <option value="Bulanan">Bulanan</option><option value="Bulanan Variabel">Bulanan Variabel</option><option value="Tidak Tentu">Tidak Tentu</option><option value="Tahunan">Tahunan (÷12)</option>
-      </select></div>
-      <div><label>Keterangan</label><input class="txt" id="varKet" placeholder="cth: 2 HP + wifi"></div>
-      <div style="display:flex; gap:6px; align-items:end">
-        <button class="btn btn-accent" id="btnAddVar" style="white-space:nowrap">＋ Tambah</button>
-        <button class="btn btn-soft" id="btnSaveVar" style="display:none">💾 Simpan</button>
-        <button class="btn btn-soft" id="btnCancelVar" style="display:none">Batal</button>
-      </div>
-    </div>
-
-    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px" id="presetVariabel">
-      <button class="pill" data-add="kuota">＋ Kuota 250rb</button>
-      <button class="pill" data-add="motor">＋ Servis Motor 150rb</button>
-      <button class="pill" data-add="mobil">＋ Servis Mobil 300rb</button>
-      <button class="pill" data-add="pajak">＋ Pajak 2jt/th</button>
-      <button class="pill" data-add="morinaga">＋ Morinaga 400rb</button>
-      <button class="pill" data-add="sekolah">＋ Sekolah 500rb</button>
-    </div>
-
-    <div style="overflow:auto; border:1px solid var(--border); border-radius:12px">
-      <table class="var-table" id="varTable">
-        <thead><tr><th>Nama</th><th>Kategori</th><th>Nominal</th><th>Periode</th><th>Per bulan*</th><th>Keterangan</th><th style="width:70px">Aksi</th></tr></thead>
-        <tbody id="varBody"></tbody>
-      </table>
-    </div>
-    <div class="muted" style="margin-top:6px">* Tahunan otomatis ÷12 untuk hitungan bulanan. Tidak Tentu & Variabel dihitung penuh sebagai estimasi.</div>
-    <div style="margin-top:10px; display:flex; flex-wrap:wrap; gap:6px" id="catRekap"></div>
-    <div class="total-row"><span>Total Variabel per bulan</span><span id="totalVariabel">Rp0</span></div>
-  </div>
-
-  <!-- RENCANA PEMBIAYAAN -->
-  <div class="card" style="margin-top:14px">
-    <div class="card-head">
-      <div class="icon orange">🎯</div>
-      <div><h2>Rencana Pembiayaan — Tabung Dari Sekarang</h2><p>Untuk biaya akan datang: servis besar, pajak, sekolah, dll — luwes & bisa tambah sendiri</p></div>
-      <span class="badge" id="badgeRencana">Rp0 /bulan</span>
-    </div>
-
-    <div class="rencana-form">
-      <div><label class="muted" style="font-size:.70rem; font-weight:700; text-transform:uppercase">Nama rencana</label><input class="txt" id="renNama" placeholder="cth: Pajak Mobil 2027"></div>
-      <div><label class="muted" style="font-size:.70rem; font-weight:700; text-transform:uppercase">Kategori</label><select id="renKategori"><option>Kendaraan</option><option>Pajak & STNK</option><option>Pendidikan</option><option>Perawatan</option><option>Kesehatan</option><option>Rumah</option><option>Lainnya</option></select></div>
-      <div><label class="muted" style="font-size:.70rem; font-weight:700; text-transform:uppercase">Target (Rp)</label><input class="txt" id="renTarget" inputmode="numeric" placeholder="2000000"></div>
-      <div><label class="muted" style="font-size:.70rem; font-weight:700; text-transform:uppercase">Terkumpul (Rp)</label><input class="txt" id="renTerkumpul" inputmode="numeric" placeholder="0"></div>
-      <div><label class="muted" style="font-size:.70rem; font-weight:700; text-transform:uppercase">Deadline</label><input class="txt" id="renDeadline" type="month"></div>
-      <div style="display:flex; gap:6px; align-items:end">
-        <input class="txt" id="renKet" placeholder="keterangan (opsional)">
-        <button class="btn btn-accent" id="btnAddRen">＋ Tambah</button>
-        <button class="btn btn-soft" id="btnSaveRen" style="display:none">💾 Simpan</button>
-        <button class="btn btn-soft" id="btnCancelRen" style="display:none">Batal</button>
-      </div>
-    </div>
-    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px" id="presetRencana">
-      <button class="pill" data-ren="pajak">＋ Pajak Tahunan</button>
-      <button class="pill" data-ren="servisMobil">＋ Servis Mobil Besar</button>
-      <button class="pill" data-ren="servisMotor">＋ Servis Motor</button>
-      <button class="pill" data-ren="sekolah">＋ Daftar Sekolah</button>
-    </div>
-
-    <div class="rencana-grid" id="rencanaGrid"></div>
-    <div class="total-row"><span>Cicilan tabungan rencana per bulan</span><span id="totalRencana">Rp0</span></div>
-  </div>
-
-  <!-- ALOKASI -->
-  <div class="grid2" style="margin-top:14px">
-    <div class="card">
-      <div class="card-head"><div class="icon emerald">🍳</div><div><h2>Alokasi Sisa Bersih</h2><p>Dari sisa bersih — geser slider atau ketik</p></div></div>
-      <div class="presets">
-        <button class="pill active" data-preset="seimbang">⚖️ Seimbang</button>
-        <button class="pill" data-preset="hemat">🐷 Hemat</button>
-        <button class="pill" data-preset="nyaman">🛒 Nyaman</button>
-      </div>
-      <div class="row" style="flex-direction:column; align-items:stretch; gap:6px">
-        <div style="display:flex; justify-content:space-between"><label>🥦 Belanja dapur & masak</label><input class="money" id="alDapur" inputmode="numeric" style="width:140px"></div>
-        <input type="range" class="slider" id="slDapur" min="0" max="4000000" step="50000">
-      </div>
-      <div class="row" style="flex-direction:column; align-items:stretch; gap:6px; margin-top:10px">
-        <div style="display:flex; justify-content:space-between"><label>🍿 Cemilan / jajan</label><input class="money" id="alCemilan" inputmode="numeric" style="width:140px"></div>
-        <input type="range" class="slider" id="slCemilan" min="0" max="1000000" step="50000">
-      </div>
-      <div class="row" style="flex-direction:column; align-items:stretch; gap:6px; margin-top:10px">
-        <div style="display:flex; justify-content:space-between"><label>🛡️ Tabungan umum</label><input class="money" id="alTabungan" inputmode="numeric" style="width:140px"></div>
-        <input type="range" class="slider" id="slTabungan" min="0" max="2000000" step="50000">
-      </div>
-      <div class="row" style="flex-direction:column; align-items:stretch; gap:6px; margin-top:10px">
-        <div style="display:flex; justify-content:space-between"><label>🚨 Cadangan tak terduga</label><input class="money" id="alCadangan" inputmode="numeric" style="width:140px"></div>
-        <input type="range" class="slider" id="slCadangan" min="0" max="1500000" step="50000">
-      </div>
-      <hr class="sep">
-      <div class="total-row"><span>Terpakai dari sisa bersih</span><span id="pctAlokasi">0%</span></div>
-      <div class="btns">
-        <button class="btn btn-soft" id="btnBagi">✨ Bagi Rata Sisa Bersih</button>
-        <button class="btn btn-soft" id="resetBtn">↺ Reset</button>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-head"><div class="icon rose">📊</div><div><h2>Visual & Log</h2><p>Donut alokasi + rekap kategori</p></div></div>
-      <div class="chart-wrap">
-        <canvas id="donut" width="220" height="220" style="max-width:220px"></canvas>
-        <div class="legend" id="legend"></div>
-      </div>
-      <hr class="sep">
-      <div class="console" id="log"></div>
-      <div class="btns">
-        <button class="btn btn-soft" id="btnExport" style="width:100%">⬇️ Export Ringkasan (.txt)</button>
-      </div>
-    </div>
-  </div>
-
-  <p class="muted" style="text-align:center; margin-top:14px">Semua data kesimpen di HP (localStorage). 1 file HTML — offline ready.</p>
+<div class="nav-wrap">
+  <nav class="nav" id="topNav">
+    <button class="nav-btn active" data-page="dashboard"><span class="ico">📊</span> Dashboard</button>
+    <button class="nav-btn" data-page="pemasukan"><span class="ico">💰</span> Pemasukan & Tetap</button>
+    <button class="nav-btn" data-page="variabel"><span class="ico">📦</span> Variabel</button>
+    <button class="nav-btn" data-page="rencana"><span class="ico">🎯</span> Rencana</button>
+    <button class="nav-btn" data-page="alokasi"><span class="ico">🍳</span> Alokasi</button>
+  </nav>
 </div>
 
+<div class="wrap">
+  <!-- DASHBOARD -->
+  <section class="page active" id="page-dashboard">
+    <div class="page-title"><div class="icon teal">📊</div><div><h2>Dashboard</h2><p>Ringkasan bruto → bersih, per hari & status</p></div><span class="badge live">auto hitung</span></div>
+
+    <div class="card sisa-card">
+      <div class="card-head" style="margin-bottom:4px"><div class="icon" style="background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.25)">✨</div><div><h2 style="color:#fff">Sisa Budget — Bruto vs Bersih</h2><p style="color:rgba(255,255,255,.85)">Bruto = Pemasukan − Tetap − Anak &nbsp;|&nbsp; Bersih = Bruto − Variabel − Rencana</p></div></div>
+      <div class="sisa-grid">
+        <div class="sisa-box"><div class="k">Sisa Bruto</div><div class="v" id="sisa">Rp0</div></div>
+        <div class="sisa-box"><div class="k">Setelah Variabel</div><div class="v" id="sisaSetelahVariabel">Rp0</div></div>
+        <div class="sisa-box"><div class="k">Sisa Bersih</div><div class="v" id="sisaBersih">Rp0</div></div>
+        <div class="sisa-box"><div class="k">Per hari (bersih)</div><div class="v" id="perHari">Rp0</div></div>
+        <div class="sisa-box"><div class="k">Per minggu</div><div class="v" id="perMinggu">Rp0</div></div>
+        <div class="sisa-box"><div class="k">Terpakai Alokasi</div><div class="v" id="pctAlokasiHero">0%</div></div>
+      </div>
+      <div class="progress"><div id="barFill" style="width:0%"></div></div>
+      <div class="status" id="statusText"><span class="dot"></span><span>Memuat…</span></div>
+    </div>
+
+    <div class="grid3" style="margin-top:14px">
+      <div class="card"><div class="card-head"><div class="icon sky">📦</div><div><h2>Variabel</h2><p id="dashVarCount">0 pos</p></div></div><div class="big" id="dashVarTotal">Rp0</div><div class="muted">Total per bulan</div><button class="btn btn-soft" style="width:100%; margin-top:10px" onclick="goPage('variabel')">Kelola Variabel →</button></div>
+      <div class="card"><div class="card-head"><div class="icon orange">🎯</div><div><h2>Rencana</h2><p id="dashRenCount">0 target</p></div></div><div class="big" id="dashRenTotal">Rp0</div><div class="muted">Cicilan tabung /bulan</div><button class="btn btn-soft" style="width:100%; margin-top:10px" onclick="goPage('rencana')">Kelola Rencana →</button></div>
+      <div class="card"><div class="card-head"><div class="icon emerald">🍳</div><div><h2>Alokasi</h2><p id="dashAlokasiPct">0% terpakai</p></div></div><div class="big" id="dashAlokasiTotal">Rp0</div><div class="muted">Dapur + jajan + tabung</div><button class="btn btn-soft" style="width:100%; margin-top:10px" onclick="goPage('alokasi')">Atur Alokasi →</button></div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <div class="card-head"><div class="icon rose">📝</div><div><h2>Log Cerdas</h2><p>Status & saran otomatis</p></div></div>
+      <div class="console" id="log"></div>
+      <div class="btns"><button class="btn btn-soft" id="btnExport" style="width:100%">⬇️ Export Ringkasan (.txt)</button></div>
+    </div>
+  </section>
+
+  <!-- PEMASUKAN -->
+  <section class="page" id="page-pemasukan">
+    <div class="page-title"><div class="icon violet">💰</div><div><h2>Pemasukan & Pengeluaran Tetap</h2><p>Atur gaji, cicilan, rumah & kebutuhan anak</p></div></div>
+    <div class="grid3">
+      <div class="card">
+        <div class="card-head"><div class="icon teal">💰</div><div><h2>Pemasukan</h2><p>Gaji bulanan</p></div><span class="badge live">● sinkron</span></div>
+        <div class="row"><label>Will</label><input class="money" id="incWill" inputmode="numeric"></div>
+        <div class="row"><label>Istri</label><input class="money" id="incWife" inputmode="numeric"></div>
+        <div class="total-row"><span>Total Pemasukan</span><span id="totalIncome">Rp0</span></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="icon violet">🏠</div><div><h2>Tetap</h2><p>Wajib tiap bulan</p></div><span class="badge" id="pctFixed">46%</span></div>
+        <div class="row"><label>⛽ Bensin mobil</label><input class="money" id="fixBensin" inputmode="numeric"></div>
+        <div class="row"><label>🚗 Cicilan mobil</label><input class="money" id="fixCicilan" inputmode="numeric"></div>
+        <div class="row"><label>🏡 Rumah</label><input class="money" id="fixRumah" inputmode="numeric"></div>
+        <div class="total-row"><span>Total Tetap</span><span id="totalFixed">Rp0</span></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="icon amber">👶</div><div><h2>Anak</h2><p>Popok & susu</p></div><span class="badge" id="badgeAnak">~958rb</span></div>
+        <div class="row"><label>Popok <span>pack × harga</span></label><div class="inp-wrap"><input class="qty" id="popokQty" type="number" min="0"><input class="money" id="popokHarga" style="width:112px" inputmode="numeric"></div></div>
+        <div class="row"><label>Susu <span>karton × harga</span></label><div class="inp-wrap"><input class="qty" id="susuQty" type="number" min="0"><input class="money" id="susuHarga" style="width:112px" inputmode="numeric"></div></div>
+        <div class="total-row"><span>Total Anak</span><span id="totalAnak">Rp0</span></div>
+      </div>
+    </div>
+    <p class="muted" style="margin-top:10px">💡 Tip: Tetap usahakan di bawah 50% pemasukan. Anak non-negotiable — variabel & rencana akan ambil dari sisa.</p>
+  </section>
+
+  <!-- VARIABEL -->
+  <section class="page" id="page-variabel">
+    <div class="page-title"><div class="icon sky">📦</div><div><h2>Pengeluaran Variabel</h2><p>Kuota, servis, pajak, Morinaga, sekolah — nominal bisa beda tiap bulan. Bisa tambah/edit/hapus, kategori auto-rekap.</p></div><span class="badge" id="badgeVariabel">Rp0 /bulan</span></div>
+    <div class="card">
+      <div class="var-form" id="varForm">
+        <div><label>Nama pengeluaran</label><input class="txt" id="varNama" placeholder="cth: Kuota Internet"></div>
+        <div><label>Kategori</label><select id="varKategori">
+          <option>Komunikasi</option><option>Kendaraan</option><option>Pajak & STNK</option><option>Anak & Susu</option><option>Pendidikan</option><option>Perawatan</option><option>Langganan</option><option>Lainnya</option>
+        </select></div>
+        <div><label>Nominal (Rp)</label><input class="txt" id="varNominal" inputmode="numeric" placeholder="200000"></div>
+        <div><label>Periode</label><select id="varPeriode">
+          <option value="Bulanan">Bulanan</option><option value="Bulanan Variabel">Bulanan Variabel</option><option value="Tidak Tentu">Tidak Tentu</option><option value="Tahunan">Tahunan (÷12)</option>
+        </select></div>
+        <div><label>Keterangan</label><input class="txt" id="varKet" placeholder="cth: 2 HP + wifi"></div>
+        <div style="display:flex; gap:6px; align-items:end">
+          <button class="btn btn-accent" id="btnAddVar" style="white-space:nowrap">＋ Tambah</button>
+          <button class="btn btn-accent" id="btnSaveVar" style="display:none">💾 Simpan</button>
+          <button class="btn btn-soft" id="btnCancelVar" style="display:none">Batal</button>
+        </div>
+      </div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px" id="presetVariabel">
+        <button class="pill" data-add="kuota">＋ Kuota 250rb</button>
+        <button class="pill" data-add="motor">＋ Servis Motor 150rb</button>
+        <button class="pill" data-add="mobil">＋ Servis Mobil 300rb</button>
+        <button class="pill" data-add="pajak">＋ Pajak 2jt/th</button>
+        <button class="pill" data-add="morinaga">＋ Morinaga 400rb</button>
+        <button class="pill" data-add="sekolah">＋ Sekolah 500rb</button>
+      </div>
+      <div style="overflow:auto; border:1px solid var(--border); border-radius:12px">
+        <table class="var-table" id="varTable">
+          <thead><tr><th>Nama</th><th>Kategori</th><th>Nominal</th><th>Periode</th><th>Per bulan*</th><th>Keterangan</th><th style="width:70px">Aksi</th></tr></thead>
+          <tbody id="varBody"></tbody>
+        </table>
+      </div>
+      <div class="muted" style="margin-top:6px">* Tahunan otomatis ÷12. Tidak Tentu & Variabel dihitung penuh sebagai estimasi.</div>
+      <div style="margin-top:10px; display:flex; flex-wrap:wrap; gap:6px" id="catRekap"></div>
+      <div class="total-row"><span>Total Variabel per bulan</span><span id="totalVariabel">Rp0</span></div>
+    </div>
+  </section>
+
+  <!-- RENCANA -->
+  <section class="page" id="page-rencana">
+    <div class="page-title"><div class="icon orange">🎯</div><div><h2>Rencana Pembiayaan</h2><p>Tabung dari sekarang untuk biaya akan datang — servis besar, pajak, sekolah, apapun. Luwes.</p></div><span class="badge" id="badgeRencana">Rp0 /bulan</span></div>
+    <div class="card">
+      <div class="rencana-form">
+        <div><label class="muted" style="font-size:.70rem; font-weight:700; text-transform:uppercase">Nama rencana</label><input class="txt" id="renNama" placeholder="cth: Pajak Mobil 2027"></div>
+        <div><label class="muted" style="font-size:.70rem; font-weight:700; text-transform:uppercase">Kategori</label><select id="renKategori"><option>Kendaraan</option><option>Pajak & STNK</option><option>Pendidikan</option><option>Perawatan</option><option>Kesehatan</option><option>Rumah</option><option>Lainnya</option></select></div>
+        <div><label class="muted" style="font-size:.70rem; font-weight:700; text-transform:uppercase">Target (Rp)</label><input class="txt" id="renTarget" inputmode="numeric" placeholder="2000000"></div>
+        <div><label class="muted" style="font-size:.70rem; font-weight:700; text-transform:uppercase">Terkumpul (Rp)</label><input class="txt" id="renTerkumpul" inputmode="numeric" placeholder="0"></div>
+        <div><label class="muted" style="font-size:.70rem; font-weight:700; text-transform:uppercase">Deadline</label><input class="txt" id="renDeadline" type="month"></div>
+        <div style="display:flex; gap:6px; align-items:end">
+          <input class="txt" id="renKet" placeholder="keterangan (opsional)">
+          <button class="btn btn-accent" id="btnAddRen">＋ Tambah</button>
+          <button class="btn btn-accent" id="btnSaveRen" style="display:none">💾 Simpan</button>
+          <button class="btn btn-soft" id="btnCancelRen" style="display:none">Batal</button>
+        </div>
+      </div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px" id="presetRencana">
+        <button class="pill" data-ren="pajak">＋ Pajak Tahunan</button>
+        <button class="pill" data-ren="servisMobil">＋ Servis Mobil Besar</button>
+        <button class="pill" data-ren="servisMotor">＋ Servis Motor</button>
+        <button class="pill" data-ren="sekolah">＋ Daftar Sekolah</button>
+      </div>
+      <div class="rencana-grid" id="rencanaGrid"></div>
+      <div class="total-row"><span>Cicilan tabungan rencana per bulan</span><span id="totalRencana">Rp0</span></div>
+    </div>
+  </section>
+
+  <!-- ALOKASI -->
+  <section class="page" id="page-alokasi">
+    <div class="page-title"><div class="icon emerald">🍳</div><div><h2>Alokasi Sisa Bersih</h2><p>Dari sisa bersih setelah variabel & rencana — atur dapur, jajan, tabungan & cadangan</p></div><span class="badge" id="pctAlokasi">0%</span></div>
+    <div class="grid2">
+      <div class="card">
+        <div class="presets">
+          <button class="pill active" data-preset="seimbang">⚖️ Seimbang</button>
+          <button class="pill" data-preset="hemat">🐷 Hemat</button>
+          <button class="pill" data-preset="nyaman">🛒 Nyaman</button>
+        </div>
+        <div class="row" style="flex-direction:column; align-items:stretch; gap:6px">
+          <div style="display:flex; justify-content:space-between"><label>🥦 Belanja dapur & masak</label><input class="money" id="alDapur" inputmode="numeric" style="width:140px"></div>
+          <input type="range" class="slider" id="slDapur" min="0" max="4000000" step="50000">
+        </div>
+        <div class="row" style="flex-direction:column; align-items:stretch; gap:6px; margin-top:10px">
+          <div style="display:flex; justify-content:space-between"><label>🍿 Cemilan / jajan</label><input class="money" id="alCemilan" inputmode="numeric" style="width:140px"></div>
+          <input type="range" class="slider" id="slCemilan" min="0" max="1000000" step="50000">
+        </div>
+        <div class="row" style="flex-direction:column; align-items:stretch; gap:6px; margin-top:10px">
+          <div style="display:flex; justify-content:space-between"><label>🛡️ Tabungan umum</label><input class="money" id="alTabungan" inputmode="numeric" style="width:140px"></div>
+          <input type="range" class="slider" id="slTabungan" min="0" max="2000000" step="50000">
+        </div>
+        <div class="row" style="flex-direction:column; align-items:stretch; gap:6px; margin-top:10px">
+          <div style="display:flex; justify-content:space-between"><label>🚨 Cadangan tak terduga</label><input class="money" id="alCadangan" inputmode="numeric" style="width:140px"></div>
+          <input type="range" class="slider" id="slCadangan" min="0" max="1500000" step="50000">
+        </div>
+        <hr class="sep">
+        <div class="total-row"><span>Terpakai dari sisa bersih</span><span id="pctAlokasi2">0%</span></div>
+        <div class="btns">
+          <button class="btn btn-soft" id="btnBagi">✨ Bagi Rata Sisa Bersih</button>
+          <button class="btn btn-soft" id="resetBtn">↺ Reset</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="icon rose">📊</div><div><h2>Visual</h2><p>Donut alokasi</p></div></div>
+        <div class="chart-wrap">
+          <canvas id="donut" width="220" height="220" style="max-width:220px"></canvas>
+          <div class="legend" id="legend"></div>
+        </div>
+        <hr class="sep">
+        <div class="console" id="log2" style="max-height:160px"></div>
+      </div>
+    </div>
+  </section>
+
+  <p class="muted" style="text-align:center; margin-top:14px">Semua data kesimpen di HP (localStorage) • 1 file HTML — offline ready</p>
+</div>
+
+<nav class="bottom-nav" id="bottomNav">
+  <button class="bnav-btn active" data-page="dashboard"><span class="i">📊</span>Dashboard</button>
+  <button class="bnav-btn" data-page="pemasukan"><span class="i">💰</span>Pemasukan</button>
+  <button class="bnav-btn" data-page="variabel"><span class="i">📦</span>Variabel</button>
+  <button class="bnav-btn" data-page="rencana"><span class="i">🎯</span>Rencana</button>
+  <button class="bnav-btn" data-page="alokasi"><span class="i">🍳</span>Alokasi</button>
+</nav>
+
 <script>
+
 const ids = ["incWill","incWife","fixBensin","fixCicilan","fixRumah","popokQty","popokHarga","susuQty","susuHarga","alDapur","alCemilan","alTabungan","alCadangan"];
 const moneyIds = ["incWill","incWife","fixBensin","fixCicilan","fixRumah","popokHarga","susuHarga","alDapur","alCemilan","alTabungan","alCadangan"];
 const defaults = {
@@ -762,7 +819,48 @@ loadCore();
 renderVariabel();
 renderRencana();
 calc();
+
 </script>
-<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("./sw.js")}</script>
+<script>
+// NAV
+function goPage(id){
+  document.querySelectorAll('.page').forEach(p=> p.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b=> b.classList.toggle('active', b.dataset.page===id));
+  document.querySelectorAll('.bnav-btn').forEach(b=> b.classList.toggle('active', b.dataset.page===id));
+  try{ localStorage.setItem('budget-page', id); }catch(e){}
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+document.querySelectorAll('.nav-btn,.bnav-btn').forEach(b=> b.addEventListener('click', ()=> goPage(b.dataset.page)));
+try{
+  const saved=localStorage.getItem('budget-page');
+  if(saved && document.getElementById('page-'+saved)) goPage(saved);
+}catch(e){}
+
+// sync extra dashboard elements & keep log duplicated
+const _calc = calc;
+calc = function(){
+  _calc();
+  // sync second log
+  const l=document.getElementById('log'), l2=document.getElementById('log2');
+  if(l && l2) l2.innerHTML=l.innerHTML;
+  // dashboard quick
+  const tv = document.getElementById('totalVariabel')?.textContent || 'Rp0';
+  const tr = document.getElementById('totalRencana')?.textContent || 'Rp0';
+  const al = num('alDapur')+num('alCemilan')+num('alTabungan')+num('alCadangan');
+  const pct = document.getElementById('pctAlokasi')?.textContent || '0%';
+  const elV=document.getElementById('dashVarTotal'); if(elV) elV.textContent=tv;
+  const elR=document.getElementById('dashRenTotal'); if(elR) elR.textContent=tr;
+  const elA=document.getElementById('dashAlokasiTotal'); if(elA) elA.textContent=rp(al);
+  const elAP=document.getElementById('dashAlokasiPct'); if(elAP) elAP.textContent=pct+' terpakai';
+  const elVC=document.getElementById('dashVarCount'); if(elVC) elVC.textContent=variabel.length+' pos';
+  const elRC=document.getElementById('dashRenCount'); if(elRC) elRC.textContent=rencana.length+' target';
+  // keep pctAlokasi2 synced
+  const p1=document.getElementById('pctAlokasi'), p2=document.getElementById('pctAlokasi2');
+  if(p1 && p2) p2.textContent=p1.textContent;
+};
+setTimeout(calc, 50);
+if("serviceWorker" in navigator){ navigator.serviceWorker.register("./sw.js"); }
+</script>
 </body>
 </html>
