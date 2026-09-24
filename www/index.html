@@ -172,8 +172,14 @@ hr.sep{border:none; border-top:1px solid var(--border); margin:14px 0}
     <div class="brand">
       <h1><span class="logo">💹</span> Budget Keluarga</h1>
       <p>Will <b>3,7jt</b> + Istri <b>5jt</b> = <b>8,7jt</b>. Kelola per menu — dashboard, pemasukan, variabel, rencana & alokasi.</p>
-      <div class="kpi">
-        <span>🏠 1,5jt</span><span>🚗 1,5jt</span><span>⛽ 1jt</span><span>👶 196rb</span><span>🥛 762rb</span><span id="kpiVariabel">📦 Variabel 0</span><span id="kpiRencana">🎯 Rencana 0</span>
+      <div class="kpi" id="kpiRow">
+        <span id="kpiRumah" title="Sumber: Pengeluaran Tetap → Rumah">🏠 Rumah: Rp0</span>
+        <span id="kpiCicilan" title="Sumber: Pengeluaran Tetap → Cicilan mobil">🚗 Cicilan: Rp0</span>
+        <span id="kpiBensin" title="Sumber: Pengeluaran Tetap → Bensin mobil">⛽ Bensin: Rp0</span>
+        <span id="kpiPopok" title="Sumber: Kebutuhan Anak → Popok (qty × harga)">👶 Popok: Rp0</span>
+        <span id="kpiSusu" title="Sumber: Kebutuhan Anak → Susu (qty × harga)">🥛 Susu: Rp0</span>
+        <span id="kpiVariabel" title="Sumber: Menu Variabel → Total per bulan">📦 Variabel: Rp0</span>
+        <span id="kpiRencana" title="Sumber: Menu Rencana → Cicilan tabung /bulan">🎯 Rencana: Rp0</span>
       </div>
     </div>
     <div class="header-stats">
@@ -464,7 +470,24 @@ function renderVariabel(){
   const tot = variabel.reduce((a,v)=>a+monthlyOf(v),0);
   document.getElementById('totalVariabel').textContent=rp(tot);
   document.getElementById('badgeVariabel').textContent=rp(tot)+' /bulan';
-  document.getElementById('kpiVariabel').textContent='📦 Variabel '+rp(tot);
+  document.getElementById('kpiVariabel').textContent='📦 Variabel: '+rp(tot);
+  // header KPI chips — semua live dari sumber value, jelas peruntukannya
+  const _rumah=num('fixRumah'), _cicilan=num('fixCicilan'), _bensin=num('fixBensin');
+  const _popok=num('popokQty')*num('popokHarga'), _susu=num('susuQty')*num('susuHarga');
+  document.getElementById('kpiRumah').textContent='🏠 Rumah: '+rp(_rumah);
+  document.getElementById('kpiCicilan').textContent='🚗 Cicilan: '+rp(_cicilan);
+  document.getElementById('kpiBensin').textContent='⛽ Bensin: '+rp(_bensin);
+  document.getElementById('kpiPopok').textContent='👶 Popok: '+rp(_popok);
+  document.getElementById('kpiSusu').textContent='🥛 Susu: '+rp(_susu);
+  // hide 0? keep visible tapi redup
+  ['kpiRumah','kpiCicilan','kpiBensin','kpiPopok','kpiSusu'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){
+      const isZero=(id==='kpiPopok'?_popok: id==='kpiSusu'?_susu: id==='kpiRumah'?_rumah: id==='kpiCicilan'?_cicilan:_bensin)===0;
+      el.style.opacity=isZero?'0.45':'1';
+      el.style.textDecoration=isZero?'line-through':'none';
+    }
+  });
 }
 function addVar(){
   const nama=document.getElementById('varNama').value.trim();
@@ -563,7 +586,7 @@ function renderRencana(){
   },0);
   document.getElementById('totalRencana').textContent=rp(tot);
   document.getElementById('badgeRencana').textContent=rp(tot)+' /bulan';
-  document.getElementById('kpiRencana').textContent='🎯 Rencana '+rp(tot);
+  document.getElementById('kpiRencana').textContent='🎯 Rencana: '+rp(tot);
 }
 function addRen(){
   const nama=document.getElementById('renNama').value.trim();
