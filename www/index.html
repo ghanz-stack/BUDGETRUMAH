@@ -515,24 +515,8 @@ function renderVariabel(){
   const tot = variabel.reduce((a,v)=>a+monthlyOf(v),0);
   document.getElementById('totalVariabel').textContent=rp(tot);
   document.getElementById('badgeVariabel').textContent=rp(tot)+' /bulan';
-  document.getElementById('kpiVariabel').textContent='📦 Variabel: '+rp(tot);
-  // header KPI chips — semua live dari sumber value, jelas peruntukannya
-  const _rumah=num('fixRumah'), _cicilan=num('fixCicilan'), _bensin=num('fixBensin');
-  const _popok=num('popokQty')*num('popokHarga'), _susu=num('susuQty')*num('susuHarga');
-  document.getElementById('kpiRumah').textContent='🏠 Rumah: '+rp(_rumah);
-  document.getElementById('kpiCicilan').textContent='🚗 Cicilan: '+rp(_cicilan);
-  document.getElementById('kpiBensin').textContent='⛽ Bensin: '+rp(_bensin);
-  document.getElementById('kpiPopok').textContent='👶 Popok: '+rp(_popok);
-  document.getElementById('kpiSusu').textContent='🥛 Susu: '+rp(_susu);
-  // hide 0? keep visible tapi redup
-  ['kpiRumah','kpiCicilan','kpiBensin','kpiPopok','kpiSusu'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(el){
-      const isZero=(id==='kpiPopok'?_popok: id==='kpiSusu'?_susu: id==='kpiRumah'?_rumah: id==='kpiCicilan'?_cicilan:_bensin)===0;
-      el.style.opacity=isZero?'0.45':'1';
-      el.style.textDecoration=isZero?'line-through':'none';
-    }
-  });
+  document.getElementById('kpiVariabel').textContent='📦 Variabel: '+variabel.length+' pos = '+rp(tot);
+  document.getElementById('kpiVariabel').title='Sumber: Menu Variabel → '+variabel.length+' pos, total '+rp(tot)+'/bulan';
 }
 function addVar(){
   const nama=document.getElementById('varNama').value.trim();
@@ -631,7 +615,8 @@ function renderRencana(){
   },0);
   document.getElementById('totalRencana').textContent=rp(tot);
   document.getElementById('badgeRencana').textContent=rp(tot)+' /bulan';
-  document.getElementById('kpiRencana').textContent='🎯 Rencana: '+rp(tot);
+  document.getElementById('kpiRencana').textContent='🎯 Rencana: '+rencana.length+' target = '+rp(tot)+'/bln';
+  document.getElementById('kpiRencana').title='Sumber: Menu Rencana → '+rencana.length+' target, cicilan '+rp(tot)+'/bulan';
 }
 function addRen(){
   const nama=document.getElementById('renNama').value.trim();
@@ -720,7 +705,30 @@ function calc(){
   },0);
   const sisaSetelahVariabel=sisaBruto-totalVariabel;
   const sisaBersih=sisaSetelahVariabel-totalRencana;
-  const alokasi=num("alDapur")+num("alCemilan")+num("alTabungan")+num("alCadangan");
+    const alokasi=num("alDapur")+num("alCemilan")+num("alTabungan")+num("alCadangan");
+  // === HEADER KPI CHIPS — REAL TIME dari sumber value, update tiap calc() ===
+  (function(){
+    const _rumah=num('fixRumah'), _cicilan=num('fixCicilan'), _bensin=num('fixBensin');
+    const _pq=num('popokQty'), _ph=num('popokHarga'), _sq=num('susuQty'), _sh=num('susuHarga');
+    const _popok=_pq*_ph, _susu=_sq*_sh;
+    const _varTot=variabel.reduce((a,v)=>a+(v.periode==="Tahunan"?Math.round(v.nominal/12):v.nominal),0);
+    const _renTot=rencana.reduce((a,r)=>{ const k=Math.max(0,r.target-r.terkumpul); const m=(function(d){ if(!d) return 12; const [y,m]=d.split('-').map(Number); const now=new Date(); let diff=(y-now.getFullYear())*12+(m-(now.getMonth()+1)); return diff<=0?1:diff; })(r.deadline); return a+(k?Math.ceil(k/m):0); },0);
+    const set=(id,txt,title)=>{ const e=document.getElementById(id); if(e){ e.textContent=txt; e.title=title; }};
+    set('kpiRumah','🏠 Rumah: '+rp(_rumah),'Sumber: Menu Pemasukan & Tetap → Rumah = '+rp(_rumah));
+    set('kpiCicilan','🚗 Cicilan: '+rp(_cicilan),'Sumber: Menu Pemasukan & Tetap → Cicilan mobil = '+rp(_cicilan));
+    set('kpiBensin','⛽ Bensin: '+rp(_bensin),'Sumber: Menu Pemasukan & Tetap → Bensin mobil = '+rp(_bensin));
+    // Popok & Susu tampilkan rumus qty × harga = total — REAL TIME
+    set('kpiPopok','👶 Popok: '+_pq+'×'+rp(_ph)+' = '+rp(_popok),'Sumber: Menu Pemasukan & Tetap → Popok '+_pq+' pack × '+rp(_ph)+' = '+rp(_popok));
+    set('kpiSusu','🥛 Susu: '+_sq+'×'+rp(_sh)+' = '+rp(_susu),'Sumber: Menu Pemasukan & Tetap → Susu '+_sq+' karton × '+rp(_sh)+' = '+rp(_susu));
+    set('kpiVariabel','📦 Variabel: '+variabel.length+' pos = '+rp(_varTot),'Sumber: Menu Variabel → '+variabel.length+' pos total '+rp(_varTot)+'/bulan');
+    set('kpiRencana','🎯 Rencana: '+rencana.length+' target = '+rp(_renTot)+'/bln','Sumber: Menu Rencana → '+rencana.length+' target cicilan '+rp(_renTot)+'/bulan');
+    ['kpiRumah','kpiCicilan','kpiBensin','kpiPopok','kpiSusu'].forEach(id=>{
+      const e=document.getElementById(id); if(!e) return;
+      const v=id==='kpiPopok'?_popok: id==='kpiSusu'?_susu: id==='kpiRumah'?_rumah: id==='kpiCicilan'?_cicilan:_bensin;
+      e.style.opacity=v===0?'0.42':'1';
+      e.style.textDecoration=v===0?'line-through':'none';
+    });
+  })();
 
   document.getElementById("totalIncome").textContent=rp(income);
   document.getElementById("totalFixed").textContent=rp(fixed);
