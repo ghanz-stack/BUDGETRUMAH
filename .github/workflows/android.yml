@@ -1,0 +1,62 @@
+name: Build APK - Budget Keluarga
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: budget-keluarga-webapp/package.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        working-directory: budget-keluarga-webapp
+        run: npm ci
+
+      - name: Add Android platform
+        working-directory: budget-keluarga-webapp
+        run: |
+          if [ ! -d android ]; then npx cap add android; fi
+          npx cap sync android
+
+      - name: Make gradlew executable
+        run: chmod +x budget-keluarga-webapp/android/gradlew
+
+      - name: Build Debug APK
+        working-directory: budget-keluarga-webapp/android
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: budget-keluarga-debug
+          path: budget-keluarga-webapp/android/app/build/outputs/apk/debug/app-debug.apk
+
+      # OPTIONAL: build signed release jika kamu set secrets KEYSTORE_BASE64
+      # - name: Build Signed Release
+      #   if: env.KEYSTORE_BASE64 != ''
+      #   env:
+      #     KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+      #     KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      #     KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      #     KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      #   working-directory: budget-keluarga-webapp/android
+      #   run: |
+      #     echo "$KEYSTORE_BASE64" | base64 -d > app/keystore.jks
+      #     ./gradlew assembleRelease

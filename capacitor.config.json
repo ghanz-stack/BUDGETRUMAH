@@ -1,0 +1,7 @@
+{
+  "appId": "com.keluarga.budget",
+  "appName": "Budget Keluarga",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "server": { "androidScheme": "https" }
+}

@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0E7490">
+<link rel="icon" href="icon-192.png">
+<title>Budget Keluarga — Planner Modern</title>
+<style>
+:root{
+  --bg:#EEF2FB; --card:#FFFFFF; --border:#E1E7F5; --text:#1F2430; --muted:#6B7A99;
+  --accent:#0E7490; --accent2:#06B6D4; --accentHover:#0c5f77;
+  --emerald:#059669; --amber:#F59E0B; --rose:#E11D48; --violet:#7C3AED;
+  --console-bg:#0F172A; --console-fg:#E2E8F0;
+}
+*{box-sizing:border-box}
+html,body{margin:0; min-height:100%}
+body{font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif; background:var(--bg); color:var(--text); line-height:1.5}
+a{color:inherit}
+/* HEADER GRADIENT */
+.header{
+  background: linear-gradient(135deg, #0F766E 0%, #0E7490 35%, #06B6D4 75%, #22D3EE 100%);
+  color:#fff; padding:28px 20px 22px; position:relative; overflow:hidden;
+}
+.header::after{
+  content:""; position:absolute; inset:0;
+  background: radial-gradient(circle at 85% 15%, rgba(255,255,255,.22) 0, transparent 35%),
+              radial-gradient(circle at 10% 90%, rgba(255,255,255,.12) 0, transparent 30%);
+  pointer-events:none;
+}
+.header-inner{max-width:1040px; margin:0 auto; position:relative; z-index:1; display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:space-between}
+.brand h1{margin:0; font-size:1.75rem; font-weight:800; letter-spacing:-.02em; display:flex; gap:10px; align-items:center}
+.brand h1 span.logo{display:inline-grid; place-items:center; width:40px; height:40px; background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.25); border-radius:12px; backdrop-filter:blur(6px)}
+.brand p{margin:6px 0 0; opacity:.92; font-size:.92rem; max-width:560px}
+.header-stats{display:flex; gap:10px; flex-wrap:wrap}
+.stat-chip{background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.22); backdrop-filter:blur(8px); border-radius:14px; padding:10px 14px; min-width:145px}
+.stat-chip .k{font-size:.72rem; text-transform:uppercase; letter-spacing:.07em; opacity:.85}
+.stat-chip .v{font-size:1.05rem; font-weight:800; margin-top:2px}
+.stat-chip.good{background:rgba(16,185,129,.22); border-color:rgba(16,185,129,.35)}
+
+/* LAYOUT */
+.wrap{max-width:1040px; margin:0 auto; padding:18px 16px 40px}
+.grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:14px}
+@media(max-width:860px){ .grid3{grid-template-columns:1fr} }
+.grid2{display:grid; grid-template-columns:1.15fr .85fr; gap:14px}
+@media(max-width:860px){ .grid2{grid-template-columns:1fr} }
+
+/* CARD */
+.card{background:var(--card); border:1px solid var(--border); border-radius:18px; padding:16px; box-shadow:0 4px 18px rgba(15,23,42,.05)}
+.card-head{display:flex; align-items:center; gap:10px; margin-bottom:12px}
+.icon{width:36px; height:36px; border-radius:11px; display:grid; place-items:center; font-size:18px; color:#fff}
+.icon.teal{background:linear-gradient(135deg,#0E7490,#22D3EE)}
+.icon.violet{background:linear-gradient(135deg,#7C3AED,#EC4899)}
+.icon.amber{background:linear-gradient(135deg,#F59E0B,#F97316)}
+.icon.emerald{background:linear-gradient(135deg,#059669,#34D399)}
+.icon.rose{background:linear-gradient(135deg,#E11D48,#FB7185)}
+.card-head h2{margin:0; font-size:.98rem; font-weight:750}
+.card-head p{margin:1px 0 0; font-size:.78rem; color:var(--muted)}
+.badge{margin-left:auto; font-size:.72rem; font-weight:700; padding:6px 10px; border-radius:999px; border:1px solid var(--border); background:#F8FAFC; color:var(--muted)}
+.badge.live{background:#ECFDF5; color:#065F46; border-color:#A7F3D0}
+
+/* INPUTS */
+.row{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px}
+.row:last-child{margin-bottom:0}
+.row label{font-size:.86rem; font-weight:600; flex:1; color:#334155}
+.row label span{font-weight:500; color:var(--muted); font-size:.78rem}
+.inp-wrap{display:flex; align-items:center; gap:6px}
+.money, .qty{border:1px solid var(--border); background:#F8FAFC; border-radius:10px; padding:8px 10px; font-size:.9rem; font-weight:600; color:var(--text); outline:none; transition:.15s}
+.money{width:150px; text-align:right}
+.qty{width:64px; text-align:center}
+.money:focus, .qty:focus{border-color:var(--accent2); background:#fff; box-shadow:0 0 0 3px rgba(6,182,214,.15)}
+.slider{width:100%; accent-color:var(--accent)}
+.total-row{display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding-top:12px; border-top:1px dashed var(--border); font-weight:800}
+.total-row span:first-child{color:var(--muted); font-weight:600; font-size:.85rem}
+.big{font-size:1.7rem; font-weight:900; letter-spacing:-.02em}
+.muted{color:var(--muted); font-size:.8rem}
+
+/* SISA CARD */
+.sisa-card{background:linear-gradient(135deg,#0F766E 0%, #0E7490 45%, #0891B2 100%); color:#fff; border:none; position:relative; overflow:hidden}
+.sisa-card::after{content:""; position:absolute; right:-40px; top:-40px; width:180px; height:180px; background:radial-gradient(circle, rgba(255,255,255,.18), transparent 70%)}
+.sisa-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:10px}
+.sisa-box{background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.18); border-radius:14px; padding:12px}
+.sisa-box .k{font-size:.72rem; opacity:.85; text-transform:uppercase; letter-spacing:.06em}
+.sisa-box .v{font-size:1.15rem; font-weight:900}
+.progress{height:10px; background:rgba(255,255,255,.2); border-radius:999px; overflow:hidden; margin-top:12px}
+.progress>div{height:100%; background:#fff; border-radius:999px; transition:width .25s}
+.status{margin-top:8px; font-size:.85rem; font-weight:600; display:flex; gap:8px; align-items:center}
+.dot{width:8px; height:8px; border-radius:50%; background:#fff; box-shadow:0 0 0 4px rgba(255,255,255,.25); animation:pulse 1.8s infinite}
+@keyframes pulse{0%,100%{transform:scale(1)} 50%{transform:scale(1.15)}}
+
+/* PRESET */
+.presets{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px}
+.pill{border:1px solid var(--border); background:#F8FAFC; padding:8px 12px; border-radius:999px; font-size:.82rem; font-weight:700; cursor:pointer; transition:.15s}
+.pill.active{background:var(--accent); color:#fff; border-color:var(--accent)}
+.pill:hover{transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,.06)}
+
+/* CHART */
+.chart-wrap{display:flex; flex-direction:column; align-items:center; gap:10px}
+.legend{display:grid; grid-template-columns:1fr 1fr; gap:6px 14px; width:100%; font-size:.78rem}
+.legend i{width:10px; height:10px; border-radius:3px; display:inline-block; margin-right:6px; vertical-align:middle}
+
+/* CONSOLE */
+.console{background:var(--console-bg); color:var(--console-fg); border-radius:14px; padding:12px 14px; font-family:Consolas, ui-monospace, monospace; font-size:.78rem; line-height:1.6; max-height:220px; overflow:auto; border:1px solid #1E293B}
+.console .ok{color:#34D399} .console .warn{color:#FBBF24} .console .err{color:#FB7185} .console .info{color:#7DD3FC} .console .mut{color:#94A3B8}
+
+/* BUTTONS */
+.btn{border:none; border-radius:12px; padding:11px 14px; font-weight:800; font-size:.88rem; cursor:pointer; transition:.15s; display:inline-flex; align-items:center; gap:8px; justify-content:center}
+.btn-accent{background:var(--accent); color:#fff; box-shadow:0 6px 16px rgba(14,116,144,.25)}
+.btn-accent:hover{background:var(--accentHover); transform:translateY(-1px)}
+.btn-soft{background:#EEF2FB; color:var(--accent); border:1px solid var(--border)}
+.btn-soft:hover{background:#E1E7F5}
+.btns{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px}
+hr.sep{border:none; border-top:1px solid var(--border); margin:14px 0}
+.kpi{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+.kpi span{background:#F1F5F9; border:1px solid var(--border); padding:6px 10px; border-radius:999px; font-size:.75rem; font-weight:700; color:#334155}
+</style>
+</head>
+<body>
+<header class="header">
+  <div class="header-inner">
+    <div class="brand">
+      <h1><span class="logo">💹</span> Budget Keluarga</h1>
+      <p>Atur gaji Will <b>Rp3,7jt</b> + Istri <b>Rp5jt</b> = <b>Rp8,7jt</b> dengan pengeluaran tetap mobil & rumah. Sisa <b>Rp3,74jt</b> kita pecah cerdas untuk dapur, anak, & tabungan.</p>
+      <div class="kpi">
+        <span>🏠 Rumah 1,5jt</span><span>🚗 Cicilan 1,5jt</span><span>⛽ Bensin 1jt</span><span>👶 Popok 196rb</span><span>🥛 Susu 762rb</span>
+      </div>
+    </div>
+    <div class="header-stats">
+      <div class="stat-chip"><div class="k">Total Pemasukan</div><div class="v" id="hIncome">Rp8.700.000</div></div>
+      <div class="stat-chip"><div class="k">Total Tetap (46%)</div><div class="v" id="hFixed">Rp4.000.000</div></div>
+      <div class="stat-chip good"><div class="k">Sisa Dialokasikan</div><div class="v" id="hSisa">Rp3.742.000</div></div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <!-- GRID 3 -->
+  <div class="grid3">
+    <div class="card">
+      <div class="card-head"><div class="icon teal">💰</div><div><h2>Pemasukan</h2><p>Gaji bulanan keluarga</p></div><span class="badge live">● sinkron</span></div>
+      <div class="row"><label>Will <span>— ayah</span></label><div class="inp-wrap"><input class="money" id="incWill" inputmode="numeric"></div></div>
+      <div class="row"><label>Istri <span>— bunda</span></label><div class="inp-wrap"><input class="money" id="incWife" inputmode="numeric"></div></div>
+      <div class="total-row"><span>Total Pemasukan</span><span id="totalIncome">Rp0</span></div>
+      <div class="muted" style="margin-top:6px">💡 8,7jt adalah modal. Jaga tetap di atas 4jt sisa agar tidak defisit.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div class="icon violet">🏠</div><div><h2>Pengeluaran Tetap</h2><p>Wajib keluar tiap bulan</p></div><span class="badge" id="pctFixed">46%</span></div>
+      <div class="row"><label>⛽ Bensin mobil</label><input class="money" id="fixBensin" inputmode="numeric"></div>
+      <div class="row"><label>🚗 Cicilan mobil</label><input class="money" id="fixCicilan" inputmode="numeric"></div>
+      <div class="row"><label>🏡 Rumah / kontrakan</label><input class="money" id="fixRumah" inputmode="numeric"></div>
+      <div class="total-row"><span>Total Tetap</span><span id="totalFixed">Rp0</span></div>
+      <div class="muted">Tips: kalau bisa, usahakan tetap &lt; 50% pemasukan. Kamu sudah pas 46% — keren!</div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div class="icon amber">👶</div><div><h2>Kebutuhan Anak</h2><p>Popok & susu — qty × harga</p></div><span class="badge" id="badgeAnak">~958rb</span></div>
+      <div class="row"><label>Popok <span>pack × harga</span></label><div class="inp-wrap"><input class="qty" id="popokQty" type="number" min="0"><input class="money" id="popokHarga" style="width:112px" inputmode="numeric"></div></div>
+      <div class="muted" style="margin:-6px 0 10px 0">1 pack Rp98.000 — biasanya 2 pack</div>
+      <div class="row"><label>Susu <span>karton × harga</span></label><div class="inp-wrap"><input class="qty" id="susuQty" type="number" min="0"><input class="money" id="susuHarga" style="width:112px" inputmode="numeric"></div></div>
+      <div class="muted" style="margin:-6px 0 10px 0">1 karton Rp190.500 — 3-4 karton/bulan</div>
+      <div class="total-row"><span>Total Anak</span><span id="totalAnak">Rp0</span></div>
+    </div>
+  </div>
+
+  <!-- SISA -->
+  <div class="card sisa-card" style="margin-top:14px">
+    <div class="card-head" style="margin-bottom:4px"><div class="icon" style="background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.25)">✨</div><div><h2 style="color:#fff">Sisa yang Bisa Dialokasikan</h2><p style="color:rgba(255,255,255,.85)">Pemasukan − Tetap − Anak = ruang gerakmu</p></div><span class="badge" style="background:#fff; color:#0E7490; border-color:#fff">Rp3,7jt+ tersedia</span></div>
+    <div class="big" id="sisa" style="color:#fff; margin-top:6px">Rp0</div>
+    <div class="sisa-grid">
+      <div class="sisa-box"><div class="k">Per hari (30 hari)</div><div class="v" id="perHari">Rp0</div></div>
+      <div class="sisa-box"><div class="k">Per minggu</div><div class="v" id="perMinggu">Rp0</div></div>
+    </div>
+    <div class="progress"><div id="barFill" style="width:0%"></div></div>
+    <div class="status" id="statusText"><span class="dot"></span><span>Memuat…</span></div>
+  </div>
+
+  <!-- ALOKASI -->
+  <div class="grid2" style="margin-top:14px">
+    <div class="card">
+      <div class="card-head"><div class="icon emerald">🍳</div><div><h2>Alokasi Sisa</h2><p>Geser slider atau ketik nominal — auto sinkron</p></div></div>
+
+      <div class="presets">
+        <button class="pill active" data-preset="seimbang">⚖️ Seimbang</button>
+        <button class="pill" data-preset="hemat">🐷 Hemat</button>
+        <button class="pill" data-preset="nyaman">🛒 Nyaman</button>
+        <span class="muted" style="align-self:center">— klik untuk isi otomatis</span>
+      </div>
+
+      <div class="row" style="flex-direction:column; align-items:stretch; gap:6px">
+        <div style="display:flex; justify-content:space-between"><label>🥦 Belanja dapur & masak</label><input class="money" id="alDapur" inputmode="numeric" style="width:140px"></div>
+        <input type="range" class="slider" id="slDapur" min="0" max="3742000" step="50000">
+        <div class="muted">Rekomendasi 1,6–2jt (≈ Rp53–66rb/hari)</div>
+      </div>
+      <div class="row" style="flex-direction:column; align-items:stretch; gap:6px; margin-top:10px">
+        <div style="display:flex; justify-content:space-between"><label>🍿 Cemilan / jajan</label><input class="money" id="alCemilan" inputmode="numeric" style="width:140px"></div>
+        <input type="range" class="slider" id="slCemilan" min="0" max="1000000" step="50000">
+        <div class="muted">Jajan keluarga & ngemil bocil — 250–500rb ideal</div>
+      </div>
+      <div class="row" style="flex-direction:column; align-items:stretch; gap:6px; margin-top:10px">
+        <div style="display:flex; justify-content:space-between"><label>🛡️ Tabungan / dana darurat</label><input class="money" id="alTabungan" inputmode="numeric" style="width:140px"></div>
+        <input type="range" class="slider" id="slTabungan" min="0" max="2000000" step="50000">
+        <div class="muted">Target minimal 10% pemasukan = Rp870rb — kamu set 1jt sudah bagus!</div>
+      </div>
+      <div class="row" style="flex-direction:column; align-items:stretch; gap:6px; margin-top:10px">
+        <div style="display:flex; justify-content:space-between"><label>🚨 Cadangan tak terduga</label><input class="money" id="alCadangan" inputmode="numeric" style="width:140px"></div>
+        <input type="range" class="slider" id="slCadangan" min="0" max="1500000" step="50000">
+        <div class="muted">Buat service, berobat, kondangan — jangan 0!</div>
+      </div>
+
+      <hr class="sep">
+      <div class="total-row"><span>Terpakai dari sisa</span><span id="pctAlokasi">0%</span></div>
+      <div class="btns">
+        <button class="btn btn-accent" id="btnSimpan">💾 Simpan Otomatis</button>
+        <button class="btn btn-soft" id="btnBagi">✨ Bagi Rata Sisa</button>
+        <button class="btn btn-soft" id="resetBtn">↺ Reset Default</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div class="icon rose">📊</div><div><h2>Visual & Saran Cerdas</h2><p>Donut alokasi + log terminal</p></div></div>
+      <div class="chart-wrap">
+        <canvas id="donut" width="220" height="220" style="max-width:220px"></canvas>
+        <div class="legend" id="legend"></div>
+      </div>
+      <hr class="sep">
+      <div class="console" id="log"></div>
+      <div class="btns">
+        <button class="btn btn-soft" id="btnExport" style="width:100%">⬇️ Export Ringkasan (.txt)</button>
+      </div>
+    </div>
+  </div>
+
+  <p class="muted" style="text-align:center; margin-top:14px">Data kesimpen otomatis di browser (localStorage). 1 file HTML — bisa dibuka offline di HP.</p>
+</div>
+
+<script>
+const ids = ["incWill","incWife","fixBensin","fixCicilan","fixRumah","popokQty","popokHarga","susuQty","susuHarga","alDapur","alCemilan","alTabungan","alCadangan"];
+const moneyIds = ["incWill","incWife","fixBensin","fixCicilan","fixRumah","popokHarga","susuHarga","alDapur","alCemilan","alTabungan","alCadangan"];
+const defaults = {
+  incWill:3700000, incWife:5000000,
+  fixBensin:1000000, fixCicilan:1500000, fixRumah:1500000,
+  popokQty:2, popokHarga:98000, susuQty:4, susuHarga:190500,
+  alDapur:1850000, alCemilan:350000, alTabungan:1000000, alCadangan:542000
+};
+const presets = {
+  seimbang:{alDapur:1850000, alCemilan:350000, alTabungan:1000000, alCadangan:542000},
+  hemat:{alDapur:1600000, alCemilan:250000, alTabungan:1300000, alCadangan:592000},
+  nyaman:{alDapur:2000000, alCemilan:500000, alTabungan:700000, alCadangan:542000}
+};
+
+function fmtRibuan(n){ return Math.round(n).toLocaleString('id-ID'); }
+function rawDigits(s){ return (s.match(/\d/g)||[]).join(''); }
+function rp(n){ return "Rp"+fmtRibuan(n); }
+function num(id){
+  const el=document.getElementById(id);
+  if(!el) return 0;
+  const raw = moneyIds.includes(id) ? rawDigits(el.value) : el.value;
+  return Number(raw)||0;
+}
+function load(){
+  let saved={}; try{ saved=JSON.parse(localStorage.getItem('budget-data')||'{}'); }catch(e){}
+  ids.forEach(id=>{
+    const v = saved[id]!==undefined ? saved[id] : defaults[id];
+    const el=document.getElementById(id);
+    el.value = moneyIds.includes(id) ? fmtRibuan(v) : v;
+  });
+  syncSliders();
+}
+function save(){
+  const data={}; ids.forEach(id=> data[id]=num(id));
+  try{ localStorage.setItem('budget-data', JSON.stringify(data)); }catch(e){}
+}
+function syncSliders(){
+  const map=[["alDapur","slDapur"],["alCemilan","slCemilan"],["alTabungan","slTabungan"],["alCadangan","slCadangan"]];
+  map.forEach(([inp,sl])=>{
+    const el=document.getElementById(sl); if(el) el.value=num(inp);
+  });
+}
+function applyPreset(key){
+  const p=presets[key]; if(!p) return;
+  Object.entries(p).forEach(([k,v])=>{
+    const el=document.getElementById(k);
+    el.value=fmtRibuan(v);
+  });
+  document.querySelectorAll('.pill').forEach(b=> b.classList.toggle('active', b.dataset.preset===key));
+  syncSliders(); save(); calc();
+}
+function drawDonut(values, colors){
+  const c=document.getElementById('donut'); if(!c) return;
+  const ctx=c.getContext('2d'); const w=c.width, h=c.height, cx=w/2, cy=h/2, r=88, r2=56;
+  ctx.clearRect(0,0,w,h);
+  const total = values.reduce((a,b)=>a+b,0) || 1;
+  let a0=-Math.PI/2;
+  // shadow bg
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fillStyle='#F1F5F9'; ctx.fill();
+  values.forEach((v,i)=>{
+    const ang = (v/total)*Math.PI*2;
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,a0,a0+ang); ctx.closePath(); ctx.fillStyle=colors[i]; ctx.fill();
+    a0+=ang;
+  });
+  // hole
+  ctx.beginPath(); ctx.arc(cx,cy,r2,0,Math.PI*2); ctx.fillStyle='#fff'; ctx.fill();
+  ctx.fillStyle='#0F172A'; ctx.font='800 13px Segoe UI'; ctx.textAlign='center';
+  ctx.fillText(rp(total), cx, cy-2);
+  ctx.fillStyle='#64748B'; ctx.font='600 10px Segoe UI'; ctx.fillText('dialokasikan', cx, cy+12);
+}
+function buildLog(income,fixed,anak,sisa,alokasi){
+  const lines=[];
+  const add=(cls,msg)=> lines.push(`<span class="${cls}">${msg}</span>`);
+  add('info',`[INFO] Pemasukan ${rp(income)} | Tetap ${rp(fixed)} (${Math.round(fixed/income*100)}%) | Anak ${rp(anak)}`);
+  add('mut',`[CALC] Sisa = ${rp(income)} − ${rp(fixed)} − ${rp(anak)} = ${rp(sisa)} → ${rp(Math.round(sisa/30))}/hari`);
+  const diff=sisa-alokasi;
+  if(diff<0) add('err',`[OVER] Alokasi melebihi sisa ${rp(Math.abs(diff))} — kurangi dapur/cemilan!`);
+  else if(diff>500000) add('warn',`[WARN] Masih longgar ${rp(diff)} belum teralokasi — masukkan ke tabungan?`);
+  else if(diff===0) add('ok',`[OK] Pas! Semua sisa teralokasi sempurna.`);
+  else add('ok',`[OK] Sisa belum teralokasi ${rp(diff)} — aman untuk jaga-jaga.`);
+  if(num("alTabungan") < income*0.1) add('warn',`[TIP] Tabungan ${rp(num("alTabungan"))} < 10% gaji (${rp(income*0.1)}). Usahakan naikkan.`);
+  else add('ok',`[GOOD] Tabungan ${rp(num("alTabungan"))} sudah ≥10% — mantap!`);
+  if(num("alCadangan")<300000) add('warn',`[TIP] Cadangan tipis — sisihkan minimal 300rb untuk darurat.`);
+  if(num("alDapur")>0) add('mut',`[DAPUR] ${rp(num("alDapur"))} → ${rp(Math.round(num("alDapur")/30))}/hari buat masak.`);
+  document.getElementById('log').innerHTML = lines.join('<br>');
+}
+function calc(){
+  const income=num("incWill")+num("incWife");
+  const fixed=num("fixBensin")+num("fixCicilan")+num("fixRumah");
+  const anak=num("popokQty")*num("popokHarga")+num("susuQty")*num("susuHarga");
+  const sisa=income-fixed-anak;
+  const alokasi=num("alDapur")+num("alCemilan")+num("alTabungan")+num("alCadangan");
+
+  document.getElementById("totalIncome").textContent=rp(income);
+  document.getElementById("totalFixed").textContent=rp(fixed);
+  document.getElementById("totalAnak").textContent=rp(anak);
+  document.getElementById("sisa").textContent=rp(sisa);
+  document.getElementById("hIncome").textContent=rp(income);
+  document.getElementById("hFixed").textContent=rp(fixed);
+  document.getElementById("hSisa").textContent=rp(sisa);
+  document.getElementById("pctFixed").textContent = income? Math.round(fixed/income*100)+"%" : "0%";
+  document.getElementById("badgeAnak").textContent=rp(anak);
+  document.getElementById("perHari").textContent=rp(Math.round(sisa/30));
+  document.getElementById("perMinggu").textContent=rp(Math.round(sisa/4.3));
+  const pct = sisa>0 ? Math.min(100, (alokasi/sisa)*100) : 0;
+  document.getElementById("barFill").style.width=pct+"%";
+  document.getElementById("pctAlokasi").textContent=Math.round(pct)+"% terpakai";
+  const statusEl=document.getElementById("statusText");
+  const diff=sisa-alokasi;
+  const bar=document.getElementById("barFill");
+  if(sisa<=0){
+    bar.style.background='#F43F5E'; statusEl.innerHTML='<span class="dot" style="background:#F43F5E"></span><span>⚠️ Sisa minus! Pemasukan tidak cukup — cek cicilan & kebutuhan anak.</span>'; statusEl.style.color='#fff';
+  } else if(diff<0){
+    bar.style.background='#F43F5E'; statusEl.innerHTML=`<span class="dot" style="background:#F43F5E"></span><span>Kelebihan ${rp(Math.abs(diff))} — kurangi salah satu pos biar pas.</span>`; statusEl.style.color='#fff';
+  } else {
+    bar.style.background='#fff'; statusEl.innerHTML=`<span class="dot"></span><span>Terpakai ${rp(alokasi)} • Belum teralokasi: ${rp(diff)} — ${diff===0?'PAS!':'masih longgar'}</span>`; statusEl.style.color='rgba(255,255,255,.95)';
+  }
+  // donut
+  const vals=[num("alDapur"),num("alCemilan"),num("alTabungan"),num("alCadangan")];
+  const cols=['#0E7490','#F59E0B','#059669','#E11D48'];
+  drawDonut(vals, cols);
+  const labels=['Dapur','Cemilan','Tabungan','Cadangan'];
+  document.getElementById('legend').innerHTML = labels.map((l,i)=> `<span><i style="background:${cols[i]}"></i>${l} ${rp(vals[i])}</span>`).join('');
+  buildLog(income,fixed,anak,sisa,alokasi);
+}
+
+// events
+ids.forEach(id=>{
+  const el=document.getElementById(id);
+  el.addEventListener("input", ()=>{
+    if(moneyIds.includes(id)){
+      const raw=rawDigits(el.value);
+      el.value = raw? fmtRibuan(Number(raw)) : "";
+    }
+    // sync slider if alokasi
+    const map={alDapur:"slDapur", alCemilan:"slCemilan", alTabungan:"slTabungan", alCadangan:"slCadangan"};
+    if(map[id]) document.getElementById(map[id]).value = num(id);
+    save(); calc();
+  });
+});
+[["slDapur","alDapur"],["slCemilan","alCemilan"],["slTabungan","alTabungan"],["slCadangan","alCadangan"]].forEach(([sl,inp])=>{
+  document.getElementById(sl).addEventListener("input", e=>{
+    const v=Number(e.target.value)||0;
+    document.getElementById(inp).value = fmtRibuan(v);
+    save(); calc();
+  });
+});
+document.querySelectorAll('.pill').forEach(b=> b.addEventListener('click', ()=> applyPreset(b.dataset.preset)));
+document.getElementById('btnBagi').addEventListener('click', ()=>{
+  const income=num("incWill")+num("incWife");
+  const fixed=num("fixBensin")+num("fixCicilan")+num("fixRumah");
+  const anak=num("popokQty")*num("popokHarga")+num("susuQty")*num("susuHarga");
+  const sisa=income-fixed-anak;
+  const each=Math.floor(sisa/4);
+  ["alDapur","alCemilan","alTabungan","alCadangan"].forEach(id=>{
+    document.getElementById(id).value=fmtRibuan(each);
+  });
+  // adjust remainder to dapur
+  const rem=sisa - each*4;
+  if(rem) document.getElementById("alDapur").value=fmtRibuan(each+rem);
+  syncSliders(); save(); calc();
+});
+document.getElementById('btnSimpan').addEventListener('click', ()=>{ save(); calc(); const l=document.getElementById('log'); l.innerHTML+='<br><span class="ok">[SAVE] ✓ Tersimpan di browser.</span>'; l.scrollTop=l.scrollHeight; });
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  ids.forEach(id=>{
+    const el=document.getElementById(id);
+    el.value = moneyIds.includes(id) ? fmtRibuan(defaults[id]) : defaults[id];
+  });
+  syncSliders(); save(); calc();
+  document.querySelectorAll('.pill').forEach(b=> b.classList.toggle('active', b.dataset.preset==='seimbang'));
+});
+document.getElementById('btnExport').addEventListener('click', ()=>{
+  const t=`REKAP BUDGET KELUARGA — ${new Date().toLocaleDateString('id-ID')}
+Pemasukan: Will ${rp(num("incWill"))} + Istri ${rp(num("incWife"))} = ${rp(num("incWill")+num("incWife"))}
+Tetap: Bensin ${rp(num("fixBensin"))} + Cicilan ${rp(num("fixCicilan"))} + Rumah ${rp(num("fixRumah"))} = ${rp(num("fixBensin")+num("fixCicilan")+num("fixRumah"))}
+Anak: Popok ${num("popokQty")}×${rp(num("popokHarga"))} + Susu ${num("susuQty")}×${rp(num("susuHarga"))} = ${rp(num("popokQty")*num("popokHarga")+num("susuQty")*num("susuHarga"))}
+Sisa: ${rp((num("incWill")+num("incWife")) - (num("fixBensin")+num("fixCicilan")+num("fixRumah")) - (num("popokQty")*num("popokHarga")+num("susuQty")*num("susuHarga")))}
+Alokasi: Dapur ${rp(num("alDapur"))} | Cemilan ${rp(num("alCemilan"))} | Tabungan ${rp(num("alTabungan"))} | Cadangan ${rp(num("alCadangan"))}
+`;
+  const blob=new Blob([t],{type:'text/plain'}); const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='rekap-budget-keluarga.txt'; a.click(); URL.revokeObjectURL(url);
+});
+
+load(); calc();
+</script>
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("./sw.js")}</script></body>
+</html>
