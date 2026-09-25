@@ -262,10 +262,10 @@ hr.sep{border:none; border-top:1px solid var(--border); margin:14px 0}
     </div>
         <div class="card" style="margin-top:14px; border-left:4px solid #E11D48">
       <div class="card-head"><div class="icon rose">🏦</div><div><h2>Mutasi Tabungan</h2><p>Ambil dari tabungan — konteks ngurangin tabungan, nambah kas bulan ini</p></div><span class="badge" id="badgeMutasi" style="background:#FEF2F2; color:#991B1B; border-color:#FECACA">Rp0</span></div>
-      <div class="row"><label>🏦 Mutasi ambil tabungan <span>— nambah pemasukan efektif</span></label><input class="money" id="mutasiTabungan" inputmode="numeric" style="width:150px"></div>
+      <div class="row"><label>🏦 Mutasi ambil tabungan <span>— ngurangin kas, pindah ke tabungan (total tetap)</span></label><input class="money" id="mutasiTabungan" inputmode="numeric" style="width:150px"></div>
       <div class="row"><label>📝 Keterangan mutasi</label><input class="txt" id="mutasiKet" placeholder="cth: Tutup minus belanja Agustus"></div>
-      <div class="muted" style="margin-top:8px">ℹ️ <b>Logika:</b> <code>Pemasukan Efektif = Gaji Will+Istri + Mutasi</code> → Sisa Bruto ikut naik, tapi saldo tabungan berkurang. Kosongkan (=Rp0) jika tidak pakai. Real-time ke header & dashboard.</div>
-      <div class="total-row"><span>Pemasukan Efektif (gaji + mutasi)</span><span id="totalEfektif">Rp0</span></div>
+      <div class="muted" style="margin-top:8px">ℹ️ <b>Logika:</b> <code>Total tetap = Gaji Will+Istri</code> → <code>Kas tersedia = Total − Mutasi</code> → Sisa Bruto = Kas tersedia − Tetap − Anak. Contoh: 5,4jt − mutasi 1jt − pengeluaran 4jt = sisa 400rb (total tetap 5,4jt). Kosongkan (=Rp0) jika tidak pakai. Real-time ke header & dashboard.</div>
+      <div class="total-row"><span>Kas tersedia setelah mutasi (gaji − mutasi)</span><span id="totalEfektif">Rp0</span></div>
     </div>
     <p class="muted" style="margin-top:10px">💡 Tip: Tetap usahakan di bawah 50% pemasukan. Anak non-negotiable — variabel & rencana akan ambil dari sisa.</p>
   </section>
@@ -718,18 +718,19 @@ function drawDonut(values, colors){
   ctx.fillStyle='#64748B'; ctx.font='600 10px Segoe UI'; ctx.fillText('dialokasikan',cx,cy+12);
 }
 function calc(){
-  const incomeBase=num("incWill")+num("incWife"); const mutasi=num("mutasiTabungan"); const income=incomeBase+mutasi;
+  const incomeBase=num("incWill")+num("incWife"); const mutasi=num("mutasiTabungan")||0; const income=incomeBase; // total tetap, mutasi hanya mindahin
   const fixed=num("fixBensin")+num("fixCicilan")+num("fixRumah");
   const anak=num("popokQty")*num("popokHarga")+num("susuQty")*num("susuHarga");
   const sisaBruto=income-fixed-anak;
+  const sisaSetelahMutasi=sisaBruto - mutasi;
   const badgeMut=document.getElementById("badgeMutasi"); if(badgeMut) badgeMut.textContent=rp(mutasi);
-  const effEl=document.getElementById("totalEfektif"); if(effEl) effEl.textContent=rp(income);
+  const effEl=document.getElementById("totalEfektif"); if(effEl) effEl.textContent=rp(income - mutasi); // kas tersedia setelah mutasi
   const totalVariabel=variabel.reduce((a,v)=>a+monthlyOf(v),0);
   const totalRencana=rencana.reduce((a,r)=>{
     const kurang=Math.max(0, r.target - r.terkumpul);
     return a + (kurang? Math.ceil(kurang/monthsUntil(r.deadline)) : 0);
   },0);
-  const sisaSetelahVariabel=sisaBruto-totalVariabel;
+  const sisaSetelahVariabel=sisaSetelahMutasi-totalVariabel;
   const sisaBersih=sisaSetelahVariabel-totalRencana;
     const alokasi=num("alDapur")+num("alCemilan")+num("alTabungan")+num("alCadangan");
   // === HEADER KPI CHIPS — REAL TIME dari sumber value, update tiap calc() ===
@@ -737,6 +738,7 @@ function calc(){
     const _rumah=num('fixRumah'), _cicilan=num('fixCicilan'), _bensin=num('fixBensin');
     const _pq=num('popokQty'), _ph=num('popokHarga'), _sq=num('susuQty'), _sh=num('susuHarga');
     const _popok=_pq*_ph, _susu=_sq*_sh;
+    const _base=num('incWill')+num('incWife');
     const _varTot=variabel.reduce((a,v)=>a+(v.periode==="Tahunan"?Math.round(v.nominal/12):v.nominal),0);
     const _renTot=rencana.reduce((a,r)=>{ const k=Math.max(0,r.target-r.terkumpul); const m=(function(d){ if(!d) return 12; const [y,m]=d.split('-').map(Number); const now=new Date(); let diff=(y-now.getFullYear())*12+(m-(now.getMonth()+1)); return diff<=0?1:diff; })(r.deadline); return a+(k?Math.ceil(k/m):0); },0);
     const set=(id,txt,title)=>{ const e=document.getElementById(id); if(e){ e.textContent=txt; e.title=title; }};
@@ -749,7 +751,7 @@ function calc(){
     set('kpiVariabel','📦 Variabel: '+variabel.length+' pos = '+rp(_varTot),'Sumber: Menu Variabel → '+variabel.length+' pos total '+rp(_varTot)+'/bulan');
     set('kpiRencana','🎯 Rencana: '+rencana.length+' target = '+rp(_renTot)+'/bln','Sumber: Menu Rencana → '+rencana.length+' target cicilan '+rp(_renTot)+'/bulan');
     const _mutasi=num('mutasiTabungan');
-    set('kpiMutasi','🏦 Mutasi: '+rp(_mutasi),'Sumber: Mutasi Tabungan → ambil '+rp(_mutasi)+' (ngurangin tabungan, nambah kas)');
+    set('kpiMutasi','🏦 Mutasi: −'+rp(_mutasi),'Sumber: Mutasi Tabungan → pindah '+rp(_mutasi)+' ke rek tabungan (total tetap '+rp(_base)+' − '+rp(_mutasi)+' = '+rp(_base-_mutasi)+' kas)');
     const eMut=document.getElementById('kpiMutasi'); if(eMut){ eMut.style.opacity=_mutasi===0?'0.42':'1'; eMut.style.background=_mutasi>0?'#FEF2F2':''; eMut.style.borderColor=_mutasi>0?'#FECACA':''; }
     ['kpiRumah','kpiCicilan','kpiBensin','kpiPopok','kpiSusu'].forEach(id=>{
       const e=document.getElementById(id); if(!e) return;
@@ -834,7 +836,7 @@ document.querySelectorAll('[data-preset]').forEach(b=> b.addEventListener('click
   syncSliders(); calc();
 }));
 document.getElementById('btnBagi').addEventListener('click', ()=>{
-  const incomeBase=num("incWill")+num("incWife"); const mutasi=num("mutasiTabungan"); const income=incomeBase+mutasi;
+  const incomeBase=num("incWill")+num("incWife"); const mutasi=num("mutasiTabungan")||0; const income=incomeBase; // total tetap, mutasi hanya mindahin
   const fixed=num("fixBensin")+num("fixCicilan")+num("fixRumah");
   const anak=num("popokQty")*num("popokHarga")+num("susuQty")*num("susuHarga");
   const totalVariabel=variabel.reduce((a,v)=>a+monthlyOf(v),0);
@@ -854,7 +856,7 @@ document.getElementById('resetBtn').addEventListener('click', ()=>{
   syncSliders(); calc();
 });
 document.getElementById('btnExport').addEventListener('click', ()=>{
-  const incomeBase=num("incWill")+num("incWife"); const mutasi=num("mutasiTabungan"); const income=incomeBase+mutasi;
+  const incomeBase=num("incWill")+num("incWife"); const mutasi=num("mutasiTabungan")||0; const income=incomeBase; // total tetap, mutasi hanya mindahin
   const fixed=num("fixBensin")+num("fixCicilan")+num("fixRumah");
   const anak=num("popokQty")*num("popokHarga")+num("susuQty")*num("susuHarga");
   const totalVariabel=variabel.reduce((a,v)=>a+monthlyOf(v),0);
@@ -968,11 +970,11 @@ setTimeout(calc, 50);
 
 // === HEADER SUBTITLE live ===
 function updateHeaderSubtitle(){
-  const will=num('incWill'), istri=num('incWife'), base=will+istri, mut=num('mutasiTabungan')||0, tot=base+mut;
+  const will=num('incWill'), istri=num('incWife'), base=will+istri, mut=num('mutasiTabungan')||0;
   const sisaBersihTxt=document.getElementById('sisaBersih')?.textContent || rp(0);
   const el=document.getElementById('headerSubtitle');
   if(el){
-    if(mut>0) el.innerHTML=`Will <b>${rp(will)}</b> + Istri <b>${rp(istri)}</b> = <b>${rp(base)}</b> + Mutasi <b>${rp(mut)}</b> = <b>${rp(tot)}</b> efektif • Sisa bersih <b>${sisaBersihTxt}</b>`;
+    if(mut>0) el.innerHTML=`Will <b>${rp(will)}</b> + Istri <b>${rp(istri)}</b> = <b>${rp(base)}</b> − Mutasi <b>${rp(mut)}</b> ke tabungan = <b>${rp(base-mut)}</b> kas • Sisa bersih <b>${sisaBersihTxt}</b>`;
     else el.innerHTML=`Will <b>${rp(will)}</b> + Istri <b>${rp(istri)}</b> = <b>${rp(base)}</b> • Sisa bersih <b>${sisaBersihTxt}</b> • Kelola per menu`;
   }
 }
