@@ -381,7 +381,7 @@ hr.sep{border:none; border-top:1px solid var(--border); margin:14px 0}
         <div class="total-row"><span>Terpakai dari sisa bersih</span><span id="pctAlokasi2">0%</span></div>
         <div class="btns">
           <button class="btn btn-soft" id="btnBagi">✨ Bagi Rata Sisa Bersih</button>
-          <button class="btn btn-soft" id="resetBtn">↺ Reset</button>
+          <button class="btn btn-soft" id="resetBtn">↺ Reset ke 0</button>
         </div>
       </div>
       <div class="card">
@@ -428,7 +428,7 @@ hr.sep{border:none; border-top:1px solid var(--border); margin:14px 0}
         <div class="card-head"><div class="icon rose">⬆️</div><div><h2>Restore & Reset</h2><p>Kembalikan data atau mulai dari nol</p></div></div>
         <label class="btn btn-soft" style="width:100%; cursor:pointer">📂 Import / Restore JSON<input type="file" id="importFile" accept=".json" style="display:none"></label>
         <button class="btn btn-soft" id="btnRestoreSnap" style="width:100%; margin-top:8px">↩️ Restore Snapshot Terakhir</button>
-        <button class="btn btn-soft" id="btnResetAll" style="width:100%; margin-top:8px; background:#FEF2F2; color:#991B1B; border-color:#FECACA">🗑️ Reset Semua Data ke Default</button>
+        <button class="btn btn-soft" id="btnResetAll" style="width:100%; margin-top:8px; background:#FEF2F2; color:#991B1B; border-color:#FECACA">🗑️ Reset Semua ke 0</button>
         <div class="muted" style="margin-top:8px">Restore akan <b>timpa semua data</b> lalu auto-reload & re-hitung header, chip, dashboard — konfirmasi dulu.</div>
       </div>
     </div>
@@ -849,11 +849,20 @@ document.getElementById('btnBagi').addEventListener('click', ()=>{
   syncSliders(); calc();
 });
 document.getElementById('resetBtn').addEventListener('click', ()=>{
+  if(!confirm('Reset semua field di halaman ini ke 0?')) return;
   ids.forEach(id=>{
     const el=document.getElementById(id);
-    el.value = moneyIds.includes(id) ? fmtRibuan(defaults[id]) : defaults[id];
+    if(moneyIds.includes(id)) el.value = '0';
+    else if(id==='mutasiKet') el.value = '';
+    else el.value = 0;
   });
-  syncSliders(); calc();
+  // juga kosongkan variabel & rencana biar benar-benar 0 semua
+  if(confirm('Kosongkan juga Variabel & Rencana? (OK = ya, Cancel = hanya field atas)')){
+    variabel=[]; rencana=[];
+    saveVariabel(); renderVariabel();
+    saveRencana(); renderRencana();
+  }
+  syncSliders(); saveCore(); calc();
 });
 document.getElementById('btnExport').addEventListener('click', ()=>{
   const incomeBase=num("incWill")+num("incWife"); const mutasi=num("mutasiTabungan")||0; const income=incomeBase; // total tetap, mutasi hanya mindahin
@@ -1045,13 +1054,18 @@ function applyData(obj){
   }catch(e){ alert('Gagal restore: '+e.message); }
 }
 function resetAll(){
-  if(!confirm('Reset SEMUA data ke default? Tidak bisa undo — export dulu jika perlu!')) return;
-  if(!confirm('Yakin reset? Ketik OK untuk lanjut.')) return;
-  localStorage.removeItem('budget-data');
-  localStorage.removeItem('budget-variabel');
-  localStorage.removeItem('budget-rencana');
+  if(!confirm('Reset SEMUA data ke 0? Semua angka, variabel & rencana akan jadi 0. Tidak bisa undo — export dulu jika perlu!')) return;
+  if(!confirm('Yakin reset ke 0 semua?')) return;
+  const zeroCore={};
+  ids.forEach(id=>{
+    if(id==='mutasiKet') zeroCore[id]='';
+    else zeroCore[id]=0;
+  });
+  localStorage.setItem('budget-data', JSON.stringify(zeroCore));
+  localStorage.setItem('budget-variabel', JSON.stringify([]));
+  localStorage.setItem('budget-rencana', JSON.stringify([]));
   localStorage.removeItem('budget-snapshot');
-  localStorage.removeItem('budget-page');
+  localStorage.setItem('budget-page','dashboard');
   location.reload();
 }
 document.getElementById('btnExportJson')?.addEventListener('click', exportJson);
