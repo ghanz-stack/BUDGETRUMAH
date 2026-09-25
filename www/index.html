@@ -6,6 +6,8 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0E7490">
 <link rel="icon" href="icon-192.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.js"></script>
+<script>if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.js";</script>
 <title>Budget Keluarga — Planner per Menu</title>
 <style>
 
@@ -180,6 +182,7 @@ hr.sep{border:none; border-top:1px solid var(--border); margin:14px 0}
         <span id="kpiSusu" title="Sumber: Kebutuhan Anak → Susu (qty × harga)">🥛 Susu: Rp0</span>
         <span id="kpiVariabel" title="Sumber: Menu Variabel → Total per bulan">📦 Variabel: Rp0</span>
         <span id="kpiRencana" title="Sumber: Menu Rencana → Cicilan tabung /bulan">🎯 Rencana: Rp0</span>
+        <span id="kpiMutasi" title="Sumber: Mutasi Tabungan (ngurangin tabungan) → nambah kas">🏦 Mutasi: Rp0</span>
       </div>
     </div>
     <div class="header-stats">
@@ -257,6 +260,13 @@ hr.sep{border:none; border-top:1px solid var(--border); margin:14px 0}
         <div class="total-row"><span>Total Anak</span><span id="totalAnak">Rp0</span></div>
       </div>
     </div>
+        <div class="card" style="margin-top:14px; border-left:4px solid #E11D48">
+      <div class="card-head"><div class="icon rose">🏦</div><div><h2>Mutasi Tabungan</h2><p>Ambil dari tabungan — konteks ngurangin tabungan, nambah kas bulan ini</p></div><span class="badge" id="badgeMutasi" style="background:#FEF2F2; color:#991B1B; border-color:#FECACA">Rp0</span></div>
+      <div class="row"><label>🏦 Mutasi ambil tabungan <span>— nambah pemasukan efektif</span></label><input class="money" id="mutasiTabungan" inputmode="numeric" style="width:150px"></div>
+      <div class="row"><label>📝 Keterangan mutasi</label><input class="txt" id="mutasiKet" placeholder="cth: Tutup minus belanja Agustus"></div>
+      <div class="muted" style="margin-top:8px">ℹ️ <b>Logika:</b> <code>Pemasukan Efektif = Gaji Will+Istri + Mutasi</code> → Sisa Bruto ikut naik, tapi saldo tabungan berkurang. Kosongkan (=Rp0) jika tidak pakai. Real-time ke header & dashboard.</div>
+      <div class="total-row"><span>Pemasukan Efektif (gaji + mutasi)</span><span id="totalEfektif">Rp0</span></div>
+    </div>
     <p class="muted" style="margin-top:10px">💡 Tip: Tetap usahakan di bawah 50% pemasukan. Anak non-negotiable — variabel & rencana akan ambil dari sisa.</p>
   </section>
 
@@ -297,6 +307,19 @@ hr.sep{border:none; border-top:1px solid var(--border); margin:14px 0}
       <div class="muted" style="margin-top:6px">* Tahunan otomatis ÷12. Tidak Tentu & Variabel dihitung penuh sebagai estimasi.</div>
       <div style="margin-top:10px; display:flex; flex-wrap:wrap; gap:6px" id="catRekap"></div>
       <div class="total-row"><span>Total Variabel per bulan</span><span id="totalVariabel">Rp0</span></div>
+      <hr class="sep">
+      <div style="background:#F0F9FF; border:1px solid #BAE6FD; border-radius:12px; padding:12px">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px"><span style="font-size:18px">🧾</span><b style="font-size:.9rem">Import Struk Belanja (Super Indo E-Receipt)</b><span class="badge" style="margin-left:auto">PDF → Variabel</span></div>
+        <div class="muted" style="margin-bottom:8px">Format: <code>E-Receipt_*.pdf</code> Super Indo — otomatis baca <b>Tanggal, Total, Hemat, Item</b> → import sebagai <b>Variabel Belanja Bulanan</b>. Bisa pilih per struk atau gabung per bulan. File diproses lokal (tidak upload).</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center">
+          <label class="btn btn-accent" style="cursor:pointer">📂 Pilih PDF Struk (multi)<input type="file" id="strukFiles" accept=".pdf" multiple style="display:none"></label>
+          <button class="btn btn-soft" id="btnImportStrukPer">⬇️ Import per Struk</button>
+          <button class="btn btn-soft" id="btnImportStrukBulan">📆 Gabung per Bulan</button>
+          <button class="btn btn-soft" id="btnClearStruk" style="margin-left:auto">🗑️ Clear Preview</button>
+        </div>
+        <div id="strukPreview" style="margin-top:10px; overflow:auto; max-height:220px; border:1px solid #E0F2FE; border-radius:10px; background:#fff; display:none"></div>
+        <div class="muted" style="margin-top:6px">JSON format yang disimpan: <code>{nama, kategori:"Belanja Bulanan", nominal: total, periode:"Bulanan Variabel", ket:"Super Indo DD-MM-YY • X item • Hemat Rp..."}</code> — langsung masuk tabel di atas & kehitung Sisa Bersih.</div>
+      </div>
     </div>
   </section>
 
@@ -430,13 +453,14 @@ hr.sep{border:none; border-top:1px solid var(--border); margin:14px 0}
 
 <script>
 
-const ids = ["incWill","incWife","fixBensin","fixCicilan","fixRumah","popokQty","popokHarga","susuQty","susuHarga","alDapur","alCemilan","alTabungan","alCadangan"];
-const moneyIds = ["incWill","incWife","fixBensin","fixCicilan","fixRumah","popokHarga","susuHarga","alDapur","alCemilan","alTabungan","alCadangan"];
+const ids = ["incWill","incWife","fixBensin","fixCicilan","fixRumah","popokQty","popokHarga","susuQty","susuHarga","alDapur","alCemilan","alTabungan","alCadangan","mutasiTabungan","mutasiKet"];
+const moneyIds = ["incWill","incWife","fixBensin","fixCicilan","fixRumah","popokHarga","susuHarga","alDapur","alCemilan","alTabungan","alCadangan","mutasiTabungan"];
 const defaults = {
   incWill:3700000, incWife:5000000,
   fixBensin:1000000, fixCicilan:1500000, fixRumah:1500000,
   popokQty:2, popokHarga:98000, susuQty:4, susuHarga:190500,
-  alDapur:1850000, alCemilan:350000, alTabungan:1000000, alCadangan:542000
+  alDapur:1850000, alCemilan:350000, alTabungan:1000000, alCadangan:542000,
+  mutasiTabungan:0, mutasiKet:""
 };
 const presets = {
   seimbang:{alDapur:1850000, alCemilan:350000, alTabungan:1000000, alCadangan:542000},
@@ -694,10 +718,12 @@ function drawDonut(values, colors){
   ctx.fillStyle='#64748B'; ctx.font='600 10px Segoe UI'; ctx.fillText('dialokasikan',cx,cy+12);
 }
 function calc(){
-  const income=num("incWill")+num("incWife");
+  const incomeBase=num("incWill")+num("incWife"); const mutasi=num("mutasiTabungan"); const income=incomeBase+mutasi;
   const fixed=num("fixBensin")+num("fixCicilan")+num("fixRumah");
   const anak=num("popokQty")*num("popokHarga")+num("susuQty")*num("susuHarga");
   const sisaBruto=income-fixed-anak;
+  const badgeMut=document.getElementById("badgeMutasi"); if(badgeMut) badgeMut.textContent=rp(mutasi);
+  const effEl=document.getElementById("totalEfektif"); if(effEl) effEl.textContent=rp(income);
   const totalVariabel=variabel.reduce((a,v)=>a+monthlyOf(v),0);
   const totalRencana=rencana.reduce((a,r)=>{
     const kurang=Math.max(0, r.target - r.terkumpul);
@@ -722,6 +748,9 @@ function calc(){
     set('kpiSusu','🥛 Susu: '+_sq+'×'+rp(_sh)+' = '+rp(_susu),'Sumber: Menu Pemasukan & Tetap → Susu '+_sq+' karton × '+rp(_sh)+' = '+rp(_susu));
     set('kpiVariabel','📦 Variabel: '+variabel.length+' pos = '+rp(_varTot),'Sumber: Menu Variabel → '+variabel.length+' pos total '+rp(_varTot)+'/bulan');
     set('kpiRencana','🎯 Rencana: '+rencana.length+' target = '+rp(_renTot)+'/bln','Sumber: Menu Rencana → '+rencana.length+' target cicilan '+rp(_renTot)+'/bulan');
+    const _mutasi=num('mutasiTabungan');
+    set('kpiMutasi','🏦 Mutasi: '+rp(_mutasi),'Sumber: Mutasi Tabungan → ambil '+rp(_mutasi)+' (ngurangin tabungan, nambah kas)');
+    const eMut=document.getElementById('kpiMutasi'); if(eMut){ eMut.style.opacity=_mutasi===0?'0.42':'1'; eMut.style.background=_mutasi>0?'#FEF2F2':''; eMut.style.borderColor=_mutasi>0?'#FECACA':''; }
     ['kpiRumah','kpiCicilan','kpiBensin','kpiPopok','kpiSusu'].forEach(id=>{
       const e=document.getElementById(id); if(!e) return;
       const v=id==='kpiPopok'?_popok: id==='kpiSusu'?_susu: id==='kpiRumah'?_rumah: id==='kpiCicilan'?_cicilan:_bensin;
@@ -805,7 +834,7 @@ document.querySelectorAll('[data-preset]').forEach(b=> b.addEventListener('click
   syncSliders(); calc();
 }));
 document.getElementById('btnBagi').addEventListener('click', ()=>{
-  const income=num("incWill")+num("incWife");
+  const incomeBase=num("incWill")+num("incWife"); const mutasi=num("mutasiTabungan"); const income=incomeBase+mutasi;
   const fixed=num("fixBensin")+num("fixCicilan")+num("fixRumah");
   const anak=num("popokQty")*num("popokHarga")+num("susuQty")*num("susuHarga");
   const totalVariabel=variabel.reduce((a,v)=>a+monthlyOf(v),0);
@@ -825,7 +854,7 @@ document.getElementById('resetBtn').addEventListener('click', ()=>{
   syncSliders(); calc();
 });
 document.getElementById('btnExport').addEventListener('click', ()=>{
-  const income=num("incWill")+num("incWife");
+  const incomeBase=num("incWill")+num("incWife"); const mutasi=num("mutasiTabungan"); const income=incomeBase+mutasi;
   const fixed=num("fixBensin")+num("fixCicilan")+num("fixRumah");
   const anak=num("popokQty")*num("popokHarga")+num("susuQty")*num("susuHarga");
   const totalVariabel=variabel.reduce((a,v)=>a+monthlyOf(v),0);
@@ -939,10 +968,14 @@ setTimeout(calc, 50);
 
 // === HEADER SUBTITLE live ===
 function updateHeaderSubtitle(){
-  const will=num('incWill'), istri=num('incWife'), tot=will+istri;
+  const will=num('incWill'), istri=num('incWife'), base=will+istri, mut=num('mutasiTabungan')||0, tot=base+mut;
   const sisaBersihTxt=document.getElementById('sisaBersih')?.textContent || rp(0);
   const el=document.getElementById('headerSubtitle');
-  if(el) el.innerHTML=`Will <b>${rp(will)}</b> + Istri <b>${rp(istri)}</b> = <b>${rp(tot)}</b> • Sisa bersih <b>${sisaBersihTxt}</b> • Kelola per menu`;
+  if(el){
+    if(mut>0) el.innerHTML=`Will <b>${rp(will)}</b> + Istri <b>${rp(istri)}</b> = <b>${rp(base)}</b> + Mutasi <b>${rp(mut)}</b> = <b>${rp(tot)}</b> efektif • Sisa bersih <b>${sisaBersihTxt}</b>`;
+    else el.innerHTML=`Will <b>${rp(will)}</b> + Istri <b>${rp(istri)}</b> = <b>${rp(base)}</b> • Sisa bersih <b>${sisaBersihTxt}</b> • Kelola per menu`;
+  }
+}
 }
 // patch calc to also update header & data preview
 const _calc2 = calc;
@@ -1048,5 +1081,131 @@ setTimeout(()=>{ updateHeaderSubtitle(); updateDataUI(); }, 80);
 if("serviceWorker" in navigator){ navigator.serviceWorker.register("./sw.js"); }
 
 </script>
+
+<script>
+// === STRUK IMPORT — PDF Super Indo → Variabel ===
+let strukParsed = [];
+function fmtTanggalIndo(d){
+  // d is DD-MM-YY or ISO
+  try{
+    const [dd,mm,yy]=d.split('-');
+    const yyyy = (yy.length===2?'20'+yy:yy);
+    const dt=new Date(yyyy, mm-1, dd);
+    return dt.toLocaleDateString('id-ID',{day:'2-digit', month:'short', year:'numeric'});
+  }catch(e){ return d; }
+}
+function parseSuperIndoText(txt, fileName){
+  // extract date like 25-08-26 (11:26:12)
+  const dateMatch = txt.match(/(\d{2}-\d{2}-\d{2})\s*\(/);
+  const totalMatch = txt.match(/TOTAL\s*:\s*([\d\.\,]+)/i) || txt.match(/Sub Total.*?([\d\.]+)/i);
+  const subMatch = txt.match(/Sub Total.*?([\d\.]+)/i);
+  const hematMatch = txt.match(/Total Hemat\s*\-?([\d\.]+)/i) || txt.match(/Hemat Produk\s*\-?([\d\.]+)/i);
+  const itemMatch = txt.match(/Total Item\s*:\s*(\d+)/i);
+  const memberMatch = txt.match(/Member Name\s*:\s*(.+)/i);
+  let total=0;
+  if(totalMatch) total = Number(totalMatch[1].replace(/\./g,'').replace(/,/g,''))||0;
+  else if(subMatch) total = Number(subMatch[1].replace(/\./g,''))||0;
+  let hemat=0;
+  if(hematMatch) hemat = Number(hematMatch[1].replace(/\./g,''))||0;
+  const dateRaw = dateMatch? dateMatch[1] : '';
+  return {
+    fileName,
+    tanggalRaw: dateRaw,
+    tanggalIndo: dateRaw? fmtTanggalIndo(dateRaw) : fileName,
+    total, hemat,
+    itemCount: itemMatch? Number(itemMatch[1]): 0,
+    member: memberMatch? memberMatch[1].trim() : '',
+    toko: 'Super Indo Pagar Alam',
+    raw: txt.slice(0,500)
+  };
+}
+async function readPdfFile(file){
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data: buf}).promise;
+  let full='';
+  for(let i=1;i<=pdf.numPages;i++){
+    const page = await pdf.getPage(i);
+    const tc = await page.getTextContent();
+    full += tc.items.map(it=>it.str).join(' ') + '\n';
+  }
+  return parseSuperIndoText(full, file.name);
+}
+function renderStrukPreview(){
+  const div=document.getElementById('strukPreview');
+  if(!div) return;
+  if(!strukParsed.length){ div.style.display='none'; div.innerHTML=''; return; }
+  div.style.display='block';
+  let h = '<table class="var-table"><thead><tr><th>File</th><th>Tanggal</th><th>Total</th><th>Hemat</th><th>Item</th></tr></thead><tbody>';
+  strukParsed.forEach((s,i)=>{
+    h+= `<tr><td class="muted" style="font-size:.75rem">${s.fileName}</td><td>${s.tanggalIndo}</td><td><b>${rp(s.total)}</b></td><td>${rp(s.hemat)}</td><td>${s.itemCount}</td></tr>`;
+  });
+  const sum = strukParsed.reduce((a,s)=>a+s.total,0);
+  const hematSum = strukParsed.reduce((a,s)=>a+s.hemat,0);
+  h+= `</tbody></table><div class="total-row"><span>${strukParsed.length} struk • Total ${rp(sum)} • Hemat ${rp(hematSum)}</span><span>${rp(sum)}</span></div>`;
+  div.innerHTML=h;
+}
+document.getElementById('strukFiles')?.addEventListener('change', async (e)=>{
+  const files=[...e.target.files];
+  if(!files.length) return;
+  strukParsed=[];
+  for(const f of files){
+    try{
+      const rec=await readPdfFile(f);
+      strukParsed.push(rec);
+    }catch(err){
+      strukParsed.push({fileName:f.name, tanggalIndo:f.name, total:0, hemat:0, itemCount:0, error: err.message});
+    }
+  }
+  renderStrukPreview();
+});
+document.getElementById('btnClearStruk')?.addEventListener('click', ()=>{ strukParsed=[]; document.getElementById('strukFiles').value=''; renderStrukPreview(); });
+function importStruk(mode){
+  if(!strukParsed.length) return alert('Pilih PDF struk dulu!');
+  if(mode==='per'){
+    strukParsed.forEach(s=>{
+      if(!s.total) return;
+      variabel.push({
+        id: Date.now()+Math.random(),
+        nama: `Belanja Super Indo ${s.tanggalIndo}`,
+        kategori: 'Belanja Bulanan',
+        nominal: s.total,
+        periode: 'Bulanan Variabel',
+        ket: `${s.toko} • ${s.itemCount} item • Hemat ${rp(s.hemat)} • ${s.fileName}`
+      });
+    });
+  } else {
+    // gabung per bulan YYYY-MM
+    const byMonth={};
+    strukParsed.forEach(s=>{
+      if(!s.total) return;
+      let key='lain';
+      if(s.tanggalRaw){
+        const [dd,mm,yy]=s.tanggalRaw.split('-');
+        key = (yy.length===2?'20'+yy:yy)+'-'+mm;
+      }
+      if(!byMonth[key]) byMonth[key]={sum:0, hemat:0, cnt:0, files:[]};
+      byMonth[key].sum+=s.total; byMonth[key].hemat+=s.hemat; byMonth[key].cnt++;
+      byMonth[key].files.push(s.fileName);
+    });
+    Object.entries(byMonth).forEach(([k,v])=>{
+      let label=k;
+      try{ const [y,m]=k.split('-'); const dt=new Date(y, m-1, 1); label=dt.toLocaleDateString('id-ID',{month:'long', year:'numeric'}); }catch(e){}
+      variabel.push({
+        id: Date.now()+Math.random(),
+        nama: `Belanja Bulanan ${label}`,
+        kategori: 'Belanja Bulanan',
+        nominal: v.sum,
+        periode: 'Bulanan Variabel',
+        ket: `${v.cnt} struk • Total ${rp(v.sum)} • Hemat ${rp(v.hemat)} • ${v.files.join(', ').slice(0,60)}`
+      });
+    });
+  }
+  saveVariabel(); renderVariabel(); calc();
+  alert(`✅ Import ${mode==='per'? strukParsed.length+' struk':'gabung per bulan'} berhasil — cek Menu Variabel!`);
+}
+document.getElementById('btnImportStrukPer')?.addEventListener('click', ()=> importStruk('per'));
+document.getElementById('btnImportStrukBulan')?.addEventListener('click', ()=> importStruk('bulan'));
+</script>
+
 </body>
 </html>
