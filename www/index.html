@@ -310,7 +310,7 @@ hr.sep{border:none; border-top:1px solid var(--border); margin:14px 0}
       <div class="var-form" id="varForm">
         <div><label>Nama pengeluaran</label><input class="txt" id="varNama" placeholder="cth: Kuota Internet"></div>
         <div><label>Kategori</label><select id="varKategori">
-          <option>Komunikasi</option><option>Kendaraan</option><option>Pajak & STNK</option><option>Anak & Susu</option><option>Pendidikan</option><option>Perawatan</option><option>Belanja Dapur & Masak</option><option>Jajan / Rekreasi</option><option>Skincare / Personal Care</option><option>Cadangan Dana</option><option>Langganan</option><option>Lainnya</option>
+          <option>Komunikasi</option><option>Kendaraan</option><option>Pajak & STNK</option><option>Anak & Susu</option><option>Pendidikan</option><option>Perawatan</option><option>Belanja Dapur & Masak</option><option>Jajan / Rekreasi</option><option>Skincare / Personal Care</option><option>Cadangan Dana</option><option>Uang Pegangan Will</option><option>Uang Pegangan Istri</option><option>Langganan</option><option>Lainnya</option>
         </select></div>
         <div><label>Nominal (Rp)</label><input class="txt" id="varNominal" inputmode="numeric" placeholder="200000"></div>
         <div><label>Periode <span title="Bulanan=tap bulan nominal tetap | Bulanan Variabel=tap bulan nominal beda (isi estimasi) | Tidak Tentu=insidental, isi estimasi/bulan atau 0 | Tahunan=1x/tahun auto ÷12" style="cursor:help; border:1px solid var(--border); border-radius:50%; width:16px; height:16px; display:inline-grid; place-items:center; font-size:10px; background:#F1F5F9">?</span></label><select id="varPeriode">
@@ -397,27 +397,37 @@ hr.sep{border:none; border-top:1px solid var(--border); margin:14px 0}
         <div class="row" style="flex-direction:column; align-items:stretch; gap:6px">
           <div style="display:flex; justify-content:space-between"><label>🥦 Belanja Dapur & Masak</label><input class="money" id="alDapur" inputmode="numeric" style="width:140px"></div>
           <input type="range" class="slider" id="slDapur" min="0" max="4000000" step="50000">
-        </div>
+        
+        <div class="muted" id="info_alDapur" style="font-size:.72rem; display:flex; justify-content:space-between; gap:8px"><span>Terpakai: Rp0</span><span>Sisa: Rp0</span></div>
+      </div>
         <div class="row" style="flex-direction:column; align-items:stretch; gap:6px; margin-top:10px">
           <div style="display:flex; justify-content:space-between"><label>🎡 Jajan / Rekreasi</label><input class="money" id="alCemilan" inputmode="numeric" style="width:140px"></div>
           <input type="range" class="slider" id="slCemilan" min="0" max="1000000" step="50000">
-        </div>
+        
+        <div class="muted" id="info_alCemilan" style="font-size:.72rem; display:flex; justify-content:space-between; gap:8px"><span>Terpakai: Rp0</span><span>Sisa: Rp0</span></div>
+      </div>
         <div class="row" style="flex-direction:column; align-items:stretch; gap:6px; margin-top:10px">
           <div style="display:flex; justify-content:space-between"><label>💅 Skincare / Personal Care</label><input class="money" id="alTabungan" inputmode="numeric" style="width:140px"></div>
           <input type="range" class="slider" id="slTabungan" min="0" max="2000000" step="50000">
-        </div>
+        
+        <div class="muted" id="info_alTabungan" style="font-size:.72rem; display:flex; justify-content:space-between; gap:8px"><span>Terpakai: Rp0</span><span>Sisa: Rp0</span></div>
+      </div>
         <div class="row" style="flex-direction:column; align-items:stretch; gap:6px; margin-top:10px">
           <div style="display:flex; justify-content:space-between"><label>🛡️ Cadangan Dana</label><input class="money" id="alCadangan" inputmode="numeric" style="width:140px"></div>
           <input type="range" class="slider" id="slCadangan" min="0" max="1500000" step="50000">
+        <div class="muted" id="info_alCadangan" style="font-size:.72rem; display:flex; justify-content:space-between; gap:8px"><span>Terpakai: Rp0</span><span>Sisa: Rp0</span></div>
       </div>
       <div class="row" style="flex-direction:column; align-items:stretch; gap:6px; margin-top:10px">
         <div style="display:flex; justify-content:space-between"><label>💼 Uang Pegangan Will</label><input class="money" id="alWill" inputmode="numeric" style="width:140px"></div>
         <input type="range" class="slider" id="slWill" min="0" max="1500000" step="50000">
+        <div class="muted" id="info_alWill" style="font-size:.72rem; display:flex; justify-content:space-between; gap:8px"><span>Terpakai: Rp0</span><span>Sisa: Rp0</span></div>
       </div>
       <div class="row" style="flex-direction:column; align-items:stretch; gap:6px; margin-top:10px">
         <div style="display:flex; justify-content:space-between"><label>👜 Uang Pegangan Istri</label><input class="money" id="alIstri" inputmode="numeric" style="width:140px"></div>
         <input type="range" class="slider" id="slIstri" min="0" max="1500000" step="50000">
-        </div>
+        
+        <div class="muted" id="info_alIstri" style="font-size:.72rem; display:flex; justify-content:space-between; gap:8px"><span>Terpakai: Rp0</span><span>Sisa: Rp0</span></div>
+      </div>
         <hr class="sep">
         <div class="total-row"><span>Terpakai dari sisa bersih</span><span id="pctAlokasi2">0%</span></div>
         <div class="btns">
@@ -935,6 +945,30 @@ function calc(){
     return `<span><i style="background:${colsDraw[i]}"></i>${l} ${rp(v)}<br><span class="muted">${pct}% dari sisa</span></span>`;
   }).join('') + (sisaBelum>0 ? `<span><i style="background:#E2E8F0"></i>Belum dialokasikan ${rp(sisaBelum)}<br><span class="muted">${Math.round(sisaBelum/sisaBersihVal*100)}% sisa</span></span>` : '');
   const legEl=document.getElementById('legend'); if(legEl) legEl.innerHTML=legendHtml;
+  // === ALOKASI TERPAKAI & SISA — pengeluaran se-kategori kurangi alokasi ===
+  (function(){
+    const map={alDapur:'Belanja Dapur & Masak', alCemilan:'Jajan / Rekreasi', alTabungan:'Skincare / Personal Care', alCadangan:'Cadangan Dana', alWill:'Uang Pegangan Will', alIstri:'Uang Pegangan Istri'};
+    let totalTerpakai=0, totalAlokasi=0;
+    Object.entries(map).forEach(([alId, kat])=>{
+      const alVal=num(alId);
+      totalAlokasi+=alVal;
+      const terpakai=variabel.reduce((a,v)=> a + (v.kategori===kat ? monthlyOf(v) : 0), 0);
+      totalTerpakai+=terpakai;
+      const sisa=alVal - terpakai;
+      const el=document.getElementById('info_'+alId);
+      if(el){
+        const sisaColor = sisa<0 ? '#E11D48' : sisa===alVal ? '#6B7A99' : '#059669';
+        const status = sisa<0 ? 'Over!' : sisa===0 ? 'Pas' : `Sisa ${rp(sisa)}`;
+        el.innerHTML=`<span>Terpakai: <b>${rp(terpakai)}</b> ${terpakai?`(${variabel.filter(v=>v.kategori===kat).length} pengeluaran)`:''}</span><span style="color:${sisaColor}; font-weight:700">${status}</span>`;
+      }
+    });
+    const sisaAlokasi = totalAlokasi - totalTerpakai;
+    const elT=document.getElementById('alokasiTerpakaiInfo'); if(elT) elT.textContent=rp(totalTerpakai);
+    const elS=document.getElementById('alokasiSisaInfo'); if(elS){
+      elS.textContent=rp(sisaAlokasi);
+      elS.style.color = sisaAlokasi<0 ? '#E11D48' : '#059669';
+    }
+  })();
   // === DASHBOARD REKAP VALID — pemasukan, terpakai, persen, terbesar ===
   (function(){
     const base=num('incWill')+num('incWife')+pemasukanTambahan.reduce((a,t)=>a+t.nominal,0);
