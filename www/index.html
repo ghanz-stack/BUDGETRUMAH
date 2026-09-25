@@ -849,29 +849,30 @@ document.getElementById('btnBagi').addEventListener('click', ()=>{
   syncSliders(); calc();
 });
 document.getElementById('resetBtn').addEventListener('click', ()=>{
-  if(!confirm('Reset semua field di halaman ini ke 0?')) return;
+  if(!confirm('Reset 0 semua? Semua field + Variabel & Rencana akan dikosongkan ke 0.')) return;
   ids.forEach(id=>{
     const el=document.getElementById(id);
     if(moneyIds.includes(id)) el.value = '0';
     else if(id==='mutasiKet') el.value = '';
     else el.value = 0;
   });
-  // juga kosongkan variabel & rencana biar benar-benar 0 semua
-  if(confirm('Kosongkan juga Variabel & Rencana? (OK = ya, Cancel = hanya field atas)')){
-    variabel=[]; rencana=[];
-    saveVariabel(); renderVariabel();
-    saveRencana(); renderRencana();
-  }
+  // kosongkan variabel & rencana juga — sesuai request 0 semua
+  variabel=[]; rencana=[];
+  saveVariabel(); renderVariabel();
+  saveRencana(); renderRencana();
   syncSliders(); saveCore(); calc();
+  // paksa update header KPI biar langsung 0
+  try{ localStorage.setItem('budget-variabel', JSON.stringify([])); localStorage.setItem('budget-rencana', JSON.stringify([])); }catch(e){}
 });
-document.getElementById('btnExport').addEventListener('click', ()=>{
-  const incomeBase=num("incWill")+num("incWife"); const mutasi=num("mutasiTabungan")||0; const income=incomeBase; // total tetap, mutasi hanya mindahin
+document.getElementById('btnExport').addEventListener('click', async ()=>{
+  const incomeBase=num("incWill")+num("incWife"); const mutasi=num("mutasiTabungan")||0; const income=incomeBase;
   const fixed=num("fixBensin")+num("fixCicilan")+num("fixRumah");
   const anak=num("popokQty")*num("popokHarga")+num("susuQty")*num("susuHarga");
   const totalVariabel=variabel.reduce((a,v)=>a+monthlyOf(v),0);
   const totalRencana=rencana.reduce((a,r)=> a + Math.ceil(Math.max(0, r.target - r.terkumpul)/monthsUntil(r.deadline)),0);
   let t=`REKAP BUDGET KELUARGA — ${new Date().toLocaleDateString('id-ID')}\n`;
-  t+=`Pemasukan ${rp(income)} | Tetap ${rp(fixed)} | Anak ${rp(anak)} | Bruto ${rp(income-fixed-anak)}\n`;
+  t+=`Pemasukan ${rp(income)} (Mutasi -${rp(mutasi)} → Kas ${rp(income-mutasi)}) | Tetap ${rp(fixed)} | Anak ${rp(anak)} | Bruto ${rp(income-fixed-anak)} | Bersih ${rp(income-mutasi-fixed-anak-totalVariabel-totalRencana)}\n`;
+  t+=`Mutasi Tabungan: ${rp(mutasi)} — ${document.getElementById('mutasiKet')?.value||''}\n`;
   t+=`--- VARIABEL (${variabel.length}) ---\n`;
   variabel.forEach(v=> t+=`- ${v.nama} [${v.kategori}] ${rp(v.nominal)} (${v.periode} → ${rp(monthlyOf(v))}/bln) — ${v.ket}\n`);
   t+=`Total Variabel: ${rp(totalVariabel)}/bln\n`;
@@ -881,10 +882,9 @@ document.getElementById('btnExport').addEventListener('click', ()=>{
     t+=`- ${r.nama} [${r.kategori}] Target ${rp(r.target)} Terkumpul ${rp(r.terkumpul)} Kurang ${rp(kurang)} Deadline ${r.deadline} → ${rp(Math.ceil(kurang/monthsUntil(r.deadline)))}/bln — ${r.ket}\n`;
   });
   t+=`Total Rencana: ${rp(totalRencana)}/bln\n`;
-  t+=`Sisa Bersih: ${rp(income-fixed-anak-totalVariabel-totalRencana)}\n`;
+  t+=`Sisa Bersih: ${rp(income-mutasi-fixed-anak-totalVariabel-totalRencana)}\n`;
   t+=`Alokasi: Dapur ${rp(num("alDapur"))} | Cemilan ${rp(num("alCemilan"))} | Tabungan ${rp(num("alTabungan"))} | Cadangan ${rp(num("alCadangan"))}\n`;
-  const blob=new Blob([t],{type:'text/plain'}); const url=URL.createObjectURL(blob);
-  const a=document.createElement('a'); a.href=url; a.download='rekap-budget-lengkap.txt'; a.click(); URL.revokeObjectURL(url);
+  await saveFileCapacitorOrBrowser('rekap-budget-lengkap.txt', t, 'text/plain');
 });
 
 // variabel events
@@ -1026,11 +1026,39 @@ function updateDataUI(){
     if(badge) badge.textContent=(vCount+rCount+coreCount>0?'sinkron':'kosong')+' • '+new Date().toLocaleTimeString('id-ID');
   }catch(e){}
 }
-function exportJson(){
+
+// === EXPORT HELPER — work di browser & APK (Capacitor) ===
+async function saveFileCapacitorOrBrowser(filename, content, mime='text/plain'){
+  // coba Capacitor Filesystem dulu (APK)
+  try{
+    const cap = window.Capacitor;
+    const isNative = cap && cap.isNativePlatform && cap.isNativePlatform();
+    if(isNative && cap.Plugins && cap.Plugins.Filesystem){
+      const { Filesystem, Directory, Encoding } = cap.Plugins;
+      await Filesystem.writeFile({ path: filename, data: content, directory: Directory.Documents, encoding: Encoding.UTF8 });
+      const ret = await Filesystem.getUri({ path: filename, directory: Directory.Documents });
+      // coba share
+      if(cap.Plugins.Share){
+        try{ await cap.Plugins.Share.share({ title: filename, text: 'Export Budget Keluarga', url: ret.uri, dialogTitle: 'Simpan/Bagikan '+filename }); }catch(e){}
+      }
+      alert('✅ Tersimpan di Documents/'+filename+'\n'+ret.uri+'\n(Bisa dibuka via File Manager)');
+      return true;
+    }
+  }catch(e){ console.warn('Capacitor save failed, fallback browser', e); }
+  // fallback browser
+  try{
+    const blob=new Blob([content],{type:mime});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    return true;
+  }catch(e){ alert('Gagal export: '+e.message); return false; }
+}
+
+async function exportJson(){
   const data=collectAll();
-  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a'); a.href=url; a.download=`backup-budget-${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(url);
+  const content=JSON.stringify(data,null,2);
+  const filename=`backup-budget-${new Date().toISOString().slice(0,10)}.json`;
+  await saveFileCapacitorOrBrowser(filename, content, 'application/json');
 }
 function backupNow(){
   const data=collectAll();
