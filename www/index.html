@@ -175,6 +175,11 @@ hr.sep{border:none; border-top:1px solid var(--border); margin:14px 0}
 .top3-grid{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px}
 @media(max-width:640px){ .top3-grid{grid-template-columns:1fr} }
 
+
+.tmb-form{grid-template-columns:1.2fr .9fr .9fr 1.1fr auto}
+@media(max-width:900px){ .tmb-form{grid-template-columns:1fr 1fr} .tmb-form > div:last-child{grid-column:1 / -1} }
+@media(max-width:480px){ .tmb-form{grid-template-columns:1fr} }
+
 </style>
 </head>
 <body>
@@ -282,7 +287,7 @@ hr.sep{border:none; border-top:1px solid var(--border); margin:14px 0}
 
     <div class="card" style="margin-top:14px; border-left:4px solid #059669">
       <div class="card-head"><div class="icon teal">➕</div><div><h2>Pemasukan Tambahan</h2><p>Bonus, freelance, jualan, THR — tambah/edit/hapus, total langsung ke pemasukan</p></div><span class="badge" id="badgeTambahan" style="background:#ECFDF5; color:#065F46; border-color:#A7F3D0">Rp0</span></div>
-      <div style="display:grid; grid-template-columns:1.2fr .9fr .9fr 1.1fr auto; gap:8px; align-items:end; margin-bottom:10px">
+      <div class="tmb-form" style="display:grid; gap:8px; align-items:end; margin-bottom:10px">
         <div><label style="font-size:.70rem; font-weight:700; color:var(--muted); text-transform:uppercase">Sumber</label><input class="txt" id="tmbSumber" placeholder="cth: Bonus Q3"></div>
         <div><label style="font-size:.70rem; font-weight:700; color:var(--muted); text-transform:uppercase">Kategori</label><select id="tmbKategori"><option>Bonus</option><option>Freelance</option><option>Jualan</option><option>THR</option><option>Cashback</option><option>Lainnya</option></select></div>
         <div><label style="font-size:.70rem; font-weight:700; color:var(--muted); text-transform:uppercase">Nominal (Rp)</label><input class="txt" id="tmbNominal" inputmode="numeric" placeholder="500000"></div>
@@ -1361,9 +1366,12 @@ function restoreSnapshot(){
 function applyData(obj){
   try{
     if(obj.core) localStorage.setItem('budget-data', JSON.stringify(obj.core));
+    if(obj.tambahan) localStorage.setItem('budget-tambahan', JSON.stringify(obj.tambahan));
     if(obj.variabel) localStorage.setItem('budget-variabel', JSON.stringify(obj.variabel));
     if(obj.rencana) localStorage.setItem('budget-rencana', JSON.stringify(obj.rencana));
     if(obj.page) localStorage.setItem('budget-page', obj.page);
+    // support old export where tambahan was missing
+    if(obj.core && obj.core.tambahan) localStorage.setItem('budget-tambahan', JSON.stringify(obj.core.tambahan));
     location.reload();
   }catch(e){ alert('Gagal restore: '+e.message); }
 }
@@ -1411,8 +1419,8 @@ document.getElementById('importFile')?.addEventListener('change', (e)=>{
   const r=new FileReader();
   r.onload=()=>{
     try{
-      const obj=JSON.parse(r.result);
-      if(!obj.core && !obj.variabel && !obj.rencana) throw new Error('Format tidak dikenal');
+      const txt=r.result.trim().replace(/^\uFEFF/, ''); const obj=JSON.parse(txt);
+      if(!obj.core && !obj.variabel && !obj.rencana && !obj.tambahan) throw new Error('Format tidak dikenal — file harus berisi core/tambahan/variabel/rencana');
       if(!confirm(`Import ${f.name}? Data sekarang akan tertimpa.`)) return;
       applyData(obj);
     }catch(err){ alert('Gagal import: '+err.message); }
