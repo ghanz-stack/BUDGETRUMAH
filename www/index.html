@@ -210,17 +210,18 @@ hr.sep{border:none; border-top:1px solid var(--border); margin:14px 0}
     <div class="page-title"><div class="icon teal">📊</div><div><h2>Dashboard</h2><p>Ringkasan bruto → bersih, per hari & status</p></div><span class="badge live">auto hitung</span></div>
 
     <div class="card sisa-card">
-      <div class="card-head" style="margin-bottom:4px"><div class="icon" style="background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.25)">✨</div><div><h2 style="color:#fff">Sisa Budget — Bruto vs Bersih</h2><p style="color:rgba(255,255,255,.85)">Bruto = Pemasukan − Tetap − Anak &nbsp;|&nbsp; Bersih = Bruto − Variabel − Rencana</p></div></div>
-      <div class="sisa-grid">
-        <div class="sisa-box"><div class="k">Sisa Bruto</div><div class="v" id="sisa">Rp0</div></div>
-        <div class="sisa-box"><div class="k">Setelah Variabel</div><div class="v" id="sisaSetelahVariabel">Rp0</div></div>
-        <div class="sisa-box"><div class="k">Sisa Bersih</div><div class="v" id="sisaBersih">Rp0</div></div>
-        <div class="sisa-box"><div class="k">Per hari (bersih)</div><div class="v" id="perHari">Rp0</div></div>
-        <div class="sisa-box"><div class="k">Per minggu</div><div class="v" id="perMinggu">Rp0</div></div>
-        <div class="sisa-box"><div class="k">Terpakai Alokasi</div><div class="v" id="pctAlokasiHero">0%</div></div>
+      <div class="card-head" style="margin-bottom:4px"><div class="icon" style="background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.25)">✨</div><div><h2 style="color:#fff">Rekap Pemasukan — Dana Terpakai & Sisa</h2><p style="color:rgba(255,255,255,.85)">Total pemasukan → terpakai kemana, persen masing-masing, & pengeluaran terbesar</p></div><span class="badge" style="background:#fff; color:#0E7490" id="badgeRekap">valid</span></div>
+      <div class="sisa-grid" style="grid-template-columns:1fr 1fr 1fr">
+        <div class="sisa-box"><div class="k">Total Pemasukan</div><div class="v" id="dashRekapPemasukan">Rp0</div><div class="k" style="margin-top:4px" id="dashRekapPemasukanSub">Will+Istri</div></div>
+        <div class="sisa-box"><div class="k">Total Terpakai</div><div class="v" id="dashRekapTerpakai">Rp0</div><div class="k" style="margin-top:4px" id="dashRekapTerpakaiSub">0% dari pemasukan</div></div>
+        <div class="sisa-box" style="background:rgba(255,255,255,.22); border-color:#fff"><div class="k">Sisa Akhir</div><div class="v" id="dashRekapSisa">Rp0</div><div class="k" style="margin-top:4px" id="dashRekapSisaSub">per hari Rp0</div></div>
       </div>
-      <div class="progress"><div id="barFill" style="width:0%"></div></div>
-      <div class="status" id="statusText"><span class="dot"></span><span>Memuat…</span></div>
+      <div id="dashBreakdown" style="margin-top:12px; display:grid; gap:6px"></div>
+      <div style="margin-top:10px; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.22); border-radius:10px; padding:10px; display:flex; gap:8px; align-items:center">
+        <span style="font-size:18px">🏆</span><div><div class="k" style="color:#fff; opacity:.9">Pengeluaran Terbesar</div><div style="font-weight:800; color:#fff" id="dashTerbesar">-</div><div class="k" style="color:#fff; opacity:.8" id="dashTerbesarSub"></div></div><span id="dashTerbesarPct" style="margin-left:auto; background:#fff; color:#0E7490; padding:6px 10px; border-radius:999px; font-weight:800; font-size:.8rem">0%</span>
+      </div>
+      <!-- hidden keep old ids for calc compat -->
+      <div style="display:none"><span id="sisa"></span><span id="sisaSetelahVariabel"></span><span id="sisaBersih"></span><span id="perHari"></span><span id="perMinggu"></span><span id="pctAlokasiHero"></span><div id="barFill"></div><div id="statusText"></div></div>
     </div>
 
     <div class="grid3" style="margin-top:14px">
@@ -498,18 +499,13 @@ function syncSliders(){
 
 // === VARIABEL ===
 let editVarId=null;
-const defaultVariabel=[
-  {id:1, nama:"Kuota", kategori:"Komunikasi", nominal:250000, periode:"Bulanan", ket:"Bulanan — HP + wifi"},
-  {id:2, nama:"Perawatan Motor", kategori:"Kendaraan", nominal:150000, periode:"Tidak Tentu", ket:"Tidak tentu — servis ringan"},
-  {id:3, nama:"Perawatan Mobil", kategori:"Kendaraan", nominal:300000, periode:"Tidak Tentu", ket:"Tidak tentu — servis/oli"},
-  {id:4, nama:"Pajak Kendaraan", kategori:"Pajak & STNK", nominal:2000000, periode:"Tahunan", ket:"1 tahun sekali — dibagi 12"},
-  {id:5, nama:"Susu Morinaga", kategori:"Anak & Susu", nominal:400000, periode:"Bulanan Variabel", ket:"Bulanan tapi tidak tentu"},
-  {id:6, nama:"Sekolah Anak", kategori:"Pendidikan", nominal:500000, periode:"Bulanan Variabel", ket:"Bulanan / tidak tentu"},
-];
+const defaultVariabel=[]; // kosong — user isi sendiri, jangan diisi default
 function loadVariabel(){
   try{
-    const s=JSON.parse(localStorage.getItem('budget-variabel')||'null');
-    return Array.isArray(s)&&s.length? s : JSON.parse(JSON.stringify(defaultVariabel));
+    const raw=localStorage.getItem('budget-variabel');
+    if(raw===null) return JSON.parse(JSON.stringify(defaultVariabel));
+    const s=JSON.parse(raw);
+    return Array.isArray(s) ? s : JSON.parse(JSON.stringify(defaultVariabel));
   }catch(e){ return JSON.parse(JSON.stringify(defaultVariabel)); }
 }
 let variabel = loadVariabel();
@@ -600,14 +596,13 @@ function monthsUntil(deadline){
   if(diff<=0) diff=1;
   return diff;
 }
-const defaultRencana=[
-  {id:101, nama:"Pajak Mobil + Motor 2027", kategori:"Pajak & STNK", target:2500000, terkumpul:0, deadline:"2027-04", ket:"Bayar April 2027"},
-  {id:102, nama:"Servis Besar Mobil", kategori:"Kendaraan", target:3000000, terkumpul:500000, deadline:"2026-12", ket:"Tiap 20rb km"},
-];
+const defaultRencana=[]; // kosong — biar 0 semua pas reset/update
 function loadRencana(){
   try{
-    const s=JSON.parse(localStorage.getItem('budget-rencana')||'null');
-    return Array.isArray(s)? s : JSON.parse(JSON.stringify(defaultRencana));
+    const raw=localStorage.getItem('budget-rencana');
+    if(raw===null) return JSON.parse(JSON.stringify(defaultRencana));
+    const s=JSON.parse(raw);
+    return Array.isArray(s) ? s : JSON.parse(JSON.stringify(defaultRencana));
   }catch(e){ return JSON.parse(JSON.stringify(defaultRencana)); }
 }
 let rencana=loadRencana();
@@ -792,10 +787,72 @@ function calc(){
   } else {
     bar.style.background='#fff'; statusEl.innerHTML=`<span class="dot"></span><span>Alokasi ${rp(alokasi)} • Sisa belum teralokasi: ${rp(diff)} — ${diff===0?'PAS!':'aman'}</span>`;
   }
-  const vals=[num("alDapur"),num("alCemilan"),num("alTabungan"),num("alCadangan")];
-  const cols=['#0E7490','#F59E0B','#059669','#E11D48'];
-  drawDonut(vals, cols);
-  document.getElementById('legend').innerHTML=['Dapur','Rekreasi','Skincare','Cadangan'].map((l,i)=> `<span><i style="background:${cols[i]}"></i>${l} ${rp(vals[i])}</span>`).join('');
+  // DONAT: berdasar Sisa Bersih, bukan ngawur — 4 alokasi + sisa belum dialokasikan
+  const valsAlok=[num("alDapur"),num("alCemilan"),num("alTabungan"),num("alCadangan")];
+  const sumAlok=valsAlok.reduce((a,b)=>a+b,0);
+  const sisaBersihVal = (function(){
+    const base=num('incWill')+num('incWife');
+    const mut=num('mutasiTabungan')||0;
+    const fixed=num('fixBensin')+num('fixCicilan')+num('fixRumah');
+    const anak=num('popokQty')*num('popokHarga')+num('susuQty')*num('susuHarga');
+    const varTot=variabel.reduce((a,v)=>a+(v.periode==="Tahunan"?Math.round(v.nominal/12):v.nominal),0);
+    const renTot=rencana.reduce((a,r)=>{ const k=Math.max(0,r.target-r.terkumpul); const m=(function(d){ if(!d) return 12; const [y,mm]=d.split('-').map(Number); const now=new Date(); let diff=(y-now.getFullYear())*12+(mm-(now.getMonth()+1)); return diff<=0?1:diff; })(r.deadline); return a+(k?Math.ceil(k/m):0); },0);
+    return Math.max(0, base - mut - fixed - anak - varTot - renTot);
+  })();
+  const sisaBelum = Math.max(0, sisaBersihVal - sumAlok);
+  const valsDraw = sisaBelum>0 ? [...valsAlok, sisaBelum] : valsAlok;
+  const colsDraw = sisaBelum>0 ? ['#0E7490','#8B5CF6','#059669','#E11D48','#E2E8F0'] : ['#0E7490','#8B5CF6','#059669','#E11D48'];
+  drawDonut(valsDraw, colsDraw);
+  const labels=['Dapur & Masak','Jajan/Rekreasi','Skincare','Cadangan Dana'];
+  const legendHtml = labels.map((l,i)=> {
+    const v=valsAlok[i]||0;
+    const pct=sisaBersihVal? Math.round(v/sisaBersihVal*100):0;
+    return `<span><i style="background:${colsDraw[i]}"></i>${l} ${rp(v)}<br><span class="muted">${pct}% dari sisa</span></span>`;
+  }).join('') + (sisaBelum>0 ? `<span><i style="background:#E2E8F0"></i>Belum dialokasikan ${rp(sisaBelum)}<br><span class="muted">${Math.round(sisaBelum/sisaBersihVal*100)}% sisa</span></span>` : '');
+  const legEl=document.getElementById('legend'); if(legEl) legEl.innerHTML=legendHtml;
+  // === DASHBOARD REKAP VALID — pemasukan, terpakai, persen, terbesar ===
+  (function(){
+    const base=num('incWill')+num('incWife');
+    const mut=num('mutasiTabungan')||0;
+    const fixed=num('fixBensin')+num('fixCicilan')+num('fixRumah');
+    const anak=num('popokQty')*num('popokHarga')+num('susuQty')*num('susuHarga');
+    const varTot=variabel.reduce((a,v)=>a+(v.periode==="Tahunan"?Math.round(v.nominal/12):v.nominal),0);
+    const renTot=rencana.reduce((a,r)=>{ const k=Math.max(0,r.target-r.terkumpul); const m=(function(d){ if(!d) return 12; const [y,mm]=d.split('-').map(Number); const now=new Date(); let diff=(y-now.getFullYear())*12+(mm-(now.getMonth()+1)); return diff<=0?1:diff; })(r.deadline); return a+(k?Math.ceil(k/m):0); },0);
+    const alok=num('alDapur')+num('alCemilan')+num('alTabungan')+num('alCadangan');
+    const terpakai = fixed + anak + mut + varTot + renTot + alok;
+    const sisaAkhir = Math.max(0, base - terpakai);
+    const pct = (v)=> base? Math.round(v/base*100):0;
+    const elP=document.getElementById('dashRekapPemasukan'); if(elP) elP.textContent=rp(base);
+    const elT=document.getElementById('dashRekapTerpakai'); if(elT) elT.textContent=rp(terpakai);
+    const elS=document.getElementById('dashRekapSisa'); if(elS) elS.textContent=rp(sisaAkhir);
+    const subT=document.getElementById('dashRekapTerpakaiSub'); if(subT) subT.textContent=pct(terpakai)+'% dari pemasukan';
+    const subS=document.getElementById('dashRekapSisaSub'); if(subS) subS.textContent='per hari '+rp(Math.round(sisaAkhir/30))+' • '+pct(sisaAkhir)+'%';
+    // breakdown list
+    const items=[
+      {k:'Tetap (Bensin+Cicilan+Rumah)', v:fixed, c:'#7C3AED'},
+      {k:'Anak (Popok+Susu)', v:anak, c:'#F59E0B'},
+      {k:'Mutasi ke Tabungan', v:mut, c:'#E11D48'},
+      {k:'Variabel', v:varTot, c:'#0284C7'},
+      {k:'Rencana (tabung/bln)', v:renTot, c:'#EA580C'},
+      {k:'Alokasi (Dapur+Rekreasi+Skincare+Cadangan)', v:alok, c:'#059669'},
+    ];
+    const maxItem = [...items].sort((a,b)=>b.v-a.v)[0];
+    const bd=document.getElementById('dashBreakdown');
+    if(bd){
+      bd.innerHTML=items.map(it=>{
+        const p=pct(it.v);
+        return `<div style="display:flex; align-items:center; gap:8px; font-size:.78rem"><span style="width:10px; height:10px; border-radius:3px; background:${it.c}; display:inline-block"></span><span style="flex:1">${it.k}</span><b>${rp(it.v)}</b><span class="muted">${p}%</span><div style="width:70px; height:6px; background:#E2E8F0; border-radius:999px; overflow:hidden"><div style="width:${p}%; height:100%; background:${it.c}"></div></div></div>`;
+      }).join('');
+    }
+    const te=document.getElementById('dashTerbesar'); if(te) te.textContent = maxItem.v? `${maxItem.k} — ${rp(maxItem.v)}` : '-';
+    const teSub=document.getElementById('dashTerbesarSub'); if(teSub) teSub.textContent = maxItem.v? `${pct(maxItem.v)}% dari pemasukan • ${maxItem.k.includes('Tetap')?'Cek cicilan/bensin': maxItem.k.includes('Variabel')?'Cek tabel Variabel': maxItem.k.includes('Alokasi')?'Atur di Menu Alokasi':'Perlu perhatian'}` : '';
+    const tePct=document.getElementById('dashTerbesarPct'); if(tePct) tePct.textContent = pct(maxItem.v)+'%';
+    // keep hidden old ids for compat
+    const sisaBVal = base - mut - fixed - anak - varTot - renTot;
+    const sisaBEl=document.getElementById('sisaBersih'); if(sisaBEl) sisaBEl.textContent=rp(Math.max(0,sisaBVal));
+    const sisaEl=document.getElementById('sisa'); if(sisaEl) sisaEl.textContent=rp(base - fixed - anak);
+    const sisaVarEl=document.getElementById('sisaSetelahVariabel'); if(sisaVarEl) sisaVarEl.textContent=rp(base - mut - fixed - anak - varTot);
+  })();
   // log
   const lines=[];
   const add=(c,m)=> lines.push(`<span class="${c}">${m}</span>`);
