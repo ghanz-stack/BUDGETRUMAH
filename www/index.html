@@ -7,6 +7,8 @@
 <meta name="theme-color" content="#0E7490">
 <link rel="icon" href="icon-192.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.js"></script>
+<script src="firebase-config.js"></script>
+<script type="importmap">{"imports":{"firebase-app":"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js","firebase-firestore":"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"}}</script>
 <script>if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.js";</script>
 <title>Budget Keluarga — Planner per Menu</title>
 <style>
@@ -457,6 +459,21 @@ hr.sep{border:none; border-top:1px solid var(--border); margin:14px 0}
         <button class="btn btn-accent" id="btnHardRefresh" style="margin-left:auto; padding:8px 12px; font-size:.8rem">🔄 Hard Refresh PWA</button>
       </div>
       <div class="muted" style="font-size:.72rem; margin-top:6px">Hapus cache SW, update service worker, reload — data budget tetap aman (tidak terhapus).</div>
+    </div>
+    <div class="card" style="border-left:4px solid #7C3AED; margin-bottom:14px">
+      <div class="card-head"><div class="icon" style="background:linear-gradient(135deg,#7C3AED,#EC4899)">☁️</div><div><h2>Sync Online — Akses di HP/PC Manapun</h2><p>Firestore realtime, pakai Kode Sync (tanpa login ribet)</p></div><span class="badge" id="badgeOnline" style="background:#FEF3C7; color:#92400E">offline</span></div>
+      <div style="display:grid; grid-template-columns:1fr auto; gap:8px; align-items:end; margin-bottom:8px">
+        <div><label style="font-size:.70rem; font-weight:700; color:var(--muted); text-transform:uppercase">Kode Sync (buat & pakai di semua device)</label><input class="txt" id="syncCode" placeholder="mis: KELUARGA123" style="text-transform:uppercase"></div>
+        <button class="btn btn-accent" id="btnSyncConnect" style="white-space:nowrap">🔗 Connect</button>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap">
+        <button class="btn btn-soft" id="btnSyncPush" style="flex:1">⬆️ Push ke Cloud</button>
+        <button class="btn btn-soft" id="btnSyncPull" style="flex:1">⬇️ Pull dari Cloud</button>
+        <label style="display:flex; align-items:center; gap:6px; font-size:.78rem; font-weight:700"><input type="checkbox" id="chkAutoSync"> Auto-sync</label>
+      </div>
+      <div class="muted" style="margin-top:8px; font-size:.72rem" id="syncStatus">Belum connect — buat Kode Sync (6-12 huruf/angka), klik Connect, lalu Push. Di HP lain masukkan Kode sama → Pull.</div>
+      <div class="muted" style="font-size:.70rem; margin-top:4px">Butuh 1x setup Firebase gratis: <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a> → Create Project → Firestore → Create (test mode) → copy config ke <code>www/firebase-config.js</code> → push. Tanpa config, sync offline (localStorage saja).</div>
+      <div style="display:none"><span id="syncLast"></span></div>
     </div>
 
     <div class="card">
@@ -1608,6 +1625,135 @@ function importStruk(mode){
 }
 document.getElementById('btnImportStrukPer')?.addEventListener('click', ()=> importStruk('per'));
 document.getElementById('btnImportStrukBulan')?.addEventListener('click', ()=> importStruk('bulan'));
+</script>
+
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+let db=null, unsub=null;
+let autoSync=false;
+
+function isFirebaseReady(){
+  const c=window.FIREBASE_CONFIG;
+  return c && c.apiKey && !c.apiKey.includes('PASTE');
+}
+function getSyncCode(){
+  return (document.getElementById('syncCode')?.value||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+}
+function setStatus(msg, ok){
+  const el=document.getElementById('syncStatus');
+  const badge=document.getElementById('badgeOnline');
+  if(el) el.innerHTML=msg;
+  if(badge){ badge.textContent= ok? 'online' : (isFirebaseReady()?'offline':'belum config'); badge.style.background= ok?'#ECFDF5':'#FEF3C7'; badge.style.color= ok?'#065F46':'#92400E'; }
+}
+function getCodeFromStorage(){
+  try{ return localStorage.getItem('budget-sync-code')||''; }catch(e){ return ''; }
+}
+if(document.getElementById('syncCode')){
+  document.getElementById('syncCode').value=getCodeFromStorage();
+}
+
+async function ensureDb(){
+  if(db) return db;
+  if(!isFirebaseReady()){
+    setStatus('⚠️ Firebase belum dikonfigurasi — isi <code>www/firebase-config.js</code> dari Firebase Console dulu. Sementara sync offline (localStorage saja).', false);
+    throw new Error('Firebase not configured');
+  }
+  const app=initializeApp(window.FIREBASE_CONFIG);
+  db=getFirestore(app);
+  setStatus('✅ Firebase siap — masukkan Kode Sync lalu Connect.', false);
+  return db;
+}
+
+async function pushToCloud(){
+  try{
+    const code=getSyncCode();
+    if(!code || code.length<4) return alert('Kode Sync minimal 4 huruf/angka (contoh KELUARGA123)');
+    localStorage.setItem('budget-sync-code', code);
+    await ensureDb();
+    const data=collectAll();
+    data._meta.pushedAt=new Date().toISOString();
+    data._meta.pushedFrom=navigator.userAgent.slice(0,60);
+    await setDoc(doc(db,'budgets',code), data);
+    setStatus(`⬆️ Push OK — <b>${code}</b> @ ${new Date().toLocaleTimeString('id-ID')} — buka HP lain → kode sama → Pull`, true);
+    localStorage.setItem('budget-sync-last', new Date().toISOString());
+  }catch(e){ alert('Push gagal: '+e.message); setStatus('❌ Push gagal: '+e.message, false); console.error(e); }
+}
+async function pullFromCloud(){
+  try{
+    const code=getSyncCode();
+    if(!code) return alert('Masukkan Kode Sync dulu');
+    localStorage.setItem('budget-sync-code', code);
+    await ensureDb();
+    const snap=await getDoc(doc(db,'budgets',code));
+    if(!snap.exists()) return alert('Kode '+code+' belum ada di cloud — Push dulu dari device yang ada datanya');
+    const data=snap.data();
+    if(!confirm(`Pull dari cloud \nKode: ${code}\nIsi: ${Object.keys(data.core||{}).length} field, ${(data.variabel||[]).length} pengeluaran, ${(data.tambahan||[]).length} tambahan\nTimpa data HP ini?`)) return;
+    applyData(data);
+    setStatus(`⬇️ Pull OK — <b>${code}</b> @ ${new Date().toLocaleTimeString('id-ID')}`, true);
+  }catch(e){ alert('Pull gagal: '+e.message); setStatus('❌ Pull gagal: '+e.message, false); }
+}
+async function connectSync(){
+  const code=getSyncCode();
+  if(!code || code.length<4) return alert('Kode minimal 4 karakter');
+  localStorage.setItem('budget-sync-code', code);
+  try{
+    await ensureDb();
+    const snap=await getDoc(doc(db,'budgets',code));
+    if(snap.exists()){
+      setStatus(`🔗 Connect OK — <b>${code}</b> ada di cloud (update ${new Date(snap.data()._meta?.pushedAt||'').toLocaleString('id-ID')}) → Pull untuk sync`, true);
+      if(autoSync){
+        if(unsub) unsub();
+        unsub=onSnapshot(doc(db,'budgets',code), (s)=>{
+          if(s.exists() && s.data()._meta?.pushedAt !== collectAll()._meta?.pushedAt){
+            setStatus(`🔄 Cloud update terdeteksi — klik Pull untuk sync`, true);
+          }
+        });
+      }
+    } else {
+      setStatus(`🔗 Connect OK — <b>${code}</b> belum ada di cloud → klik Push untuk upload data HP ini`, true);
+    }
+  }catch(e){ setStatus('❌ Connect gagal: '+e.message, false); }
+}
+
+document.getElementById('btnSyncConnect')?.addEventListener('click', connectSync);
+document.getElementById('btnSyncPush')?.addEventListener('click', pushToCloud);
+document.getElementById('btnSyncPull')?.addEventListener('click', pullFromCloud);
+document.getElementById('chkAutoSync')?.addEventListener('change', (e)=>{
+  autoSync=e.target.checked;
+  localStorage.setItem('budget-auto-sync', autoSync?'1':'0');
+  if(autoSync) connectSync();
+  else { if(unsub){ unsub(); unsub=null; } setStatus('Auto-sync OFF — manual Push/Pull', false); }
+});
+// restore autoSync state
+try{
+  const a=localStorage.getItem('budget-auto-sync')==='1';
+  document.getElementById('chkAutoSync').checked=a;
+  autoSync=a;
+  if(a && getCodeFromStorage()) setTimeout(connectSync, 800);
+}catch(e){}
+if(!isFirebaseReady()){
+  setStatus('⚠️ Firebase belum config — buka <code>www/firebase-config.js</code> isi dari Firebase Console. Sementara data hanya lokal.', false);
+} else {
+  setStatus('Siap — masukkan Kode Sync lalu Connect', false);
+}
+
+// Auto push on calc if enabled (debounced)
+let _pushTimer=null;
+const _origCalc2 = window.calc;
+if(_origCalc2){
+  window.calc = function(){
+    _origCalc2();
+    if(autoSync && isFirebaseReady() && getSyncCode()){
+      clearTimeout(_pushTimer);
+      _pushTimer=setTimeout(()=>{ pushToCloud().catch(()=>{}); }, 2500);
+    }
+  };
+}
+window.pushToCloud=pushToCloud;
+window.pullFromCloud=pullFromCloud;
 </script>
 
 </body>
