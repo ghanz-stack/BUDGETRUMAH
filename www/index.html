@@ -165,6 +165,16 @@ hr.sep{border:none; border-top:1px solid var(--border); margin:14px 0}
   .wrap{padding-bottom:84px}
 }
 
+
+/* REKAP mobile fix — efisien & tidak tumpang tindih */
+.rekap-grid{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:640px){ .rekap-grid{grid-template-columns:1fr} }
+@media(max-width:380px){ .sisa-box .v{font-size:.95rem} .rekap-grid{gap:8px} }
+.dash-breakdown-item{font-size:.78rem}
+@media(max-width:640px){ .dash-breakdown-item{font-size:.74rem} }
+.top3-grid{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px}
+@media(max-width:640px){ .top3-grid{grid-template-columns:1fr} }
+
 </style>
 </head>
 <body>
@@ -210,17 +220,18 @@ hr.sep{border:none; border-top:1px solid var(--border); margin:14px 0}
     <div class="page-title"><div class="icon teal">📊</div><div><h2>Dashboard</h2><p>Ringkasan bruto → bersih, per hari & status</p></div><span class="badge live">auto hitung</span></div>
 
     <div class="card sisa-card">
-      <div class="card-head" style="margin-bottom:4px"><div class="icon" style="background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.25)">✨</div><div><h2 style="color:#fff">Rekap Pemasukan — Dana Terpakai & Sisa</h2><p style="color:rgba(255,255,255,.85)">Total pemasukan → terpakai kemana, persen masing-masing, & pengeluaran terbesar</p></div><span class="badge" style="background:#fff; color:#0E7490" id="badgeRekap">valid</span></div>
-      <div class="sisa-grid" style="grid-template-columns:1fr 1fr 1fr">
-        <div class="sisa-box"><div class="k">Total Pemasukan</div><div class="v" id="dashRekapPemasukan">Rp0</div><div class="k" style="margin-top:4px" id="dashRekapPemasukanSub">Will+Istri</div></div>
-        <div class="sisa-box"><div class="k">Total Terpakai</div><div class="v" id="dashRekapTerpakai">Rp0</div><div class="k" style="margin-top:4px" id="dashRekapTerpakaiSub">0% dari pemasukan</div></div>
-        <div class="sisa-box" style="background:rgba(255,255,255,.22); border-color:#fff"><div class="k">Sisa Akhir</div><div class="v" id="dashRekapSisa">Rp0</div><div class="k" style="margin-top:4px" id="dashRekapSisaSub">per hari Rp0</div></div>
+      <div class="card-head" style="margin-bottom:4px"><div class="icon" style="background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.25)">✨</div><div><h2 style="color:#fff">Rekap — Pemasukan & Terpakai</h2><p style="color:rgba(255,255,255,.85)">Pemasukan, terpakai, sisa & top 3 pengeluaran</p></div><span class="badge" style="background:#fff; color:#0E7490" id="badgeRekap">live</span></div>
+      <div class="sisa-grid rekap-grid">
+        <div class="sisa-box"><div class="k">Pemasukan</div><div class="v" id="dashRekapPemasukan">Rp0</div><div class="k" style="margin-top:4px; opacity:.85" id="dashRekapPemasukanSub">Will+Istri</div></div>
+        <div class="sisa-box"><div class="k">Terpakai</div><div class="v" id="dashRekapTerpakai">Rp0</div><div class="k" style="margin-top:4px; opacity:.85" id="dashRekapTerpakaiSub">0%</div></div>
+        <div class="sisa-box" style="background:rgba(255,255,255,.22); border-color:#fff"><div class="k">Sisa</div><div class="v" id="dashRekapSisa">Rp0</div><div class="k" style="margin-top:4px; opacity:.9" id="dashRekapSisaSub">/hari Rp0</div></div>
       </div>
-      <div id="dashBreakdown" style="margin-top:12px; display:grid; gap:6px"></div>
-      <div style="margin-top:10px; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.22); border-radius:10px; padding:10px; display:flex; gap:8px; align-items:center">
-        <span style="font-size:18px">🏆</span><div><div class="k" style="color:#fff; opacity:.9">Pengeluaran Terbesar</div><div style="font-weight:800; color:#fff" id="dashTerbesar">-</div><div class="k" style="color:#fff; opacity:.8" id="dashTerbesarSub"></div></div><span id="dashTerbesarPct" style="margin-left:auto; background:#fff; color:#0E7490; padding:6px 10px; border-radius:999px; font-weight:800; font-size:.8rem">0%</span>
+      <div id="dashBreakdown" style="margin-top:12px; display:grid; gap:5px"></div>
+      <div style="margin-top:10px; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.22); border-radius:12px; padding:10px">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px"><span style="font-size:16px">🏆</span><span class="k" style="color:#fff; font-weight:800; opacity:.95">Top 3 Terbesar</span><span class="muted" style="color:#fff; opacity:.7; font-size:.72rem; margin-left:auto">dari pemasukan</span></div>
+        <div class="top3-grid" id="top3Grid"></div>
+        <div style="display:none"><span id="dashTerbesar"></span><span id="dashTerbesarSub"></span><span id="dashTerbesarPct"></span></div>
       </div>
-      <!-- hidden keep old ids for calc compat -->
       <div style="display:none"><span id="sisa"></span><span id="sisaSetelahVariabel"></span><span id="sisaBersih"></span><span id="perHari"></span><span id="perMinggu"></span><span id="pctAlokasiHero"></span><div id="barFill"></div><div id="statusText"></div></div>
     </div>
 
@@ -836,17 +847,31 @@ function calc(){
       {k:'Rencana (tabung/bln)', v:renTot, c:'#EA580C'},
       {k:'Alokasi (Dapur+Rekreasi+Skincare+Cadangan)', v:alok, c:'#059669'},
     ];
-    const maxItem = [...items].sort((a,b)=>b.v-a.v)[0];
+    // breakdown efisien
     const bd=document.getElementById('dashBreakdown');
     if(bd){
       bd.innerHTML=items.map(it=>{
         const p=pct(it.v);
-        return `<div style="display:flex; align-items:center; gap:8px; font-size:.78rem"><span style="width:10px; height:10px; border-radius:3px; background:${it.c}; display:inline-block"></span><span style="flex:1">${it.k}</span><b>${rp(it.v)}</b><span class="muted">${p}%</span><div style="width:70px; height:6px; background:#E2E8F0; border-radius:999px; overflow:hidden"><div style="width:${p}%; height:100%; background:${it.c}"></div></div></div>`;
+        // label pendek biar muat HP
+        const short=it.k.replace(' (Bensin+Cicilan+Rumah)','').replace(' (Popok+Susu)','').replace(' (tabung/bln)','').replace(' (Dapur+Rekreasi+Skincare+Cadangan)','');
+        return `<div class="dash-breakdown-item" style="display:flex; align-items:center; gap:6px"><span style="width:8px; height:8px; border-radius:3px; background:${it.c}; flex-shrink:0"></span><span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">${short}</span><b style="white-space:nowrap">${rp(it.v)}</b><span class="muted" style="white-space:nowrap">${p}%</span><div style="width:56px; height:5px; background:rgba(255,255,255,.25); border-radius:999px; overflow:hidden; flex-shrink:0"><div style="width:${p}%; height:100%; background:${it.c}"></div></div></div>`;
       }).join('');
     }
-    const te=document.getElementById('dashTerbesar'); if(te) te.textContent = maxItem.v? `${maxItem.k} — ${rp(maxItem.v)}` : '-';
-    const teSub=document.getElementById('dashTerbesarSub'); if(teSub) teSub.textContent = maxItem.v? `${pct(maxItem.v)}% dari pemasukan • ${maxItem.k.includes('Tetap')?'Cek cicilan/bensin': maxItem.k.includes('Variabel')?'Cek tabel Variabel': maxItem.k.includes('Alokasi')?'Atur di Menu Alokasi':'Perlu perhatian'}` : '';
-    const tePct=document.getElementById('dashTerbesarPct'); if(tePct) tePct.textContent = pct(maxItem.v)+'%';
+    // Top 3 terbesar
+    const sorted=[...items].sort((a,b)=>b.v-a.v).slice(0,3);
+    const top3El=document.getElementById('top3Grid');
+    if(top3El){
+      const medals=['🥇','🥈','🥉'];
+      top3El.innerHTML=sorted.map((it,i)=>{
+        const p=pct(it.v);
+        const short=it.k.split(' ')[0]; // Tetap, Anak, Mutasi, Variabel, Rencana, Alokasi
+        return `<div style="background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.22); border-radius:10px; padding:8px; text-align:center"><div style="font-size:14px">${medals[i]}</div><div style="font-weight:800; color:#fff; font-size:.78rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">${it.k.split('(')[0].trim()}</div><div style="font-weight:800; color:#fff; font-size:.82rem">${rp(it.v)}</div><div style="font-size:.70rem; color:#fff; opacity:.85">${p}%</div></div>`;
+      }).join('');
+    }
+    // keep compat single ids
+    const maxItem=sorted[0]||{k:'-',v:0};
+    const te=document.getElementById('dashTerbesar'); if(te) te.textContent=maxItem.k;
+    const tePct=document.getElementById('dashTerbesarPct'); if(tePct) tePct.textContent=pct(maxItem.v)+'%';
     // keep hidden old ids for compat
     const sisaBVal = base - mut - fixed - anak - varTot - renTot;
     const sisaBEl=document.getElementById('sisaBersih'); if(sisaBEl) sisaBEl.textContent=rp(Math.max(0,sisaBVal));
