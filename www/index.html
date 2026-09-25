@@ -277,7 +277,7 @@ hr.sep{border:none; border-top:1px solid var(--border); margin:14px 0}
       <div class="var-form" id="varForm">
         <div><label>Nama pengeluaran</label><input class="txt" id="varNama" placeholder="cth: Kuota Internet"></div>
         <div><label>Kategori</label><select id="varKategori">
-          <option>Komunikasi</option><option>Kendaraan</option><option>Pajak & STNK</option><option>Anak & Susu</option><option>Pendidikan</option><option>Perawatan</option><option>Langganan</option><option>Lainnya</option>
+          <option>Komunikasi</option><option>Kendaraan</option><option>Pajak & STNK</option><option>Anak & Susu</option><option>Pendidikan</option><option>Perawatan</option><option>Belanja Dapur & Masak</option><option>Jajan / Rekreasi</option><option>Skincare / Personal Care</option><option>Cadangan Dana</option><option>Langganan</option><option>Lainnya</option>
         </select></div>
         <div><label>Nominal (Rp)</label><input class="txt" id="varNominal" inputmode="numeric" placeholder="200000"></div>
         <div><label>Periode</label><select id="varPeriode">
@@ -362,19 +362,19 @@ hr.sep{border:none; border-top:1px solid var(--border); margin:14px 0}
           <button class="pill" data-preset="nyaman">🛒 Nyaman</button>
         </div>
         <div class="row" style="flex-direction:column; align-items:stretch; gap:6px">
-          <div style="display:flex; justify-content:space-between"><label>🥦 Belanja dapur & masak</label><input class="money" id="alDapur" inputmode="numeric" style="width:140px"></div>
+          <div style="display:flex; justify-content:space-between"><label>🥦 Belanja Dapur & Masak</label><input class="money" id="alDapur" inputmode="numeric" style="width:140px"></div>
           <input type="range" class="slider" id="slDapur" min="0" max="4000000" step="50000">
         </div>
         <div class="row" style="flex-direction:column; align-items:stretch; gap:6px; margin-top:10px">
-          <div style="display:flex; justify-content:space-between"><label>🍿 Cemilan / jajan</label><input class="money" id="alCemilan" inputmode="numeric" style="width:140px"></div>
+          <div style="display:flex; justify-content:space-between"><label>🎡 Jajan / Rekreasi</label><input class="money" id="alCemilan" inputmode="numeric" style="width:140px"></div>
           <input type="range" class="slider" id="slCemilan" min="0" max="1000000" step="50000">
         </div>
         <div class="row" style="flex-direction:column; align-items:stretch; gap:6px; margin-top:10px">
-          <div style="display:flex; justify-content:space-between"><label>🛡️ Tabungan umum</label><input class="money" id="alTabungan" inputmode="numeric" style="width:140px"></div>
+          <div style="display:flex; justify-content:space-between"><label>💅 Skincare / Personal Care</label><input class="money" id="alTabungan" inputmode="numeric" style="width:140px"></div>
           <input type="range" class="slider" id="slTabungan" min="0" max="2000000" step="50000">
         </div>
         <div class="row" style="flex-direction:column; align-items:stretch; gap:6px; margin-top:10px">
-          <div style="display:flex; justify-content:space-between"><label>🚨 Cadangan tak terduga</label><input class="money" id="alCadangan" inputmode="numeric" style="width:140px"></div>
+          <div style="display:flex; justify-content:space-between"><label>🛡️ Cadangan Dana</label><input class="money" id="alCadangan" inputmode="numeric" style="width:140px"></div>
           <input type="range" class="slider" id="slCadangan" min="0" max="1500000" step="50000">
         </div>
         <hr class="sep">
@@ -462,10 +462,10 @@ const defaults = {
   alDapur:1850000, alCemilan:350000, alTabungan:1000000, alCadangan:542000,
   mutasiTabungan:0, mutasiKet:""
 };
-const presets = {
-  seimbang:{alDapur:1850000, alCemilan:350000, alTabungan:1000000, alCadangan:542000},
-  hemat:{alDapur:1600000, alCemilan:250000, alTabungan:1300000, alCadangan:592000},
-  nyaman:{alDapur:2000000, alCemilan:500000, alTabungan:700000, alCadangan:542000}
+const presetsPct = {
+  seimbang:{alDapur:0.494, alCemilan:0.094, alTabungan:0.267, alCadangan:0.145},
+  hemat:{alDapur:0.43, alCemilan:0.067, alTabungan:0.347, alCadangan:0.156},
+  nyaman:{alDapur:0.534, alCemilan:0.134, alTabungan:0.187, alCadangan:0.145}
 };
 function fmtRibuan(n){ return Math.round(n).toLocaleString('id-ID'); }
 function rawDigits(s){ return (s.match(/\d/g)||[]).join(''); }
@@ -795,7 +795,7 @@ function calc(){
   const vals=[num("alDapur"),num("alCemilan"),num("alTabungan"),num("alCadangan")];
   const cols=['#0E7490','#F59E0B','#059669','#E11D48'];
   drawDonut(vals, cols);
-  document.getElementById('legend').innerHTML=['Dapur','Cemilan','Tabungan','Cadangan'].map((l,i)=> `<span><i style="background:${cols[i]}"></i>${l} ${rp(vals[i])}</span>`).join('');
+  document.getElementById('legend').innerHTML=['Dapur','Rekreasi','Skincare','Cadangan'].map((l,i)=> `<span><i style="background:${cols[i]}"></i>${l} ${rp(vals[i])}</span>`).join('');
   // log
   const lines=[];
   const add=(c,m)=> lines.push(`<span class="${c}">${m}</span>`);
@@ -830,8 +830,22 @@ ids.forEach(id=>{
   });
 });
 document.querySelectorAll('[data-preset]').forEach(b=> b.addEventListener('click', ()=>{
-  const p=presets[b.dataset.preset]; if(!p) return;
-  Object.entries(p).forEach(([k,v])=> document.getElementById(k).value=fmtRibuan(v));
+  const pct=presetsPct[b.dataset.preset]; if(!pct) return;
+  // hitung sisa bersih saat ini — biar pas, misal 3.719.000 → Seimbang pas 3.719.000
+  const base=num('incWill')+num('incWife');
+  const mut=num('mutasiTabungan')||0;
+  const fixed=num('fixBensin')+num('fixCicilan')+num('fixRumah');
+  const anak=num('popokQty')*num('popokHarga')+num('susuQty')*num('susuHarga');
+  const varTot=variabel.reduce((a,v)=>a+(v.periode==="Tahunan"?Math.round(v.nominal/12):v.nominal),0);
+  const renTot=rencana.reduce((a,r)=>{ const k=Math.max(0,r.target-r.terkumpul); const m=(function(d){ if(!d) return 12; const [y,mm]=d.split('-').map(Number); const now=new Date(); let diff=(y-now.getFullYear())*12+(mm-(now.getMonth()+1)); return diff<=0?1:diff; })(r.deadline); return a+(k?Math.ceil(k/m):0); },0);
+  const sisaB=Math.max(0, base - mut - fixed - anak - varTot - renTot);
+  let dapur=Math.round(sisaB*pct.alDapur), rek=Math.round(sisaB*pct.alCemilan), skin=Math.round(sisaB*pct.alTabungan);
+  let cad=sisaB - dapur - rek - skin;
+  if(cad<0) cad=0;
+  document.getElementById('alDapur').value=fmtRibuan(dapur);
+  document.getElementById('alCemilan').value=fmtRibuan(rek);
+  document.getElementById('alTabungan').value=fmtRibuan(skin);
+  document.getElementById('alCadangan').value=fmtRibuan(cad);
   document.querySelectorAll('[data-preset]').forEach(x=> x.classList.toggle('active', x===b));
   syncSliders(); calc();
 }));
