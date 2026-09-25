@@ -436,6 +436,13 @@ hr.sep{border:none; border-top:1px solid var(--border); margin:14px 0}
   <!-- DATA MANAJEMEN -->
   <section class="page" id="page-data">
     <div class="page-title"><div class="icon teal">💾</div><div><h2>Manajemen Data</h2><p>Backup, Export, Restore — semua perubahan auto-sync. Data tersimpan aman di HP ini.</p></div><span class="badge" id="badgeData">auto-save ON</span></div>
+    <div class="card" style="border-left:4px solid #0E7490; margin-bottom:14px">
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center">
+        <b style="font-size:.85rem">🔄 PWA tidak update?</b><span class="muted" style="font-size:.76rem">Klik hard refresh untuk ambil versi terbaru dari Pages</span>
+        <button class="btn btn-accent" id="btnHardRefresh" style="margin-left:auto; padding:8px 12px; font-size:.8rem">🔄 Hard Refresh PWA</button>
+      </div>
+      <div class="muted" style="font-size:.72rem; margin-top:6px">Hapus cache SW, update service worker, reload — data budget tetap aman (tidak terhapus).</div>
+    </div>
 
     <div class="card">
       <div class="card-head"><div class="icon sky">🔒</div><div><h2>Penyimpanan Aman</h2><p>localStorage + file backup — edit apapun langsung ke-update</p></div><span class="badge live">● sinkron</span></div>
@@ -1384,6 +1391,20 @@ document.getElementById('btnResetAll')?.addEventListener('click', resetAll);
 document.getElementById('btnCopyJson')?.addEventListener('click', ()=>{
   const t=document.getElementById('jsonPreview')?.textContent||'';
   navigator.clipboard.writeText(t).then(()=> alert('JSON tercopy!')).catch(()=> alert('Copy manual: Ctrl+A Ctrl+C'));
+});
+document.getElementById('btnHardRefresh')?.addEventListener('click', async ()=>{
+  if(!confirm('Hard refresh PWA? Akan hapus cache & ambil versi terbaru dari GitHub Pages. Data budget tetap aman.')) return;
+  try{
+    if('caches' in window){
+      const keys=await caches.keys();
+      await Promise.all(keys.map(k=>caches.delete(k)));
+    }
+    if('serviceWorker' in navigator){
+      const regs=await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r=>r.unregister()));
+    }
+  }catch(e){}
+  location.reload(true);
 });
 document.getElementById('importFile')?.addEventListener('change', (e)=>{
   const f=e.target.files[0]; if(!f) return;
