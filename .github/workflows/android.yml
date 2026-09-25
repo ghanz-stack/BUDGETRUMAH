@@ -24,27 +24,25 @@ jobs:
         uses: android-actions/setup-android@v4
 
       - name: Install dependencies
-        working-directory: budget-keluarga-webapp
         run: npm ci
 
       - name: Add Android platform
-        working-directory: budget-keluarga-webapp
         run: |
           if [ ! -d android ]; then npx cap add android; fi
           npx cap sync android
 
       - name: Make gradlew executable
-        run: chmod +x budget-keluarga-webapp/android/gradlew
+        run: chmod +x android/gradlew
 
       - name: Build Debug APK
-        working-directory: budget-keluarga-webapp/android
+        working-directory: android
         run: ./gradlew assembleDebug --stacktrace
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: budget-keluarga-debug
-          path: budget-keluarga-webapp/android/app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
 
       # OPTIONAL: build signed release jika kamu set secrets KEYSTORE_BASE64
       # - name: Build Signed Release
