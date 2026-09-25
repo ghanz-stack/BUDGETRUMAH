@@ -1419,11 +1419,28 @@ document.getElementById('importFile')?.addEventListener('change', (e)=>{
   const r=new FileReader();
   r.onload=()=>{
     try{
-      const txt=r.result.trim().replace(/^\uFEFF/, ''); const obj=JSON.parse(txt);
-      if(!obj.core && !obj.variabel && !obj.rencana && !obj.tambahan) throw new Error('Format tidak dikenal — file harus berisi core/tambahan/variabel/rencana');
-      if(!confirm(`Import ${f.name}? Data sekarang akan tertimpa.`)) return;
+      const raw=r.result;
+      const txt=raw.trim().replace(/^\uFEFF/, '');
+      // jika user salah pilih file TXT rekap (bukan JSON)
+      if(txt.startsWith('REKAP BUDGET')){
+        throw new Error('File TXT rekap tidak bisa di-restore.\n\nGunakan file JSON: backup-budget-*.json\nTXT hanya untuk dibaca, bukan untuk restore.');
+      }
+      const obj=JSON.parse(txt);
+      // validasi longgar — terima backup lama (tanpa tambahan/alWill) maupun baru
+      const hasData = obj.core || obj.variabel || obj.rencana || obj.tambahan || obj._meta;
+      if(!hasData) throw new Error('Format tidak dikenal — file harus berisi core/tambahan/variabel/rencana');
+      // normalisasi backup lama: alWill/alIstri belum ada → set 0 biar tidak hilang
+      if(obj.core){
+        if(obj.core.alWill===undefined) obj.core.alWill=0;
+        if(obj.core.alIstri===undefined) obj.core.alIstri=0;
+        if(typeof obj.core.mutasiKet==='number') obj.core.mutasiKet=String(obj.core.mutasiKet);
+      }
+      if(!confirm(`Import ${f.name}?\n\nIsi: core ${obj.core?Object.keys(obj.core).length:0} field, tambahan ${(obj.tambahan||[]).length} , variabel ${(obj.variabel||[]).length}, rencana ${(obj.rencana||[]).length}\nData sekarang akan tertimpa.`)) return;
       applyData(obj);
-    }catch(err){ alert('Gagal import: '+err.message); }
+    }catch(err){ 
+      console.error('Import error', err);
+      alert('Gagal import: '+err.message+'\n\nPastikan pilih file JSON backup (backup-budget-*.json), bukan TXT rekap.'); 
+    }
   };
   r.readAsText(f);
   e.target.value='';
