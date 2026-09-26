@@ -645,7 +645,7 @@ function loadCustomMode(id){
     const ratio=sisa/sum;
     vals=vals.map(v=>Math.round(v*ratio));
   }
-  ["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri"].forEach((k,i)=>{
+  ["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry"].forEach((k,i)=>{
     document.getElementById(k).value=fmtRibuan(vals[i]||0);
   });
   document.querySelectorAll('[data-preset]').forEach(x=>x.classList.remove('active'));
@@ -1239,9 +1239,17 @@ function getSisaBersih(){
 }
 function clampAlokasi(changedId, proposed){
   const sisa=getSisaBersih();
-  const alokasiIds=["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri"];
+  const alokasiIds=["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry"];
   let sumOthers=0;
   alokasiIds.forEach(id=>{ if(id!==changedId) sumOthers+=num(id); });
+  // pagar keras: jika sudah over, max = nilai saat ini (cuma boleh kurangi)
+  const total=num("alDapur")+num("alCemilan")+num("alTabungan")+num("alCadangan")+num("alWill")+num("alIstri")+num("alLaundry");
+  const isOver = total > sisa;
+  const cur=num(changedId);
+  if(isOver){
+    // over → tidak boleh nambah, cuma boleh stay atau kurangi
+    return Math.min(proposed, cur);
+  }
   const maxAllowed=Math.max(0, sisa - sumOthers);
   if(proposed > maxAllowed){
     return maxAllowed;
@@ -1257,7 +1265,7 @@ ids.forEach(id=>{
       const raw=rawDigits(el.value);
       let val=raw? Number(raw):0;
       // pagar: jika alokasi melebihi sisa, clamp
-      if(["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri"].includes(id)){
+      if(["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry"].includes(id)){
         const clamped=clampAlokasi(id, val);
         if(clamped!==val){
           val=clamped;
@@ -1295,8 +1303,8 @@ ids.forEach(id=>{
     document.getElementById(inp).value=fmtRibuan(val);
     // update max pagar untuk semua slider
     const sisa=getSisaBersih();
-    ["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri"].forEach(id=>{
-      const sId={alDapur:"slDapur",alCemilan:"slCemilan",alTabungan:"slTabungan",alCadangan:"slCadangan",alWill:"slWill",alIstri:"slIstri"}[id];
+    ["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry"].forEach(id=>{
+      const sId={alDapur:"slDapur",alCemilan:"slCemilan",alTabungan:"slTabungan",alCadangan:"slCadangan",alWill:"slWill",alIstri:"slIstri",alLaundry:"slLaundry"}[id];
       const sumOthers=["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry"].filter(x=>x!==id).reduce((a,x)=>a+num(x),0);
       const el=document.getElementById(sId); if(el) el.max=Math.max(0, sisa - sumOthers + num(id));
     });
@@ -1323,7 +1331,7 @@ document.getElementById('btnSaveMode')?.addEventListener('click', ()=>{
   // kunci otomatis setelah simpan
   setTimeout(()=>{ localStorage.setItem('budget-alokasi-locked','1'); calc(); }, 300);
   if(!nama) return;
-  const vals=["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri"].map(k=>num(k));
+  const vals=["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry"].map(k=>num(k));
   const sum=vals.reduce((a,b)=>a+b,0);
   if(!sum) return alert('Alokasi masih 0 — atur dulu');
   customModes.push({id:Date.now().toString(), nama:nama.trim(), vals, createdAt:new Date().toISOString()});
