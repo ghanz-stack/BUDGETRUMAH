@@ -921,9 +921,13 @@ function calc(){
   document.getElementById("badgeAnak").textContent=rp(anak);
   document.getElementById("perHari").textContent=rp(Math.round(sisaBersih/30));
   document.getElementById("perMinggu").textContent=rp(Math.round(sisaBersih/4.3));
-  // update sliders max to sisaBersih
+  // update sliders max dengan pagar — sisa + nilai saat ini biar tidak melebihi budget
   ["slDapur","slCemilan","slTabungan","slCadangan","slWill","slIstri"].forEach(id=>{
-    const el=document.getElementById(id); if(el) el.max=Math.max(500000, sisaBersih);
+    const el=document.getElementById(id); if(!el) return;
+    const alId={slDapur:"alDapur",slCemilan:"alCemilan",slTabungan:"alTabungan",slCadangan:"slCadangan",slWill:"alWill",slIstri:"slIstri"}[id];
+    const cur=num(alId);
+    const sumOthers=["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri"].filter(x=>x!==alId).reduce((a,x)=>a+num(x),0);
+    el.max=Math.max(cur, sisaBersih - sumOthers + cur);
   });
   const pct = sisaBersih>0 ? Math.min(100, (alokasi/sisaBersih)*100) : 0;
   document.getElementById("barFill").style.width=pct+"%";
@@ -1057,22 +1061,79 @@ function calc(){
   saveCore();
 }
 
+
+function getSisaBersih(){
+  const base=num('incWill')+num('incWife')+pemasukanTambahan.reduce((a,t)=>a+t.nominal,0);
+  const mut=num('mutasiTabungan')||0;
+  const fixed=num('fixBensin')+num('fixCicilan')+num('fixRumah');
+  const anak=num('popokQty')*num('popokHarga')+num('susuQty')*num('susuHarga');
+  const varTot=variabel.reduce((a,v)=>a+(v.periode==="Tahunan"?Math.round(v.nominal/12):v.nominal),0);
+  const renTot=rencana.reduce((a,r)=>{ if(!r.bulanan) ensureBulanan(r); const k=Math.max(0,r.target-r.terkumpul); if(k<=0) return a; return a+getBulananForCurrent(r); },0);
+  return Math.max(0, base - mut - fixed - anak - varTot - renTot);
+}
+function clampAlokasi(changedId, proposed){
+  const sisa=getSisaBersih();
+  const alokasiIds=["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri"];
+  let sumOthers=0;
+  alokasiIds.forEach(id=>{ if(id!==changedId) sumOthers+=num(id); });
+  const maxAllowed=Math.max(0, sisa - sumOthers);
+  if(proposed > maxAllowed){
+    return maxAllowed;
+  }
+  return proposed;
+}
+
 // events core
 ids.forEach(id=>{
   const el=document.getElementById(id);
   el.addEventListener("input", ()=>{
     if(moneyIds.includes(id)){
       const raw=rawDigits(el.value);
-      el.value = raw? fmtRibuan(Number(raw)) : "";
+      let val=raw? Number(raw):0;
+      // pagar: jika alokasi melebihi sisa, clamp
+      if(["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri"].includes(id)){
+        const clamped=clampAlokasi(id, val);
+        if(clamped!==val){
+          val=clamped;
+          el.value = val? fmtRibuan(val) : "0";
+          // feedback
+          const info=document.getElementById('info_'+id);
+          if(info){ info.style.color='#E11D48'; setTimeout(()=>info.style.color='', 800); }
+        } else {
+          el.value = raw? fmtRibuan(val) : "";
+        }
+      } else {
+        el.value = raw? fmtRibuan(val) : "";
+      }
     }
     const map={alDapur:"slDapur", alCemilan:"slCemilan", alTabungan:"slTabungan", alCadangan:"slCadangan", alWill:"slWill", alIstri:"slIstri"};
-    if(map[id]) document.getElementById(map[id]).value=num(id);
+    if(map[id]){
+      const clampedVal=num(id);
+      document.getElementById(map[id]).value=clampedVal;
+      // update slider max to sisa pagar
+      const sisa=getSisaBersih();
+      const sumOthers=["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri"].filter(x=>x!==id).reduce((a,x)=>a+num(x),0);
+      document.getElementById(map[id]).max=Math.max(0, sisa - sumOthers + clampedVal);
+    }
     calc();
   });
 });
 [["slDapur","alDapur"],["slCemilan","alCemilan"],["slTabungan","alTabungan"],["slCadangan","alCadangan"],["slWill","alWill"],["slIstri","alIstri"]].forEach(([sl,inp])=>{
   document.getElementById(sl).addEventListener("input", e=>{
-    document.getElementById(inp).value=fmtRibuan(Number(e.target.value)||0);
+    let val=Number(e.target.value)||0;
+    const clamped=clampAlokasi(inp, val);
+    if(clamped!==val){
+      val=clamped;
+      e.target.value=val;
+    }
+    document.getElementById(inp).value=fmtRibuan(val);
+    // update max pagar untuk semua slider
+    const sisa=getSisaBersih();
+    ["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri"].forEach(id=>{
+      const sId={alDapur:"slDapur",alCemilan:"slCemilan",alTabungan:"slTabungan",alCadangan:"slCadangan",alWill:"slWill",alIstri:"slIstri"}[id];
+      const sumOthers=["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri"].filter(x=>x!==id).reduce((a,x)=>a+num(x),0);
+      const el=document.getElementById(sId); if(el) el.max=Math.max(0, sisa - sumOthers + num(id));
+    });
     calc();
   });
 });
