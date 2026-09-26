@@ -236,6 +236,12 @@ html,body{overflow-x:hidden; max-width:100vw}
 @media(max-width:900px){ .tmb-form{grid-template-columns:1fr 1fr} .tmb-form > div:last-child{grid-column:1 / -1} }
 @media(max-width:480px){ .tmb-form{grid-template-columns:1fr} }
 
+
+.alokasi-bar{height:8px; background:#E2E8F0; border-radius:999px; overflow:hidden; display:flex; margin-top:4px}
+.alokasi-bar .fill-terpakai{background:#E11D48; transition:width .2s}
+.alokasi-bar .fill-sisa{background:#059669; transition:width .2s}
+.alokasi-bar .fill-kosong{background:transparent}
+
 </style>
 </head>
 <body>
@@ -459,39 +465,39 @@ html,body{overflow-x:hidden; max-width:100vw}
           <div style="display:flex; justify-content:space-between"><label>🥦 Belanja Dapur & Masak</label><input class="money" id="alDapur" inputmode="numeric" style="width:140px"></div>
           <input type="range" class="slider" id="slDapur" min="0" max="4000000" step="50000">
         
-        <div class="muted" id="info_alDapur" style="font-size:.72rem; display:flex; justify-content:space-between; gap:8px"><span>Terpakai: Rp0</span><span>Sisa: Rp0</span></div>
+        <div class="muted" id="info_alDapur" style="font-size:.72rem; display:flex; justify-content:space-between; gap:8px"><span>Terpakai: Rp0</span><span>Sisa: Rp0</span></div><div class="alokasi-bar" id="bar_alDapur"><div class="fill-terpakai" style="width:0%"></div><div class="fill-sisa" style="width:0%"></div></div><div style="display:flex; justify-content:space-between; font-size:.68rem; color:var(--muted); margin-top:2px"><span id="pct_alDapur_terpakai">0% terpakai</span><span id="pct_alDapur_sisa">100% sisa</span></div>
       </div>
         <div class="row" style="flex-direction:column; align-items:stretch; gap:6px; margin-top:10px">
           <div style="display:flex; justify-content:space-between"><label>🎡 Jajan / Rekreasi</label><input class="money" id="alCemilan" inputmode="numeric" style="width:140px"></div>
           <input type="range" class="slider" id="slCemilan" min="0" max="1000000" step="50000">
         
-        <div class="muted" id="info_alCemilan" style="font-size:.72rem; display:flex; justify-content:space-between; gap:8px"><span>Terpakai: Rp0</span><span>Sisa: Rp0</span></div>
+        <div class="muted" id="info_alCemilan" style="font-size:.72rem; display:flex; justify-content:space-between; gap:8px"><span>Terpakai: Rp0</span><span>Sisa: Rp0</span></div><div class="alokasi-bar" id="bar_alCemilan"><div class="fill-terpakai" style="width:0%"></div><div class="fill-sisa" style="width:0%"></div></div><div style="display:flex; justify-content:space-between; font-size:.68rem; color:var(--muted); margin-top:2px"><span id="pct_alCemilan_terpakai">0% terpakai</span><span id="pct_alCemilan_sisa">100% sisa</span></div>
       </div>
         <div class="row" style="flex-direction:column; align-items:stretch; gap:6px; margin-top:10px">
           <div style="display:flex; justify-content:space-between"><label>💅 Skincare / Personal Care</label><input class="money" id="alTabungan" inputmode="numeric" style="width:140px"></div>
           <input type="range" class="slider" id="slTabungan" min="0" max="2000000" step="50000">
         
-        <div class="muted" id="info_alTabungan" style="font-size:.72rem; display:flex; justify-content:space-between; gap:8px"><span>Terpakai: Rp0</span><span>Sisa: Rp0</span></div>
+        <div class="muted" id="info_alTabungan" style="font-size:.72rem; display:flex; justify-content:space-between; gap:8px"><span>Terpakai: Rp0</span><span>Sisa: Rp0</span></div><div class="alokasi-bar" id="bar_alTabungan"><div class="fill-terpakai" style="width:0%"></div><div class="fill-sisa" style="width:0%"></div></div><div style="display:flex; justify-content:space-between; font-size:.68rem; color:var(--muted); margin-top:2px"><span id="pct_alTabungan_terpakai">0% terpakai</span><span id="pct_alTabungan_sisa">100% sisa</span></div>
       </div>
         <div class="row" style="flex-direction:column; align-items:stretch; gap:6px; margin-top:10px">
           <div style="display:flex; justify-content:space-between"><label>🛡️ Cadangan Dana</label><input class="money" id="alCadangan" inputmode="numeric" style="width:140px"></div>
           <input type="range" class="slider" id="slCadangan" min="0" max="1500000" step="50000">
-        <div class="muted" id="info_alCadangan" style="font-size:.72rem; display:flex; justify-content:space-between; gap:8px"><span>Terpakai: Rp0</span><span>Sisa: Rp0</span></div>
+        <div class="muted" id="info_alCadangan" style="font-size:.72rem; display:flex; justify-content:space-between; gap:8px"><span>Terpakai: Rp0</span><span>Sisa: Rp0</span></div><div class="alokasi-bar" id="bar_alCadangan"><div class="fill-terpakai" style="width:0%"></div><div class="fill-sisa" style="width:0%"></div></div><div style="display:flex; justify-content:space-between; font-size:.68rem; color:var(--muted); margin-top:2px"><span id="pct_alCadangan_terpakai">0% terpakai</span><span id="pct_alCadangan_sisa">100% sisa</span></div>
       </div>
       <div class="row" style="flex-direction:column; align-items:stretch; gap:6px; margin-top:10px">
         <div style="display:flex; justify-content:space-between"><label>💼 Uang Pegangan Will</label><input class="money" id="alWill" inputmode="numeric" style="width:140px"></div>
         <input type="range" class="slider" id="slWill" min="0" max="1500000" step="50000">
-        <div class="muted" id="info_alWill" style="font-size:.72rem; display:flex; justify-content:space-between; gap:8px"><span>Terpakai: Rp0</span><span>Sisa: Rp0</span></div>
+        <div class="muted" id="info_alWill" style="font-size:.72rem; display:flex; justify-content:space-between; gap:8px"><span>Terpakai: Rp0</span><span>Sisa: Rp0</span></div><div class="alokasi-bar" id="bar_alWill"><div class="fill-terpakai" style="width:0%"></div><div class="fill-sisa" style="width:0%"></div></div><div style="display:flex; justify-content:space-between; font-size:.68rem; color:var(--muted); margin-top:2px"><span id="pct_alWill_terpakai">0% terpakai</span><span id="pct_alWill_sisa">100% sisa</span></div>
       </div>
       <div class="row" style="flex-direction:column; align-items:stretch; gap:6px; margin-top:10px">
         <div style="display:flex; justify-content:space-between"><label>👜 Uang Pegangan Istri</label><input class="money" id="alIstri" inputmode="numeric" style="width:140px"></div>
         <input type="range" class="slider" id="slIstri" min="0" max="1500000" step="50000">
-        <div class="muted" id="info_alIstri" style="font-size:.72rem; display:flex; justify-content:space-between; gap:8px"><span>Terpakai: Rp0</span><span>Sisa: Rp0</span></div>
+        <div class="muted" id="info_alIstri" style="font-size:.72rem; display:flex; justify-content:space-between; gap:8px"><span>Terpakai: Rp0</span><span>Sisa: Rp0</span></div><div class="alokasi-bar" id="bar_alIstri"><div class="fill-terpakai" style="width:0%"></div><div class="fill-sisa" style="width:0%"></div></div><div style="display:flex; justify-content:space-between; font-size:.68rem; color:var(--muted); margin-top:2px"><span id="pct_alIstri_terpakai">0% terpakai</span><span id="pct_alIstri_sisa">100% sisa</span></div>
       </div>
       <div class="row" style="flex-direction:column; align-items:stretch; gap:6px; margin-top:10px">
         <div style="display:flex; justify-content:space-between"><label>👕 Laundry</label><input class="money" id="alLaundry" inputmode="numeric" style="width:140px"></div>
         <input type="range" class="slider" id="slLaundry" min="0" max="1000000" step="50000">
-        <div class="muted" id="info_alLaundry" style="font-size:.72rem; display:flex; justify-content:space-between; gap:8px"><span>Terpakai: Rp0</span><span>Sisa: Rp0</span></div>
+        <div class="muted" id="info_alLaundry" style="font-size:.72rem; display:flex; justify-content:space-between; gap:8px"><span>Terpakai: Rp0</span><span>Sisa: Rp0</span></div><div class="alokasi-bar" id="bar_alLaundry"><div class="fill-terpakai" style="width:0%"></div><div class="fill-sisa" style="width:0%"></div></div><div style="display:flex; justify-content:space-between; font-size:.68rem; color:var(--muted); margin-top:2px"><span id="pct_alLaundry_terpakai">0% terpakai</span><span id="pct_alLaundry_sisa">100% sisa</span></div>
       </div>
         <hr class="sep">
         <div class="total-row"><span>Terpakai dari sisa bersih</span><span id="pctAlokasi2">0%</span></div>
@@ -1076,12 +1082,24 @@ function calc(){
       const terpakai=variabel.reduce((a,v)=> a + (v.kategori===kat ? monthlyOf(v) : 0), 0);
       totalTerpakai+=terpakai;
       const sisa=alVal - terpakai;
+      const pctTerpakai = alVal ? Math.round(terpakai/alVal*100) : 0;
+      const pctSisa = 100 - pctTerpakai;
       const el=document.getElementById('info_'+alId);
       if(el){
         const sisaColor = sisa<0 ? '#E11D48' : sisa===alVal ? '#6B7A99' : '#059669';
-        const status = sisa<0 ? 'Over!' : sisa===0 ? 'Pas' : `Sisa ${rp(sisa)}`;
-        el.innerHTML=`<span>Terpakai: <b>${rp(terpakai)}</b> ${terpakai?`(${variabel.filter(v=>v.kategori===kat).length} pengeluaran)`:''}</span><span style="color:${sisaColor}; font-weight:700">${status}</span>`;
+        const status = sisa<0 ? `Over ${rp(Math.abs(sisa))}!` : sisa===0 ? 'Pas' : `Sisa ${rp(sisa)}`;
+        el.innerHTML=`<span>Terpakai: <b>${rp(terpakai)}</b> ${terpakai?`(${variabel.filter(v=>v.kategori===kat).length})`:''}</span><span style="color:${sisaColor}; font-weight:700">${status}</span>`;
       }
+      const bar=document.getElementById('bar_'+alId);
+      if(bar){
+        const terEl=bar.querySelector('.fill-terpakai');
+        const sisaEl=bar.querySelector('.fill-sisa');
+        if(terEl) terEl.style.width = Math.min(100, Math.max(0, pctTerpakai))+'%';
+        if(sisaEl) sisaEl.style.width = Math.max(0, Math.min(100-pctTerpakai, 100))+'%';
+        bar.style.opacity = alVal? '1' : '0.35';
+      }
+      const pctT=document.getElementById('pct_'+alId+'_terpakai'); if(pctT) pctT.textContent=pctTerpakai+'% terpakai';
+      const pctS=document.getElementById('pct_'+alId+'_sisa'); if(pctS) pctS.textContent=pctSisa+'% sisa';
     });
     const sisaAlokasi = totalAlokasi - totalTerpakai;
     const elT=document.getElementById('alokasiTerpakaiInfo'); if(elT) elT.textContent=rp(totalTerpakai);
