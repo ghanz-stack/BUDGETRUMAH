@@ -1036,17 +1036,40 @@ function calc(){
   document.getElementById("badgeAnak").textContent=rp(anak);
   document.getElementById("perHari").textContent=rp(Math.round(sisaBersih/30));
   document.getElementById("perMinggu").textContent=rp(Math.round(sisaBersih/4.3));
-  // slider max konsisten = sisaBersih (persentase & tataletak konsisten), pagar via clamp di handler
+  // slider max + PAGAR KERAS — over = kunci total, tidak bisa tambah lagi
+  const totalAlokasiForPagar = num("alDapur")+num("alCemilan")+num("alTabungan")+num("alCadangan")+num("alWill")+num("alIstri")+num("alLaundry");
+  const isOverAll = totalAlokasiForPagar > sisaBersih;
   ["slDapur","slCemilan","slTabungan","slCadangan","slWill","slIstri","slLaundry"].forEach(id=>{
-    const el=document.getElementById(id); if(el) el.max=Math.max(100000, sisaBersih);
-    // disable slider jika overbudget dan bukan yang sedang diedit — pagar keras
+    const el=document.getElementById(id); if(!el) return;
     const alId={slDapur:"alDapur",slCemilan:"alCemilan",slTabungan:"alTabungan",slCadangan:"slCadangan",slWill:"alWill",slIstri:"slIstri",slLaundry:"alLaundry"}[id];
-    const isOver = (num("alDapur")+num("alCemilan")+num("alTabungan")+num("alCadangan")+num("alWill")+num("alIstri")+num("alLaundry")) > sisaBersih;
-    if(isOver){
-      el.style.opacity="0.55";
+    const cur=num(alId);
+    if(isOverAll){
+      el.max=cur; // pagar: mentok di nilai saat ini, cuma bisa kurangi
+      el.style.opacity="0.45";
+      el.style.cursor="not-allowed";
+      el.title="OVERBUDGET Rp"+fmtRibuan(totalAlokasiForPagar - sisaBersih)+" — kurangi salah satu alokasi dulu";
     } else {
+      el.max=Math.max(100000, sisaBersih);
       el.style.opacity="1";
+      el.style.cursor="pointer";
+      el.title="";
     }
+  });
+  // money input juga pagar keras saat over
+  ["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry"].forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    if(isOverAll){
+      el.style.borderColor="#FECACA";
+      el.style.background="#FEF2F2";
+    } else {
+      el.style.borderColor="";
+      el.style.background="";
+    }
+  });
+  // preset & bagi rata disable saat over
+  document.querySelectorAll('[data-preset], #btnBagi').forEach(b=>{
+    if(isOverAll){ b.disabled=true; b.style.opacity="0.45"; b.style.cursor="not-allowed"; b.title="OVERBUDGET — kurangi alokasi dulu"; }
+    else { b.disabled=false; b.style.opacity="1"; b.style.cursor="pointer"; b.title=""; }
   });
   // kunci alokasi jika terkunci
   const locked = localStorage.getItem('budget-alokasi-locked')==='1';
