@@ -246,6 +246,26 @@ html,body{overflow-x:hidden; max-width:100vw}
 /* AUTO AIM — input fokus auto select + highlight */
 .money:focus, .txt:focus, .qty:focus{outline:none; border-color:var(--accent2); background:#fff; box-shadow:0 0 0 3px rgba(6,182,214,.18)}
 
+
+/* LAPORAN DECK */
+.deck{position:relative; overflow:hidden}
+.deck-track{display:flex; transition:transform .35s cubic-bezier(.4,0,.2,1); will-change:transform}
+.deck-slide{min-width:100%; padding:12px; box-sizing:border-box}
+.deck-nav{display:flex; justify-content:center; gap:8px; margin:12px 0 8px}
+.deck-dot{width:8px; height:8px; border-radius:50%; background:#E2E8F0; border:none; cursor:pointer; transition:.2s}
+.deck-dot.active{background:var(--accent); transform:scale(1.25)}
+.deck-card{background:var(--card); border:1px solid var(--border); border-radius:18px; overflow:hidden; box-shadow:0 6px 24px rgba(15,23,42,.08)}
+.deck-header{padding:16px; color:#fff; position:relative; overflow:hidden}
+.deck-header::after{content:""; position:absolute; inset:0; background:radial-gradient(circle at 85% 15%, rgba(255,255,255,.18), transparent 35%); pointer-events:none}
+.deck-title{position:relative; z-index:1; margin:0; font-size:1.15rem; font-weight:800}
+.deck-sub{position:relative; z-index:1; margin:4px 0 0; font-size:.82rem; opacity:.9}
+.deck-body{padding:14px}
+.deck-kpi{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:10px}
+@media(max-width:640px){ .deck-kpi{grid-template-columns:1fr} }
+.deck-kpi .kbox{background:#F8FAFC; border:1px solid var(--border); border-radius:12px; padding:10px; text-align:center}
+.deck-kpi .kbox b{font-size:1.05rem; display:block}
+.deck-kpi .kbox span{font-size:.72rem; color:var(--muted)}
+
 </style>
 </head>
 <body>
@@ -281,6 +301,7 @@ html,body{overflow-x:hidden; max-width:100vw}
     <button class="nav-btn" data-page="pengeluaran"><span class="ico">💸</span> Pengeluaran</button>
     <button class="nav-btn" data-page="rencana"><span class="ico">🎯</span> Rencana</button>
     <button class="nav-btn" data-page="alokasi"><span class="ico">🍳</span> Alokasi</button>
+    <button class="nav-btn" data-page="laporan"><span class="ico">📑</span> Laporan</button>
     <button class="nav-btn" data-page="data"><span class="ico">💾</span> Data</button>
   </nav>
 </div>
@@ -528,6 +549,104 @@ html,body{overflow-x:hidden; max-width:100vw}
   </section>
 
   
+  <!-- LAPORAN DECK -->
+  <section class="page" id="page-laporan">
+    <div class="page-title"><div class="icon" style="background:linear-gradient(135deg,#0E7490,#8B5CF6)">📑</div><div><h2>Laporan Bulanan — Deck</h2><p>Visual deck per bulan, cover semua lini. Simpan snapshot & export.</p></div>
+      <span class="badge" id="badgeLaporan">live</span>
+    </div>
+
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center">
+        <select id="laporanBulan" class="txt" style="width:160px; font-weight:700"></select>
+        <button class="btn btn-accent" id="btnBuatLaporan">📸 Simpan Bulan Ini</button>
+        <button class="btn btn-soft" id="btnHapusLaporan">🗑️ Hapus</button>
+        <button class="btn btn-soft" id="btnExportLaporan">⬇️ Export Deck (TXT)</button>
+        <button class="btn btn-soft" id="btnPrevDeck" style="margin-left:auto">‹ Prev</button>
+        <button class="btn btn-soft" id="btnNextDeck">Next ›</button>
+      </div>
+      <div class="muted" style="font-size:.72rem; margin-top:6px">Snapshot disimpan di <code>budget-reports</code> per <code>YYYY-MM</code> — include: pemasukan (Will/Istri/tambahan), tetap, anak, mutasi, pengeluaran per kategori, rencana, alokasi 7 poin (terpakai/sisa), top 3. PWA live auto-sync.</div>
+    </div>
+
+    <div class="deck" id="deck">
+      <div class="deck-track" id="deckTrack">
+        <!-- Slide 1: Cover -->
+        <div class="deck-slide"><div class="deck-card">
+          <div class="deck-header" style="background:linear-gradient(135deg,#0F766E,#0E7490 40%,#06B6D4)">
+            <h3 class="deck-title" id="deckCoverTitle">Laporan —</h3>
+            <p class="deck-sub" id="deckCoverSub">Memuat...</p>
+          </div>
+          <div class="deck-body">
+            <div class="deck-kpi">
+              <div class="kbox"><b id="deckCoverPemasukan">Rp0</b><span>Total Pemasukan</span></div>
+              <div class="kbox"><b id="deckCoverTerpakai">Rp0</b><span>Total Terpakai</span></div>
+              <div class="kbox" style="background:#0E7490; color:#fff; border-color:#0E7490"><b id="deckCoverSisa" style="color:#fff">Rp0</b><span style="color:rgba(255,255,255,.85)">Sisa Akhir</span></div>
+            </div>
+            <div id="deckCoverStatus" style="background:#ECFDF5; border:1px solid #A7F3D0; border-radius:12px; padding:10px; font-size:.82rem; font-weight:700; color:#065F46; text-align:center">Sehat</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; font-size:.76rem">
+              <div style="background:#F8FAFC; border:1px solid var(--border); border-radius:10px; padding:8px"><b>Per hari</b><br><span id="deckCoverHari">Rp0</span></div>
+              <div style="background:#F8FAFC; border:1px solid var(--border); border-radius:10px; padding:8px"><b>Per minggu</b><br><span id="deckCoverMinggu">Rp0</span></div>
+            </div>
+          </div>
+        </div></div>
+        <!-- Slide 2: Pemasukan -->
+        <div class="deck-slide"><div class="deck-card">
+          <div class="deck-header" style="background:linear-gradient(135deg,#7C3AED,#EC4899)"><h3 class="deck-title">Pemasukan & Mutasi</h3><p class="deck-sub">Will, Istri, tambahan & pindah ke tabungan</p></div>
+          <div class="deck-body">
+            <div id="deckPemasukanList" style="display:grid; gap:6px"></div>
+            <div class="total-row"><span>Total Pemasukan</span><span id="deckPemasukanTotal">Rp0</span></div>
+            <div class="muted" id="deckMutasiInfo" style="margin-top:6px; font-size:.76rem"></div>
+            <canvas id="deckPemasukanChart" width="320" height="160" style="max-width:100%; margin-top:10px"></canvas>
+          </div>
+        </div></div>
+        <!-- Slide 3: Pengeluaran -->
+        <div class="deck-slide"><div class="deck-card">
+          <div class="deck-header" style="background:linear-gradient(135deg,#0284C7,#22D3EE)"><h3 class="deck-title">Pengeluaran — Tetap, Anak & Variabel</h3><p class="deck-sub">Per kategori, hemat & terbesar</p></div>
+          <div class="deck-body">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px">
+              <div style="background:#F8FAFC; border:1px solid var(--border); border-radius:10px; padding:8px"><b>Tetap</b><br><span id="deckTetap">Rp0</span> <span class="muted" id="deckTetapPct">0%</span></div>
+              <div style="background:#F8FAFC; border:1px solid var(--border); border-radius:10px; padding:8px"><b>Anak</b><br><span id="deckAnak">Rp0</span> <span class="muted" id="deckAnakPct">0%</span></div>
+            </div>
+            <div id="deckVariabelList" style="display:grid; gap:5px; max-height:220px; overflow:auto; border:1px solid var(--border); border-radius:10px; padding:8px"></div>
+            <div class="total-row"><span>Total Pengeluaran (Tetap+Anak+Variabel)</span><span id="deckKeluarTotal">Rp0</span></div>
+          </div>
+        </div></div>
+        <!-- Slide 4: Alokasi -->
+        <div class="deck-slide"><div class="deck-card">
+          <div class="deck-header" style="background:linear-gradient(135deg,#059669,#10B981)"><h3 class="deck-title">Alokasi 7 Poin — Terpakai & Sisa</h3><p class="deck-sub">Dapur, Jajan, Skincare, Cadangan, Will, Istri, Laundry</p></div>
+          <div class="deck-body">
+            <canvas id="deckAlokasiChart" width="320" height="180" style="max-width:100%"></canvas>
+            <div id="deckAlokasiList" style="display:grid; gap:6px; margin-top:10px"></div>
+            <div class="total-row"><span>Total Alokasi</span><span id="deckAlokasiTotal">Rp0</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:.76rem; margin-top:4px"><span class="muted">Terpakai</span><span id="deckAlokasiTerpakai" style="font-weight:700">Rp0</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:.76rem"><span class="muted">Sisa Alokasi</span><span id="deckAlokasiSisa" style="font-weight:700; color:#059669">Rp0</span></div>
+          </div>
+        </div></div>
+        <!-- Slide 5: Rencana -->
+        <div class="deck-slide"><div class="deck-card">
+          <div class="deck-header" style="background:linear-gradient(135deg,#EA580C,#F59E0B)"><h3 class="deck-title">Rencana Pembiayaan</h3><p class="deck-sub">Target, terkumpul, kurang & jadwal bulanan</p></div>
+          <div class="deck-body">
+            <div id="deckRencanaList" style="display:grid; gap:8px"></div>
+            <div class="total-row"><span>Cicilan /bulan (bulan ini)</span><span id="deckRencanaTotal">Rp0</span></div>
+          </div>
+        </div></div>
+        <!-- Slide 6: Ringkasan -->
+        <div class="deck-slide"><div class="deck-card">
+          <div class="deck-header" style="background:linear-gradient(135deg,#1E293B,#334155)"><h3 class="deck-title">Ringkasan & Top 3</h3><p class="deck-sub">Rekomendasi & status kesehatan budget</p></div>
+          <div class="deck-body">
+            <div id="deckTop3" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px"></div>
+            <div id="deckRekom" style="margin-top:10px; background:#F8FAFC; border:1px solid var(--border); border-radius:10px; padding:10px; font-size:.78rem; line-height:1.5"></div>
+            <div class="muted" style="font-size:.70rem; margin-top:8px" id="deckMeta">—</div>
+          </div>
+        </div></div>
+      </div>
+      <div class="deck-nav" id="deckNav"></div>
+      <div style="display:flex; gap:8px; justify-content:center; margin-top:8px">
+        <button class="btn btn-soft" id="btnDeckPrint" style="font-size:.78rem">🖨️ Print / Save PDF</button>
+        <button class="btn btn-soft" id="btnDeckShare" style="font-size:.78rem">📤 Share</button>
+      </div>
+    </div>
+  </section>
+
   <!-- DATA MANAJEMEN -->
   <section class="page" id="page-data">
     <div class="page-title"><div class="icon teal">💾</div><div><h2>Manajemen Data</h2><p>Backup, Export, Restore — semua perubahan auto-sync. Data tersimpan aman di HP ini.</p></div><span class="badge" id="badgeData">auto-save ON</span></div>
@@ -601,6 +720,7 @@ html,body{overflow-x:hidden; max-width:100vw}
   <button class="bnav-btn" data-page="pengeluaran"><span class="i">💸</span>Pengeluaran</button>
   <button class="bnav-btn" data-page="rencana"><span class="i">🎯</span>Rencana</button>
   <button class="bnav-btn" data-page="alokasi"><span class="i">🍳</span>Alokasi</button>
+  <button class="bnav-btn" data-page="laporan"><span class="i">📑</span>Laporan</button>
   <button class="bnav-btn" data-page="data"><span class="i">💾</span>Data</button>
 </nav>
 
@@ -2076,6 +2196,275 @@ window.calc = function(){
 };
 window.pushToCloud=pushToCloud;
 window.pullFromCloud=pullFromCloud;
+</script>
+
+
+<script>
+// === LAPORAN DECK — per bulan, semua lini ===
+let laporanIdx=0;
+function getBulanKey(d=new Date()){ return d.toISOString().slice(0,7); }
+function loadReports(){
+  try{ return JSON.parse(localStorage.getItem('budget-reports')||'{}'); }catch(e){ return {}; }
+}
+function saveReports(obj){ try{ localStorage.setItem('budget-reports', JSON.stringify(obj)); }catch(e){} }
+function buildSnapshot(){
+  const base=num('incWill')+num('incWife')+pemasukanTambahan.reduce((a,t)=>a+t.nominal,0);
+  const mut=num('mutasiTabungan')||0;
+  const fixed=num('fixBensin')+num('fixCicilan')+num('fixRumah');
+  const anak=num('popokQty')*num('popokHarga')+num('susuQty')*num('susuHarga');
+  const varTot=variabel.reduce((a,v)=>a+(v.periode==="Tahunan"?Math.round(v.nominal/12):v.nominal),0);
+  const renTot=rencana.reduce((a,r)=>{ if(!r.bulanan) ensureBulanan(r); const k=Math.max(0,r.target-r.terkumpul); if(k<=0) return a; return a+getBulananForCurrent(r); },0);
+  const alVals=["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry"].map(k=>num(k));
+  const alTot=alVals.reduce((a,b)=>a+b,0);
+  const terpakaiByAlokasi={};
+  const mapAlok={alDapur:'Belanja Dapur & Masak', alCemilan:'Jajan / Rekreasi', alTabungan:'Skincare / Personal Care', alCadangan:'Cadangan Dana', alWill:'Uang Pegangan Will', alIstri:'Uang Pegangan Istri', alLaundry:'Laundry'};
+  Object.entries(mapAlok).forEach(([alId,kat])=>{
+    terpakaiByAlokasi[alId]=variabel.reduce((a,v)=>a+(v.kategori===kat? (v.periode==="Tahunan"?Math.round(v.nominal/12):v.nominal):0),0);
+  });
+  const terpakaiAlokasi=Object.values(terpakaiByAlokasi).reduce((a,b)=>a+b,0);
+  const terpakaiAll=fixed+anak+mut+varTot+renTot+alTot;
+  const sisa=base - terpakaiAll;
+  return {
+    _meta:{ bulan:getBulanKey(), dibuat:new Date().toISOString() },
+    base, mut, fixed, anak, varTot, renTot, alVals, alTot, terpakaiByAlokasi, terpakaiAlokasi,
+    terpakaiAll, sisa,
+    pemasukan:{ will:num('incWill'), istri:num('incWife'), tambahan:[...pemasukanTambahan] },
+    tetap:{ bensin:num('fixBensin'), cicilan:num('fixCicilan'), rumah:num('fixRumah') },
+    anakInfo:{ qtyPopok:num('popokQty'), hargaPopok:num('popokHarga'), qtySusu:num('susuQty'), hargaSusu:num('susuHarga') },
+    variabel:[...variabel],
+    rencana:[...rencana],
+    alokasi:{ dapur:num('alDapur'), rekreasi:num('alCemilan'), skincare:num('alTabungan'), cadangan:num('alCadangan'), will:num('alWill'), istri:num('alIstri'), laundry:num('alLaundry') }
+  };
+}
+function refreshLaporanBulanSelect(){
+  const sel=document.getElementById('laporanBulan');
+  if(!sel) return;
+  const reports=loadReports();
+  const keys=Object.keys(reports).sort().reverse();
+  const cur=getBulanKey();
+  sel.innerHTML='';
+  if(!keys.includes(cur)){
+    const opt=document.createElement('option'); opt.value=cur; opt.textContent=cur+' (bulan ini — belum disimpan)'; sel.appendChild(opt);
+  }
+  keys.forEach(k=>{
+    const opt=document.createElement('option'); opt.value=k; opt.textContent=k + (k===cur?' • tersimpan':'');
+    sel.appendChild(opt);
+  });
+  if(!sel.value) sel.value=cur;
+}
+function renderDeck(){
+  const sel=document.getElementById('laporanBulan');
+  const key=sel? sel.value : getBulanKey();
+  const reports=loadReports();
+  let snap=reports[key];
+  // jika belum ada snapshot untuk bulan ini, pakai live
+  if(!snap){
+    snap=buildSnapshot();
+    snap._meta.live=true;
+  }
+  // Cover
+  const bulanLabel=new Date(snap._meta.bulan+'-01').toLocaleDateString('id-ID',{month:'long', year:'numeric'});
+  document.getElementById('deckCoverTitle').textContent='Laporan — '+bulanLabel;
+  document.getElementById('deckCoverSub').textContent= snap._meta.live ? 'Live — belum disimpan • '+new Date().toLocaleDateString('id-ID') : 'Snapshot '+new Date(snap._meta.dibuat).toLocaleString('id-ID');
+  document.getElementById('deckCoverPemasukan').textContent=rp(snap.base);
+  document.getElementById('deckCoverTerpakai').textContent=rp(snap.terpakaiAll);
+  document.getElementById('deckCoverSisa').textContent=rp(snap.sisa);
+  document.getElementById('deckCoverHari').textContent=rp(Math.round(snap.sisa/30));
+  document.getElementById('deckCoverMinggu').textContent=rp(Math.round(snap.sisa/4.3));
+  const statusEl=document.getElementById('deckCoverStatus');
+  if(snap.sisa<0){ statusEl.textContent='⚠️ OVERBUDGET ' + rp(Math.abs(snap.sisa)); statusEl.style.background='#FEF2F2'; statusEl.style.borderColor='#FECACA'; statusEl.style.color='#991B1B'; }
+  else if(snap.sisa < snap.base*0.1){ statusEl.textContent='⚠️ Sisa tipis ' + Math.round(snap.sisa/snap.base*100)+'%'; statusEl.style.background='#FFFBEB'; statusEl.style.borderColor='#FDE68A'; statusEl.style.color='#92400E'; }
+  else { statusEl.textContent='✅ Sehat — sisa '+Math.round(snap.sisa/snap.base*100)+'%'; statusEl.style.background='#ECFDF5'; statusEl.style.borderColor='#A7F3D0'; statusEl.style.color='#065F46'; }
+
+  // Pemasukan
+  const pList=document.getElementById('deckPemasukanList');
+  if(pList){
+    const rows=[
+      {k:'Will', v:snap.pemasukan.will, pct: snap.base? Math.round(snap.pemasukan.will/snap.base*100):0, c:'#0E7490'},
+      {k:'Istri', v:snap.pemasukan.istri, pct: snap.base? Math.round(snap.pemasukan.istri/snap.base*100):0, c:'#7C3AED'},
+      ...snap.pemasukan.tambahan.map(t=>({k:t.sumber+' ('+t.kategori+')', v:t.nominal, pct: snap.base? Math.round(t.nominal/snap.base*100):0, c:'#059669'})),
+    ];
+    pList.innerHTML=rows.map(r=>`<div style="display:flex; align-items:center; gap:8px; font-size:.78rem"><span style="width:8px; height:8px; border-radius:50%; background:${r.c}"></span><span style="flex:1">${r.k}</span><b>${rp(r.v)}</b><span class="muted">${r.pct}%</span></div>`).join('') || '<span class="muted">Tidak ada tambahan</span>';
+  }
+  document.getElementById('deckPemasukanTotal').textContent=rp(snap.base);
+  document.getElementById('deckMutasiInfo').textContent='Mutasi ke tabungan: '+rp(snap.mut)+' • Kas tersedia: '+rp(snap.base - snap.mut);
+  // chart pemasukan
+  try{
+    const c=document.getElementById('deckPemasukanChart'); if(c){
+      const ctx=c.getContext('2d'); ctx.clearRect(0,0,c.width,c.height);
+      const vals=[snap.pemasukan.will, snap.pemasukan.istri, ...snap.pemasukan.tambahan.map(t=>t.nominal)];
+      const colors=['#0E7490','#7C3AED','#059669','#F59E0B','#E11D48','#06B6D4'];
+      const total=vals.reduce((a,b)=>a+b,0)||1; let a0=-Math.PI/2;
+      const cx=80, cy=80, r=60;
+      ctx.clearRect(0,0,c.width,c.height);
+      vals.forEach((v,i)=>{ const ang=v/total*Math.PI*2; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,a0,a0+ang); ctx.closePath(); ctx.fillStyle=colors[i%colors.length]; ctx.fill(); a0+=ang; });
+      // legend
+      ctx.font='10px Segoe UI'; ctx.fillStyle='#1F2430'; let y=20;
+      ['Will','Istri',...snap.pemasukan.tambahan.map(t=>t.sumber)].forEach((k,i)=>{ ctx.fillStyle=colors[i%colors.length]; ctx.fillRect(160,y-8,10,10); ctx.fillStyle='#334155'; ctx.fillText(k+': '+rp(vals[i]||0), 175, y); y+=18; });
+    }
+  }catch(e){}
+
+  // Pengeluaran
+  document.getElementById('deckTetap').textContent=rp(snap.fixed);
+  document.getElementById('deckTetapPct').textContent=snap.base? Math.round(snap.fixed/snap.base*100)+'%':'';
+  document.getElementById('deckAnak').textContent=rp(snap.anak);
+  document.getElementById('deckAnakPct').textContent=snap.base? Math.round(snap.anak/snap.base*100)+'%':'';
+  const vList=document.getElementById('deckVariabelList');
+  if(vList){
+    if(!snap.variabel.length) vList.innerHTML='<span class="muted" style="font-size:.78rem">Tidak ada pengeluaran variabel bulan ini</span>';
+    else vList.innerHTML=snap.variabel.map(v=>{
+      const per=v.periode==="Tahunan"? Math.round(v.nominal/12): v.nominal;
+      return `<div style="display:flex; gap:6px; font-size:.76rem; border-bottom:1px solid #F1F5F9; padding:4px 0"><span style="flex:1"><b>${v.nama}</b> <span class="muted">${v.kategori} • ${v.periode}</span></span><span>${rp(per)}</span></div>`;
+    }).join('');
+  }
+  document.getElementById('deckKeluarTotal').textContent=rp(snap.fixed + snap.anak + snap.varTot);
+
+  // Alokasi
+  const alMap=['Dapur & Masak','Jajan/Rekreasi','Skincare','Cadangan','Will','Istri','Laundry'];
+  const alVals=[snap.alokasi.dapur, snap.alokasi.rekreasi, snap.alokasi.skincare, snap.alokasi.cadangan, snap.alokasi.will, snap.alokasi.istri, snap.alokasi.laundry];
+  document.getElementById('deckAlokasiTotal').textContent=rp(snap.alTot);
+  document.getElementById('deckAlokasiTerpakai').textContent=rp(snap.terpakaiAlokasi);
+  document.getElementById('deckAlokasiSisa').textContent=rp(snap.alTot - snap.terpakaiAlokasi);
+  const alList=document.getElementById('deckAlokasiList');
+  if(alList){
+    alList.innerHTML=alVals.map((v,i)=>{
+      const kat=['Belanja Dapur & Masak','Jajan / Rekreasi','Skincare / Personal Care','Cadangan Dana','Uang Pegangan Will','Uang Pegangan Istri','Laundry'][i];
+      const ter=snap.terpakaiByAlokasi[['alDapur','alCemilan','alTabungan','alCadangan','alWill','alIstri','alLaundry'][i]]||0;
+      const sisa=v - ter;
+      const pct=v? Math.round(ter/v*100):0;
+      return `<div style="border:1px solid var(--border); border-radius:10px; padding:8px; background:#fff"><div style="display:flex; justify-content:space-between; font-size:.78rem"><b>${alMap[i]}</b><span>${rp(v)}</span></div><div style="height:6px; background:#E2E8F0; border-radius:999px; overflow:hidden; display:flex; margin-top:4px"><div style="width:${Math.min(100,pct)}%; background:#E11D48"></div><div style="width:${Math.max(0,100-pct)}%; background:#059669"></div></div><div style="display:flex; justify-content:space-between; font-size:.70rem; color:var(--muted); margin-top:4px"><span>Terpakai ${rp(ter)} (${pct}%)</span><span style="color:${sisa<0?'#E11D48':'#059669'}">Sisa ${rp(sisa)}</span></div></div>`;
+    }).join('');
+  }
+  try{
+    const c=document.getElementById('deckAlokasiChart'); if(c){
+      const ctx=c.getContext('2d'); ctx.clearRect(0,0,c.width,c.height);
+      const total=alVals.reduce((a,b)=>a+b,0)||1; let a0=-Math.PI/2; const cx=90, cy=90, r=65;
+      const cols=['#0E7490','#8B5CF6','#059669','#E11D48','#0EA5E9','#EC4899','#F59E0B'];
+      alVals.forEach((v,i)=>{ const ang=v/total*Math.PI*2; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,a0,a0+ang); ctx.closePath(); ctx.fillStyle=cols[i]; ctx.fill(); a0+=ang; });
+    }
+  }catch(e){}
+
+  // Rencana
+  const rList=document.getElementById('deckRencanaList');
+  if(rList){
+    if(!snap.rencana.length) rList.innerHTML='<span class="muted">Tidak ada rencana</span>';
+    else rList.innerHTML=snap.rencana.map(r=>{
+      const pct=r.target? Math.round(r.terkumpul/r.target*100):0;
+      const kurang=Math.max(0, r.target - r.terkumpul);
+      return `<div style="border:1px solid var(--border); border-radius:10px; padding:8px; background:#fff"><div style="display:flex; justify-content:space-between"><b style="font-size:.82rem">${r.nama}</b><span class="tag">${r.kategori}</span></div><div class="muted" style="font-size:.72rem">${r.ket||''} • ${r.deadline||'-'}</div><div style="display:flex; gap:6px; margin-top:6px; font-size:.76rem"><span class="tag">Target ${rp(r.target)}</span><span class="tag" style="background:#ECFDF5">Terkumpul ${rp(r.terkumpul)}</span><span class="tag" style="background:#FEF3C7">Kurang ${rp(kurang)}</span></div><div style="height:6px; background:#E2E8F0; border-radius:999px; overflow:hidden; margin-top:6px"><div style="width:${Math.min(100,pct)}%; background:#0E7490; height:100%"></div></div><div style="font-size:.70rem; color:var(--muted); margin-top:4px">${pct}% • Flat ${rp(r.bulanan? Object.values(r.bulanan)[0] : Math.ceil(kurang/6))}/bln</div></div>`;
+    }).join('');
+  }
+  document.getElementById('deckRencanaTotal').textContent=rp(snap.renTot);
+
+  // Ringkasan top 3
+  const items=[
+    {k:'Tetap', v:snap.fixed, c:'#7C3AED'},
+    {k:'Anak', v:snap.anak, c:'#F59E0B'},
+    {k:'Variabel', v:snap.varTot, c:'#0284C7'},
+    {k:'Rencana', v:snap.renTot, c:'#EA580C'},
+    {k:'Alokasi', v:snap.alTot, c:'#059669'},
+    {k:'Mutasi', v:snap.mut, c:'#E11D48'},
+  ].sort((a,b)=>b.v-a.v).slice(0,3);
+  const top3=document.getElementById('deckTop3');
+  if(top3){
+    top3.innerHTML=items.map((it,i)=> `<div style="background:${it.c}; color:#fff; border-radius:12px; padding:10px; text-align:center"><div style="font-size:14px">${['🥇','🥈','🥉'][i]}</div><div style="font-weight:800">${it.k}</div><div>${rp(it.v)}</div><div style="font-size:.70rem; opacity:.85">${snap.base? Math.round(it.v/snap.base*100):0}%</div></div>` ).join('');
+  }
+  const rekom=document.getElementById('deckRekom');
+  if(rekom){
+    let txt='';
+    if(snap.sisa<0) txt='⚠️ OVERBUDGET — kurangi Alokasi atau Pengeluaran variabel. Prioritaskan potong Jajan/Rekreasi & Skincare.';
+    else if(snap.sisa < snap.base*0.1) txt='⚠️ Sisa tipis — pertimbangkan hemat di Dapur atau tunda Rencana.';
+    else txt='✅ Sehat — sisa '+Math.round(snap.sisa/snap.base*100)+'%. Pertahankan alokasi & lanjutkan tabungan rencana.';
+    if(snap.varTot > snap.base*0.3) txt+=' Variabel tinggi — cek kategori terbesar.';
+    rekom.textContent=txt;
+  }
+  document.getElementById('deckMeta').textContent=(snap._meta.live?'Live':'Snapshot')+' • '+snap._meta.bulan+' • '+(snap._meta.dibuat? new Date(snap._meta.dibuat).toLocaleString('id-ID'):'');
+  document.getElementById('badgeLaporan').textContent=snap._meta.live?'live':'tersimpan';
+}
+
+function initLaporan(){
+  refreshLaporanBulanSelect();
+  // deck nav dots
+  const track=document.getElementById('deckTrack');
+  const slides=track? track.children.length : 6;
+  const nav=document.getElementById('deckNav');
+  if(nav){
+    nav.innerHTML='';
+    for(let i=0;i<slides;i++){
+      const b=document.createElement('button');
+      b.className='deck-dot'+(i===0?' active':'');
+      b.onclick=()=> goDeck(i);
+      nav.appendChild(b);
+    }
+  }
+  renderDeck();
+}
+function goDeck(i){
+  laporanIdx=i;
+  const track=document.getElementById('deckTrack');
+  if(track) track.style.transform='translateX(-'+(i*100)+'%)';
+  document.querySelectorAll('.deck-dot').forEach((d,idx)=> d.classList.toggle('active', idx===i));
+}
+document.getElementById('btnPrevDeck')?.addEventListener('click', ()=>{ laporanIdx=Math.max(0,laporanIdx-1); goDeck(laporanIdx); });
+document.getElementById('btnNextDeck')?.addEventListener('click', ()=>{ const n=document.getElementById('deckTrack').children.length; laporanIdx=Math.min(n-1,laporanIdx+1); goDeck(laporanIdx); });
+document.getElementById('laporanBulan')?.addEventListener('change', renderDeck);
+document.getElementById('btnBuatLaporan')?.addEventListener('click', ()=>{
+  const key=getBulanKey();
+  const reports=loadReports();
+  reports[key]=buildSnapshot();
+  reports[key]._meta.live=false;
+  saveReports(reports);
+  refreshLaporanBulanSelect();
+  document.getElementById('laporanBulan').value=key;
+  renderDeck();
+  alert('✅ Laporan '+key+' disimpan!');
+});
+document.getElementById('btnHapusLaporan')?.addEventListener('click', ()=>{
+  const key=document.getElementById('laporanBulan').value;
+  if(!key) return;
+  if(!confirm('Hapus laporan '+key+'?')) return;
+  const reports=loadReports(); delete reports[key]; saveReports(reports);
+  refreshLaporanBulanSelect(); renderDeck();
+});
+document.getElementById('btnExportLaporan')?.addEventListener('click', async ()=>{
+  const key=document.getElementById('laporanBulan').value;
+  const reports=loadReports();
+  const snap=reports[key] || buildSnapshot();
+  let txt=`LAPORAN BUDGET — ${key}\nDibuat: ${new Date().toLocaleString('id-ID')}\n\n`;
+  txt+=`Pemasukan: ${rp(snap.base)} (Will ${rp(snap.pemasukan.will)} + Istri ${rp(snap.pemasukan.istri)} + Tambahan ${rp(snap.pemasukan.tambahan.reduce((a,t)=>a+t.nominal,0))})\n`;
+  txt+=`Tetap: ${rp(snap.fixed)} | Anak: ${rp(snap.anak)} | Mutasi: ${rp(snap.mut)}\n`;
+  txt+=`Variabel: ${rp(snap.varTot)} (${snap.variabel.length} pengeluaran)\n`;
+  snap.variabel.forEach(v=> txt+=`- ${v.nama} [${v.kategori}] ${rp(v.periode==="Tahunan"?Math.round(v.nominal/12):v.nominal)} — ${v.ket}\n`);
+  txt+=`Rencana: ${rp(snap.renTot)}/bln\n`;
+  snap.rencana.forEach(r=> txt+=`- ${r.nama} Target ${rp(r.target)} Terkumpul ${rp(r.terkumpul)} Kurang ${rp(Math.max(0,r.target-r.terkumpul))}\n`);
+  txt+=`Alokasi 7: Dapur ${rp(snap.alokasi.dapur)} | Jajan ${rp(snap.alokasi.rekreasi)} | Skincare ${rp(snap.alokasi.skincare)} | Cadangan ${rp(snap.alokasi.cadangan)} | Will ${rp(snap.alokasi.will)} | Istri ${rp(snap.alokasi.istri)} | Laundry ${rp(snap.alokasi.laundry)}\n`;
+  txt+=`Terpakai: ${rp(snap.terpakaiAll)} | Sisa: ${rp(snap.sisa)}\n`;
+  await saveFileCapacitorOrBrowser('laporan-'+key+'.txt', txt, 'text/plain');
+});
+document.getElementById('btnDeckPrint')?.addEventListener('click', ()=> window.print());
+document.getElementById('btnDeckShare')?.addEventListener('click', async ()=>{
+  const key=document.getElementById('laporanBulan').value;
+  const reports=loadReports();
+  const snap=reports[key] || buildSnapshot();
+  const txt=`Laporan ${key}: Pemasukan ${rp(snap.base)} • Terpakai ${rp(snap.terpakaiAll)} • Sisa ${rp(snap.sisa)}`;
+  if(navigator.share) try{ await navigator.share({title:'Laporan Budget '+key, text:txt}); }catch(e){}
+  else alert(txt);
+});
+// swipe
+let startX=0;
+const deckEl=document.getElementById('deck');
+if(deckEl){
+  deckEl.addEventListener('touchstart', e=> startX=e.touches[0].clientX, {passive:true});
+  deckEl.addEventListener('touchend', e=>{
+    const dx=e.changedTouches[0].clientX - startX;
+    if(Math.abs(dx)>50){
+      if(dx<0) document.getElementById('btnNextDeck').click();
+      else document.getElementById('btnPrevDeck').click();
+    }
+  });
+}
+// init after load
+setTimeout(initLaporan, 600);
 </script>
 
 </body>
