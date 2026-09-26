@@ -1870,6 +1870,27 @@ async function pullFromCloud(){
     setStatus(`⬇️ Pull OK — <b>${code}</b> @ ${new Date().toLocaleTimeString('id-ID')}`, true);
   }catch(e){ alert('Pull gagal: '+e.message); setStatus('❌ Pull gagal: '+e.message, false); }
 }
+function applyDataSilent(obj){
+  try{
+    if(obj.core) localStorage.setItem('budget-data', JSON.stringify(obj.core));
+    if(obj.tambahan) localStorage.setItem('budget-tambahan', JSON.stringify(obj.tambahan));
+    if(obj.variabel) localStorage.setItem('budget-variabel', JSON.stringify(obj.variabel));
+    if(obj.rencana) localStorage.setItem('budget-rencana', JSON.stringify(obj.rencana));
+    if(obj.modes) localStorage.setItem('budget-modes', JSON.stringify(obj.modes));
+    if(obj.page) localStorage.setItem('budget-page', obj.page);
+    // reload data ke memory tanpa reload halaman
+    try{ 
+      const d=JSON.parse(localStorage.getItem('budget-data')||'{}');
+      Object.keys(d).forEach(k=>{ const el=document.getElementById(k); if(el) el.value = (["incWill","incWife","fixBensin","fixCicilan","fixRumah","popokHarga","susuHarga","alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry","mutasiTabungan"].includes(k) ? fmtRibuan(d[k]) : d[k]); });
+    }catch(e){}
+    try{ pemasukanTambahan=JSON.parse(localStorage.getItem('budget-tambahan')||'[]'); renderTambahan(); }catch(e){}
+    try{ variabel=JSON.parse(localStorage.getItem('budget-variabel')||'[]'); renderVariabel(); }catch(e){}
+    try{ rencana=JSON.parse(localStorage.getItem('budget-rencana')||'[]'); renderRencana(); }catch(e){}
+    try{ customModes=JSON.parse(localStorage.getItem('budget-modes')||'[]'); renderCustomModes(); }catch(e){}
+    syncSliders(); calc(); updateDataUI();
+    setStatus(`✅ Auto-sync: data cloud diterapkan @ ${new Date().toLocaleTimeString('id-ID')}`, true);
+  }catch(e){ console.error('apply silent fail', e); }
+}
 async function connectSync(){
   const code=getSyncCode();
   if(!code || code.length<4) return alert('Kode minimal 4 karakter');
@@ -1878,17 +1899,37 @@ async function connectSync(){
     await ensureDb();
     const snap=await getDoc(doc(db,'budgets',code));
     if(snap.exists()){
-      setStatus(`🔗 Connect OK — <b>${code}</b> ada di cloud (update ${new Date(snap.data()._meta?.pushedAt||'').toLocaleString('id-ID')}) → Pull untuk sync`, true);
+      const remote=snap.data();
+      const localPushed=collectAll()._meta?.pushedAt||'';
+      const remotePushed=remote._meta?.pushedAt||'';
+      // jika cloud lebih baru dan autoSync ON, langsung pull otomatis
+      if(autoSync && remotePushed && remotePushed !== localPushed){
+        // cek apakah remote lebih baru (ISO string compare)
+        if(remotePushed > localPushed){
+          setStatus(`🔄 Auto Pull — cloud lebih baru (${new Date(remotePushed).toLocaleTimeString('id-ID')}) → sinkron otomatis`, true);
+          applyDataSilent(remote);
+        }
+      } else {
+        setStatus(`🔗 Connect OK — <b>${code}</b> ada di cloud (update ${new Date(remotePushed||'').toLocaleString('id-ID')})${autoSync?' • Auto-sync ON':''}`, true);
+      }
       if(autoSync){
         if(unsub) unsub();
         unsub=onSnapshot(doc(db,'budgets',code), (s)=>{
-          if(s.exists() && s.data()._meta?.pushedAt !== collectAll()._meta?.pushedAt){
-            setStatus(`🔄 Cloud update terdeteksi — klik Pull untuk sync`, true);
+          if(!s.exists()) return;
+          const r=s.data();
+          const lp=collectAll()._meta?.pushedAt||'';
+          const rp=r._meta?.pushedAt||'';
+          if(rp && rp !== lp){
+            // hindari loop: jika push barusan dari device ini, skip
+            if(r._meta?.pushedFrom===navigator.userAgent.slice(0,60) && rp===localStorage.getItem('budget-sync-last')) return;
+            setStatus(`🔄 Cloud update terdeteksi @ ${new Date(rp).toLocaleTimeString('id-ID')} → auto pull...`, true);
+            applyDataSilent(r);
           }
         });
       }
     } else {
-      setStatus(`🔗 Connect OK — <b>${code}</b> belum ada di cloud → klik Push untuk upload data HP ini`, true);
+      setStatus(`🔗 Connect OK — <b>${code}</b> belum ada di cloud → auto push data HP ini`, true);
+      if(autoSync) await pushToCloud();
     }
   }catch(e){ setStatus('❌ Connect gagal: '+e.message, false); }
 }
@@ -1904,10 +1945,15 @@ document.getElementById('chkAutoSync')?.addEventListener('change', (e)=>{
 });
 // restore autoSync state
 try{
-  const a=localStorage.getItem('budget-auto-sync')==='1';
-  document.getElementById('chkAutoSync').checked=a;
-  autoSync=a;
-  if(a && getCodeFromStorage()) setTimeout(connectSync, 800);
+  let a=localStorage.getItem('budget-auto-sync');
+  if(a===null && getCodeFromStorage()) a='1'; // default ON jika sudah ada kode GHANIA354
+  else if(a===null) a='0';
+  else a = (a==='1' ? '1' : '0');
+  const isOn=a==='1';
+  const chk=document.getElementById('chkAutoSync');
+  if(chk) chk.checked=isOn;
+  autoSync=isOn;
+  if(isOn && getCodeFromStorage()) setTimeout(connectSync, 800);
 }catch(e){}
 if(!isFirebaseReady()){
   setStatus('⚠️ Firebase belum config — buka <code>www/firebase-config.js</code> isi dari Firebase Console. Sementara data hanya lokal.', false);
@@ -1915,18 +1961,27 @@ if(!isFirebaseReady()){
   setStatus('Siap — masukkan Kode Sync lalu Connect', false);
 }
 
-// Auto push on calc if enabled (debounced)
+// Auto push on calc if enabled (debounced) — Techno ↔ iPhone auto
 let _pushTimer=null;
-const _origCalc2 = window.calc;
-if(_origCalc2){
-  window.calc = function(){
-    _origCalc2();
-    if(autoSync && isFirebaseReady() && getSyncCode()){
-      clearTimeout(_pushTimer);
-      _pushTimer=setTimeout(()=>{ pushToCloud().catch(()=>{}); }, 2500);
-    }
-  };
-}
+let _lastPushedAt=null;
+const _origCalcForSync = window.calc || calc;
+window.calc = function(){
+  _origCalcForSync();
+  // also keep header/data UI fresh
+  try{ updateHeaderSubtitle(); updateDataUI(); }catch(e){}
+  if(autoSync && isFirebaseReady() && getSyncCode()){
+    clearTimeout(_pushTimer);
+    _pushTimer=setTimeout(async ()=>{
+      const cur=collectAll()._meta?.pushedAt||'';
+      if(cur===_lastPushedAt) return;
+      try{
+        await pushToCloud();
+        _lastPushedAt=collectAll()._meta?.pushedAt||'';
+        localStorage.setItem('budget-sync-last', _lastPushedAt);
+      }catch(e){}
+    }, 1800);
+  }
+};
 window.pushToCloud=pushToCloud;
 window.pullFromCloud=pullFromCloud;
 </script>
