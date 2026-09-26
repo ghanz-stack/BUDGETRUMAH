@@ -396,6 +396,11 @@ hr.sep{border:none; border-top:1px solid var(--border); margin:14px 0}
           <button class="pill" data-preset="hemat">🐷 Hemat</button>
           <button class="pill" data-preset="nyaman">🛒 Nyaman</button>
         </div>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px">
+          <button class="btn btn-accent" id="btnSaveMode" style="padding:8px 12px; font-size:.8rem">💾 Simpan Mode</button>
+          <span class="muted" style="font-size:.72rem">Simpan racikan 6 alokasi saat ini</span>
+        </div>
+        <div id="customModes" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px"></div>
         <div class="row" style="flex-direction:column; align-items:stretch; gap:6px">
           <div style="display:flex; justify-content:space-between"><label>🥦 Belanja Dapur & Masak</label><input class="money" id="alDapur" inputmode="numeric" style="width:140px"></div>
           <input type="range" class="slider" id="slDapur" min="0" max="4000000" step="50000">
@@ -542,6 +547,43 @@ const presetsPct = {
   hemat:{alDapur:0.28, alCemilan:0.05, alTabungan:0.24, alCadangan:0.10, alWill:0.165, alIstri:0.165},
   nyaman:{alDapur:0.35, alCemilan:0.10, alTabungan:0.12, alCadangan:0.10, alWill:0.165, alIstri:0.165}
 };
+// === SIMPAN MODE ALOKASI ===
+let customModes=[];
+try{ customModes=JSON.parse(localStorage.getItem('budget-modes')||'[]'); }catch(e){ customModes=[]; }
+function saveModes(){ try{ localStorage.setItem('budget-modes', JSON.stringify(customModes)); }catch(e){} }
+function renderCustomModes(){
+  const c=document.getElementById('customModes');
+  if(!c) return;
+  if(!customModes.length){ c.innerHTML='<span class="muted" style="font-size:.72rem">Belum ada mode custom — atur alokasi lalu Simpan</span>'; return; }
+  c.innerHTML=customModes.map(m=>`
+    <span class="pill" style="background:#F1F5F9; border-color:#E1E7F5; display:inline-flex; align-items:center; gap:6px">
+      <b style="cursor:pointer" onclick="loadCustomMode('${m.id}')" title="Klik untuk load ${m.nama}">${m.nama}</b>
+      <span style="cursor:pointer; color:#E11D48" onclick="deleteCustomMode('${m.id}')" title="Hapus">×</span>
+    </span>
+  `).join('');
+}
+function loadCustomMode(id){
+  const m=customModes.find(x=>x.id===id); if(!m) return;
+  // clamp ke sisaBersih saat load biar tidak over
+  const sisa=getSisaBersih();
+  const sum=m.vals.reduce((a,v)=>a+v,0);
+  let vals=[...m.vals];
+  if(sum > sisa){
+    const ratio=sisa/sum;
+    vals=vals.map(v=>Math.round(v*ratio));
+  }
+  ["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri"].forEach((k,i)=>{
+    document.getElementById(k).value=fmtRibuan(vals[i]||0);
+  });
+  document.querySelectorAll('[data-preset]').forEach(x=>x.classList.remove('active'));
+  syncSliders(); calc();
+}
+function deleteCustomMode(id){
+  if(!confirm('Hapus mode ini?')) return;
+  customModes=customModes.filter(x=>x.id!==id);
+  saveModes(); renderCustomModes();
+}
+
 function fmtRibuan(n){ return Math.round(n).toLocaleString('id-ID'); }
 function rawDigits(s){ return (s.match(/\d/g)||[]).join(''); }
 function rp(n){ return "Rp"+fmtRibuan(n); }
@@ -1137,6 +1179,16 @@ ids.forEach(id=>{
     calc();
   });
 });
+document.getElementById('btnSaveMode')?.addEventListener('click', ()=>{
+  const nama=prompt('Nama mode (mis: Mode Lebaran, Mode Hemat Ekstra):');
+  if(!nama) return;
+  const vals=["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri"].map(k=>num(k));
+  const sum=vals.reduce((a,b)=>a+b,0);
+  if(!sum) return alert('Alokasi masih 0 — atur dulu');
+  customModes.push({id:Date.now().toString(), nama:nama.trim(), vals, createdAt:new Date().toISOString()});
+  saveModes(); renderCustomModes();
+  alert('✅ Mode "'+nama+'" tersimpan!');
+});
 document.querySelectorAll('[data-preset]').forEach(b=> b.addEventListener('click', ()=>{
   const pct=presetsPct[b.dataset.preset]; if(!pct) return;
   // hitung sisa bersih saat ini — biar pas, misal 3.719.000 → Seimbang pas 3.719.000
@@ -1335,6 +1387,7 @@ loadCore();
 renderTambahan();
 renderVariabel();
 renderRencana();
+renderCustomModes();
 calc();
 
 </script>
@@ -1405,6 +1458,7 @@ function collectAll(){
     tambahan: JSON.parse(localStorage.getItem('budget-tambahan')||'[]'),
     variabel: JSON.parse(localStorage.getItem('budget-variabel')||'[]'),
     rencana: JSON.parse(localStorage.getItem('budget-rencana')||'[]'),
+    modes: JSON.parse(localStorage.getItem('budget-modes')||'[]'),
     page: localStorage.getItem('budget-page')||'dashboard'
   };
 }
@@ -1481,6 +1535,7 @@ function applyData(obj){
     if(obj.tambahan) localStorage.setItem('budget-tambahan', JSON.stringify(obj.tambahan));
     if(obj.variabel) localStorage.setItem('budget-variabel', JSON.stringify(obj.variabel));
     if(obj.rencana) localStorage.setItem('budget-rencana', JSON.stringify(obj.rencana));
+    if(obj.modes) localStorage.setItem('budget-modes', JSON.stringify(obj.modes));
     if(obj.page) localStorage.setItem('budget-page', obj.page);
     // support old export where tambahan was missing
     if(obj.core && obj.core.tambahan) localStorage.setItem('budget-tambahan', JSON.stringify(obj.core.tambahan));
