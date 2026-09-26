@@ -259,6 +259,64 @@ html,body{overflow-x:hidden; max-width:100vw}
 .deck-arrow.right{right:6px}
 .deck-arrow:active{transform:translateY(-50%) scale(0.95)}
 @media(max-width:640px){ .deck-arrow{width:32px; height:32px; font-size:16px} .deck-arrow.left{left:4px} .deck-arrow.right{right:4px} }
+/* === MOBILE TOTAL FIX — paksa rapi di HP kecil, jangan acak === */
+@media(max-width:640px){
+  *{max-width:100vw; box-sizing:border-box}
+  html,body{overflow-x:hidden}
+  .wrap{padding:10px 10px 90px; max-width:100vw; overflow-x:hidden}
+  .header{padding:16px 12px 12px}
+  .header-inner{flex-direction:column; align-items:stretch; gap:10px}
+  .brand h1{font-size:1.15rem}
+  .brand p{font-size:.75rem}
+  .brand .kpi{gap:6px}
+  .brand .kpi span{font-size:.66rem; padding:5px 8px}
+  .header-stats{gap:8px}
+  .stat-chip{flex:1 1 calc(50% - 8px); min-width:0; padding:8px 10px}
+  .stat-chip .v{font-size:.88rem; word-break:break-all}
+  .nav{padding:8px 10px; gap:6px}
+  .nav-btn{padding:7px 10px; font-size:.74rem; white-space:nowrap}
+  .card{padding:10px; border-radius:14px; overflow:hidden}
+  .card-head{flex-wrap:wrap; gap:8px}
+  .card-head h2{font-size:.88rem}
+  .row{flex-wrap:wrap; gap:6px}
+  .row label{flex:1 1 100%; font-size:.78rem}
+  .inp-wrap{flex-wrap:wrap; gap:6px; width:100%}
+  .money{width:100% !important; max-width:none !important; flex:1 1 100% !important; font-size:.84rem}
+  .qty{width:60px !important; flex:0 0 60px}
+  .txt, select{width:100% !important; max-width:none; min-width:0}
+  .grid3{grid-template-columns:1fr !important; gap:10px}
+  .grid2{grid-template-columns:1fr !important; gap:10px}
+  .sisa-grid{grid-template-columns:1fr !important; gap:8px}
+  .rekap-grid{grid-template-columns:1fr !important; gap:8px}
+  .deck-kpi{grid-template-columns:1fr !important; gap:8px}
+  .var-form{grid-template-columns:1fr !important; gap:8px}
+  .rencana-form{grid-template-columns:1fr !important; gap:8px}
+  .tmb-form{grid-template-columns:1fr !important; gap:8px}
+  .sisa-box{padding:8px}
+  .sisa-box .v{font-size:.82rem; word-break:break-all}
+  .var-table{font-size:.70rem; min-width:580px}
+  .var-table th, .var-table td{padding:5px 4px; white-space:nowrap; font-size:.70rem}
+  div[style*="overflow:auto"]{max-width:100vw; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  .top3-grid{grid-template-columns:1fr !important; gap:8px}
+  .presets{gap:5px}
+  .pill{font-size:.70rem; padding:6px 8px; white-space:normal}
+  .legend{grid-template-columns:1fr !important}
+  .deck-slide{padding:6px}
+  .deck-card{border-radius:14px}
+  .deck-header{padding:12px}
+  .deck-title{font-size:1rem}
+  .deck-body{padding:10px}
+  .bottom-nav{padding:6px 0 calc(6px + env(safe-area-inset-bottom))}
+  .bnav-btn{font-size:.62rem; padding:3px}
+  .bnav-btn span.i{font-size:16px}
+}
+@media(max-width:380px){
+  .wrap{padding:8px 8px 90px}
+  .card{padding:8px}
+  .brand h1{font-size:1rem}
+  .stat-chip{flex:1 1 100%}
+  .money{font-size:.8rem}
+}
 .deck-card{background:var(--card); border:1px solid var(--border); border-radius:18px; overflow:hidden; box-shadow:0 6px 24px rgba(15,23,42,.08)}
 .deck-header{padding:16px; color:#fff; position:relative; overflow:hidden}
 .deck-header::after{content:""; position:absolute; inset:0; background:radial-gradient(circle at 85% 15%, rgba(255,255,255,.18), transparent 35%); pointer-events:none}
