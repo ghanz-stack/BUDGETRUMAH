@@ -822,10 +822,12 @@ function renderCustomModes(){
 }
 function loadCustomMode(id){
   const m=customModes.find(x=>x.id===id); if(!m) return;
+  // migrasi 6→7: mode lama 6 vals (tanpa Laundry) → Laundry isi 350rb default
+  let vals=[...m.vals];
+  if(vals.length===6) vals=[vals[0],vals[1],vals[2],vals[3],vals[4],vals[5],350000];
   // clamp ke sisaBersih saat load biar tidak over
   const sisa=getSisaBersih();
-  const sum=m.vals.reduce((a,v)=>a+v,0);
-  let vals=[...m.vals];
+  const sum=vals.reduce((a,v)=>a+v,0);
   if(sum > sisa){
     const ratio=sisa/sum;
     vals=vals.map(v=>Math.round(v*ratio));
@@ -854,7 +856,7 @@ function num(id){
 }
 function saveCore(){
   const data={}; ids.forEach(id=> data[id]=num(id));
-  try{ localStorage.setItem('budget-data', JSON.stringify(data)); }catch(e){}
+  try{ localStorage.setItem('budget-data', JSON.stringify(data)); localStorage.setItem('budget-last-modified', new Date().toISOString()); }catch(e){}
 }
 function loadCore(){
   let saved={}; try{ saved=JSON.parse(localStorage.getItem('budget-data')||'{}'); }catch(e){}
@@ -883,7 +885,7 @@ function loadVariabel(){
   }catch(e){ return JSON.parse(JSON.stringify(defaultVariabel)); }
 }
 let variabel = loadVariabel();
-function saveVariabel(){ try{ localStorage.setItem('budget-variabel', JSON.stringify(variabel)); }catch(e){} }
+function saveVariabel(){ try{ localStorage.setItem('budget-variabel', JSON.stringify(variabel)); localStorage.setItem('budget-last-modified', new Date().toISOString()); }catch(e){} }
 function monthlyOf(v){
   if(v.periode==="Tahunan") return Math.round(v.nominal/12);
   return v.nominal;
@@ -980,7 +982,7 @@ function loadRencana(){
   }catch(e){ return JSON.parse(JSON.stringify(defaultRencana)); }
 }
 let rencana=loadRencana();
-function saveRencana(){ try{ localStorage.setItem('budget-rencana', JSON.stringify(rencana)); }catch(e){} }
+function saveRencana(){ try{ localStorage.setItem('budget-rencana', JSON.stringify(rencana)); localStorage.setItem('budget-last-modified', new Date().toISOString()); }catch(e){} }
 function renderRencana(){
   const grid=document.getElementById('rencanaGrid');
   grid.innerHTML='';
@@ -1661,7 +1663,7 @@ function loadTambahan(){
   }catch(e){ return []; }
 }
 pemasukanTambahan=loadTambahan();
-function saveTambahan(){ try{ localStorage.setItem('budget-tambahan', JSON.stringify(pemasukanTambahan)); }catch(e){} }
+function saveTambahan(){ try{ localStorage.setItem('budget-tambahan', JSON.stringify(pemasukanTambahan)); localStorage.setItem('budget-last-modified', new Date().toISOString()); }catch(e){} }
 function renderTambahan(){
   const body=document.getElementById('tmbBody');
   if(!body) return;
@@ -1871,7 +1873,14 @@ function applyData(obj){
     if(obj.tambahan) localStorage.setItem('budget-tambahan', JSON.stringify(obj.tambahan));
     if(obj.variabel) localStorage.setItem('budget-variabel', JSON.stringify(obj.variabel));
     if(obj.rencana) localStorage.setItem('budget-rencana', JSON.stringify(obj.rencana));
-    if(obj.modes) localStorage.setItem('budget-modes', JSON.stringify(obj.modes));
+    if(obj.modes){
+      // migrasi modes lama 6 vals → 7 vals
+      const migrated=obj.modes.map(m=>{
+        if(m.vals && m.vals.length===6) return {...m, vals:[m.vals[0],m.vals[1],m.vals[2],m.vals[3],m.vals[4],m.vals[5],350000]};
+        return m;
+      });
+      localStorage.setItem('budget-modes', JSON.stringify(migrated));
+    }
     if(obj.page) localStorage.setItem('budget-page', obj.page);
     // support old export where tambahan was missing
     if(obj.core && obj.core.tambahan) localStorage.setItem('budget-tambahan', JSON.stringify(obj.core.tambahan));
@@ -2153,7 +2162,14 @@ function applyDataSilent(obj){
     if(obj.tambahan) localStorage.setItem('budget-tambahan', JSON.stringify(obj.tambahan));
     if(obj.variabel) localStorage.setItem('budget-variabel', JSON.stringify(obj.variabel));
     if(obj.rencana) localStorage.setItem('budget-rencana', JSON.stringify(obj.rencana));
-    if(obj.modes) localStorage.setItem('budget-modes', JSON.stringify(obj.modes));
+    if(obj.modes){
+      // migrasi modes lama 6 vals → 7 vals
+      const migrated=obj.modes.map(m=>{
+        if(m.vals && m.vals.length===6) return {...m, vals:[m.vals[0],m.vals[1],m.vals[2],m.vals[3],m.vals[4],m.vals[5],350000]};
+        return m;
+      });
+      localStorage.setItem('budget-modes', JSON.stringify(migrated));
+    }
     if(obj.page) localStorage.setItem('budget-page', obj.page);
     // reload data ke memory tanpa reload halaman
     try{ 
@@ -2181,10 +2197,16 @@ async function connectSync(){
       const remotePushed=remote._meta?.pushedAt||'';
       // jika cloud lebih baru dan autoSync ON, langsung pull otomatis
       if(autoSync && remotePushed && remotePushed !== localPushed){
-        // cek apakah remote lebih baru (ISO string compare)
         if(remotePushed > localPushed){
-          setStatus(`🔄 Auto Pull — cloud lebih baru (${new Date(remotePushed).toLocaleTimeString('id-ID')}) → sinkron otomatis`, true);
-          applyDataSilent(remote);
+          const localMod=localStorage.getItem('budget-last-modified')||'';
+          if(localMod && new Date(localMod).getTime() > new Date(localPushed).getTime()){
+            setStatus(`⚠️ Cloud ${new Date(remotePushed).toLocaleTimeString('id-ID')} vs Lokal ${new Date(localMod).toLocaleTimeString('id-ID')} — konflik, tidak auto-pull. Cek manual.`, true);
+          } else {
+            if(confirm(`Cloud lebih baru @ ${new Date(remotePushed).toLocaleString('id-ID')} — terapkan ke HP ini?`)){
+              applyDataSilent(remote);
+              setStatus(`🔄 Auto Pull — cloud diterapkan`, true);
+            }
+          }
         }
       } else {
         setStatus(`🔗 Connect OK — <b>${code}</b> ada di cloud (update ${new Date(remotePushed||'').toLocaleString('id-ID')})${autoSync?' • Auto-sync ON':''}`, true);
@@ -2197,10 +2219,20 @@ async function connectSync(){
           const lp=collectAll()._meta?.pushedAt||'';
           const rp=r._meta?.pushedAt||'';
           if(rp && rp !== lp){
-            // hindari loop: jika push barusan dari device ini, skip
             if(r._meta?.pushedFrom===navigator.userAgent.slice(0,60) && rp===localStorage.getItem('budget-sync-last')) return;
-            setStatus(`🔄 Cloud update terdeteksi @ ${new Date(rp).toLocaleTimeString('id-ID')} → auto pull...`, true);
-            applyDataSilent(r);
+            const localMod=localStorage.getItem('budget-last-modified')||'';
+            const remoteTime=new Date(rp).getTime();
+            const localTime=new Date(localMod).getTime();
+            // jika lokal baru diedit (<2 menit) dan remote lebih baru, tanya dulu jangan langsung timpa
+            if(localMod && remoteTime > localTime && (Date.now()-localTime)<120000){
+              setStatus(`⚠️ Konflik: Cloud update @ ${new Date(rp).toLocaleTimeString('id-ID')} tapi HP ini baru edit ${Math.round((Date.now()-localTime)/1000)} detik lalu — klik Pull untuk timpa atau Push untuk pertahankan lokal`, true);
+              return;
+            }
+            if(confirm(`🔄 Cloud ada update baru @ ${new Date(rp).toLocaleString('id-ID')}\nKode ${code}\nTerapkan ke HP ini? (Cancel = biarkan lokal)`)){
+              applyDataSilent(r);
+            } else {
+              setStatus(`ℹ️ Cloud update diabaikan — lokal dipertahankan. Klik Pull manual jika mau timpa.`, true);
+            }
           }
         });
       }
