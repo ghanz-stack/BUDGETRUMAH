@@ -460,7 +460,7 @@ html,body{overflow-x:hidden; max-width:100vw}
       <div class="var-form" id="varForm">
         <div><label>Nama pengeluaran</label><input class="txt" id="varNama" placeholder="cth: Kuota Internet"></div>
         <div><label>Kategori</label><select id="varKategori">
-          <option>Komunikasi</option><option>Kendaraan</option><option>Pajak & STNK</option><option>Anak & Susu</option><option>Pendidikan</option><option>Perawatan</option><option>Belanja Dapur & Masak</option><option>Jajan / Rekreasi</option><option>Skincare / Personal Care</option><option>Cadangan Dana</option><option>Uang Pegangan Will</option><option>Uang Pegangan Istri</option><option>Laundry</option><option>Langganan</option><option>Lainnya</option>
+          <option>Komunikasi</option><option>Kendaraan</option><option>Pajak & STNK</option><option>Anak & Susu</option><option>Pendidikan</option><option>Perawatan</option><option>Belanja Dapur & Masak</option><option>Jajan / Rekreasi</option><option>Skincare / Personal Care</option><option>Cadangan Dana</option><option>Uang Pegangan Will</option><option>Uang Pegangan Istri</option><option>Laundry</option><option>ART</option><option>Langganan</option><option>Lainnya</option>
         </select></div>
         <div><label>Nominal (Rp)</label><input class="txt" id="varNominal" inputmode="numeric" placeholder="200000"></div>
         <div><label>Periode <span title="Bulanan=tap bulan nominal tetap | Bulanan Variabel=tap bulan nominal beda (isi estimasi) | Tidak Tentu=insidental, isi estimasi/bulan atau 0 | Tahunan=1x/tahun auto ÷12" style="cursor:help; border:1px solid var(--border); border-radius:50%; width:16px; height:16px; display:inline-grid; place-items:center; font-size:10px; background:#F1F5F9">?</span></label><select id="varPeriode">
@@ -591,6 +591,11 @@ html,body{overflow-x:hidden; max-width:100vw}
         <div style="display:flex; justify-content:space-between"><label>👕 Laundry</label><input class="money" id="alLaundry" inputmode="numeric" style="width:140px"></div>
         <input type="range" class="slider" id="slLaundry" min="0" max="1000000" step="50000">
         
+      </div>
+        <div class="row" style="flex-direction:column; align-items:stretch; gap:6px; margin-top:10px">
+        <div style="display:flex; justify-content:space-between"><label>👩‍🍳 ART</label><input class="money" id="alART" inputmode="numeric" style="width:140px"></div>
+        <input type="range" class="slider" id="slART" min="0" max="1000000" step="50000">
+        <div class="muted" id="info_alART" style="font-size:.72rem; display:flex; justify-content:space-between; gap:8px"><span>Terpakai: Rp0</span><span>Sisa: Rp0</span></div><div class="alokasi-bar" id="bar_alART"><div class="fill-terpakai" style="width:0%"></div><div class="fill-sisa" style="width:0%"></div></div><div style="display:flex; justify-content:space-between; font-size:.68rem; color:var(--muted); margin-top:2px"><span id="pct_alART_terpakai">0% terpakai</span><span id="pct_alART_sisa">100% sisa</span></div>
       </div>
         <hr class="sep">
         <div class="total-row"><span>Terpakai dari sisa bersih</span><span id="pctAlokasi2">0%</span></div>
@@ -791,19 +796,19 @@ html,body{overflow-x:hidden; max-width:100vw}
 
 <script>
 
-const ids = ["incWill","incWife","fixBensin","fixCicilan","fixRumah","popokQty","popokHarga","susuQty","susuHarga","alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry","mutasiTabungan","mutasiKet"];
-const moneyIds = ["incWill","incWife","fixBensin","fixCicilan","fixRumah","popokHarga","susuHarga","alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry","mutasiTabungan"];
+const ids = ["incWill","incWife","fixBensin","fixCicilan","fixRumah","popokQty","popokHarga","susuQty","susuHarga","alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry","alART","mutasiTabungan","mutasiKet"];
+const moneyIds = ["incWill","incWife","fixBensin","fixCicilan","fixRumah","popokHarga","susuHarga","alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry","alART","mutasiTabungan"];
 const defaults = {
   incWill:3700000, incWife:5000000,
   fixBensin:1000000, fixCicilan:1500000, fixRumah:1500000,
   popokQty:2, popokHarga:98000, susuQty:4, susuHarga:190500,
   alDapur:1850000, alCemilan:350000, alTabungan:1000000, alCadangan:542000,
-  alWill:0, alIstri:0, alLaundry:0, mutasiTabungan:0, mutasiKet:""
+  alWill:0, alIstri:0, alLaundry:0, alART:0, mutasiTabungan:0, mutasiKet:""
 };
 const presetsPct = {
-  seimbang:{alDapur:0.30, alCemilan:0.07, alTabungan:0.16, alCadangan:0.09, alWill:0.16, alIstri:0.16, alLaundry:0.06},
-  hemat:{alDapur:0.26, alCemilan:0.05, alTabungan:0.22, alCadangan:0.09, alWill:0.16, alIstri:0.16, alLaundry:0.06},
-  nyaman:{alDapur:0.33, alCemilan:0.10, alTabungan:0.11, alCadangan:0.08, alWill:0.16, alIstri:0.16, alLaundry:0.06}
+  seimbang:{alDapur:0.28, alCemilan:0.07, alTabungan:0.15, alCadangan:0.08, alWill:0.15, alIstri:0.15, alLaundry:0.06, alART:0.06},
+  hemat:{alDapur:0.24, alCemilan:0.05, alTabungan:0.20, alCadangan:0.08, alWill:0.15, alIstri:0.15, alLaundry:0.06, alART:0.07},
+  nyaman:{alDapur:0.30, alCemilan:0.10, alTabungan:0.10, alCadangan:0.07, alWill:0.15, alIstri:0.15, alLaundry:0.06, alART:0.07}
 };
 // === SIMPAN MODE ALOKASI ===
 let customModes=[];
@@ -822,9 +827,10 @@ function renderCustomModes(){
 }
 function loadCustomMode(id){
   const m=customModes.find(x=>x.id===id); if(!m) return;
-  // migrasi 6→7: mode lama 6 vals (tanpa Laundry) → Laundry isi 350rb default
+  // migrasi 6→7→8: mode lama tanpa Laundry/ART → isi default
   let vals=[...m.vals];
-  if(vals.length===6) vals=[vals[0],vals[1],vals[2],vals[3],vals[4],vals[5],350000];
+  if(vals.length===6) vals=[vals[0],vals[1],vals[2],vals[3],vals[4],vals[5],350000,300000];
+  else if(vals.length===7) vals=[...vals,300000];
   // clamp ke sisaBersih saat load biar tidak over
   const sisa=getSisaBersih();
   const sum=vals.reduce((a,v)=>a+v,0);
@@ -832,7 +838,7 @@ function loadCustomMode(id){
     const ratio=sisa/sum;
     vals=vals.map(v=>Math.round(v*ratio));
   }
-  ["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry"].forEach((k,i)=>{
+  ["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry","alART"].forEach((k,i)=>{
     document.getElementById(k).value=fmtRibuan(vals[i]||0);
   });
   document.querySelectorAll('[data-preset]').forEach(x=>x.classList.remove('active'));
@@ -868,7 +874,7 @@ function loadCore(){
   syncSliders();
 }
 function syncSliders(){
-  [["alDapur","slDapur"],["alCemilan","slCemilan"],["alTabungan","slTabungan"],["alCadangan","slCadangan"],["alWill","slWill"],["alIstri","slIstri"],["alLaundry","slLaundry"]].forEach(([a,b])=>{
+  [["alDapur","slDapur"],["alCemilan","slCemilan"],["alTabungan","slTabungan"],["alCadangan","slCadangan"],["alWill","slWill"],["alIstri","slIstri"],["alLaundry","slLaundry"],["alART","slART"]].forEach(([a,b])=>{
     const el=document.getElementById(b); if(el) el.value=num(a);
   });
 }
@@ -1181,7 +1187,7 @@ function calc(){
   },0);
   const sisaSetelahVariabel=sisaSetelahMutasi-totalVariabel;
   const sisaBersih=sisaSetelahVariabel-totalRencana;
-    const alokasi=num("alDapur")+num("alCemilan")+num("alTabungan")+num("alCadangan")+num("alWill")+num("alIstri")+num("alLaundry");
+    const alokasi=num("alDapur")+num("alCemilan")+num("alTabungan")+num("alCadangan")+num("alWill")+num("alIstri")+num("alLaundry")+num("alART");
   // === HEADER KPI CHIPS — REAL TIME dari sumber value, update tiap calc() ===
   (function(){
     const _rumah=num('fixRumah'), _cicilan=num('fixCicilan'), _bensin=num('fixBensin');
@@ -1224,7 +1230,7 @@ function calc(){
   document.getElementById("perHari").textContent=rp(Math.round(sisaBersih/30));
   document.getElementById("perMinggu").textContent=rp(Math.round(sisaBersih/4.3));
   // slider max + PAGAR KERAS — over = kunci total, tidak bisa tambah lagi
-  const totalAlokasiForPagar = num("alDapur")+num("alCemilan")+num("alTabungan")+num("alCadangan")+num("alWill")+num("alIstri")+num("alLaundry");
+  const totalAlokasiForPagar = num("alDapur")+num("alCemilan")+num("alTabungan")+num("alCadangan")+num("alWill")+num("alIstri")+num("alLaundry")+num("alART");
   const isOverAll = totalAlokasiForPagar > sisaBersih;
   ["slDapur","slCemilan","slTabungan","slCadangan","slWill","slIstri","slLaundry"].forEach(id=>{
     const el=document.getElementById(id); if(!el) return;
@@ -1280,7 +1286,7 @@ function calc(){
     bar.style.background='#fff'; statusEl.innerHTML=`<span class="dot"></span><span>Alokasi ${rp(alokasi)} • Sisa belum teralokasi: ${rp(diff)} — ${diff===0?'PAS!':'aman'}</span>`;
   }
   // DONAT: berdasar Sisa Bersih, bukan ngawur — 4 alokasi + sisa belum dialokasikan
-  const valsAlok=[num("alDapur"),num("alCemilan"),num("alTabungan"),num("alCadangan"),num("alWill"),num("alIstri"),num("alLaundry")];
+  const valsAlok=[num("alDapur"),num("alCemilan"),num("alTabungan"),num("alCadangan"),num("alWill"),num("alIstri"),num("alLaundry"),num("alART")];
   const sumAlok=valsAlok.reduce((a,b)=>a+b,0);
   const sisaBersihVal = (function(){
     const base=num('incWill')+num('incWife')+pemasukanTambahan.reduce((a,t)=>a+t.nominal,0);
@@ -1293,9 +1299,9 @@ function calc(){
   })();
   const sisaBelum = Math.max(0, sisaBersihVal - sumAlok);
   const valsDraw = sisaBelum>0 ? [...valsAlok, sisaBelum] : valsAlok;
-  const colsDraw = sisaBelum>0 ? ['#0E7490','#8B5CF6','#059669','#E11D48','#0EA5E9','#EC4899','#E2E8F0'] : ['#0E7490','#8B5CF6','#059669','#E11D48','#0EA5E9','#EC4899'];
+  const colsDraw = sisaBelum>0 ? ['#0E7490','#8B5CF6','#059669','#E11D48','#0EA5E9','#EC4899','#F59E0B','#E2E8F0'] : ['#0E7490','#8B5CF6','#059669','#E11D48','#0EA5E9','#EC4899','#F59E0B'];
   drawDonut(valsDraw, colsDraw);
-  const labels=['Dapur & Masak','Jajan/Rekreasi','Skincare','Cadangan','Will','Istri','Laundry'];
+  const labels=['Dapur & Masak','Jajan/Rekreasi','Skincare','Cadangan','Will','Istri','Laundry','ART'];
   const mapKat={0:'Belanja Dapur & Masak',1:'Jajan / Rekreasi',2:'Skincare / Personal Care',3:'Cadangan Dana',4:'Uang Pegangan Will',5:'Uang Pegangan Istri',6:'Laundry'};
   const legendHtml = labels.map((l,i)=> {
     const v=valsAlok[i]||0;
@@ -1309,7 +1315,7 @@ function calc(){
   const legEl=document.getElementById('legend'); if(legEl) legEl.innerHTML=legendHtml;
   // === ALOKASI TERPAKAI & SISA — pengeluaran se-kategori kurangi alokasi ===
   (function(){
-    const map={alDapur:'Belanja Dapur & Masak', alCemilan:'Jajan / Rekreasi', alTabungan:'Skincare / Personal Care', alCadangan:'Cadangan Dana', alWill:'Uang Pegangan Will', alIstri:'Uang Pegangan Istri', alLaundry:'Laundry'};
+    const map={alDapur:'Belanja Dapur & Masak', alCemilan:'Jajan / Rekreasi', alTabungan:'Skincare / Personal Care', alCadangan:'Cadangan Dana', alWill:'Uang Pegangan Will', alIstri:'Uang Pegangan Istri', alLaundry:'Laundry', alART:'ART'};
     let totalTerpakai=0, totalAlokasi=0;
     Object.entries(map).forEach(([alId, kat])=>{
       const alVal=num(alId);
@@ -1351,7 +1357,7 @@ function calc(){
     const anak=num('popokQty')*num('popokHarga')+num('susuQty')*num('susuHarga');
     const varTot=variabel.reduce((a,v)=>a+(v.periode==="Tahunan"?Math.round(v.nominal/12):v.nominal),0);
     const renTot=rencana.reduce((a,r)=>{ if(!r.bulanan) ensureBulanan(r); const k=Math.max(0,r.target-r.terkumpul); if(k<=0) return a; return a+getBulananForCurrent(r); },0);
-    const alok=num('alDapur')+num('alCemilan')+num('alTabungan')+num('alCadangan')+num('alWill')+num('alIstri')+num('alLaundry');
+    const alok=num('alDapur')+num('alCemilan')+num('alTabungan')+num('alCadangan')+num('alWill')+num('alIstri')+num('alLaundry')+num('alART');
     const terpakai = fixed + anak + mut + varTot + renTot + alok;
     const sisaAkhir = Math.max(0, base - terpakai);
     const pct = (v)=> base? Math.round(v/base*100):0;
@@ -1426,7 +1432,7 @@ function getSisaBersih(){
 }
 function clampAlokasi(changedId, proposed){
   const sisa=getSisaBersih();
-  const alokasiIds=["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry"];
+  const alokasiIds=["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry","alART"];
   let sumOthers=0;
   alokasiIds.forEach(id=>{ if(id!==changedId) sumOthers+=num(id); });
   // pagar keras: jika sudah over, max = nilai saat ini (cuma boleh kurangi)
@@ -1452,7 +1458,7 @@ ids.forEach(id=>{
       const raw=rawDigits(el.value);
       let val=raw? Number(raw):0;
       // pagar: jika alokasi melebihi sisa, clamp
-      if(["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry"].includes(id)){
+      if(["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry","alART"].includes(id)){
         const clamped=clampAlokasi(id, val);
         if(clamped!==val){
           val=clamped;
@@ -1467,7 +1473,7 @@ ids.forEach(id=>{
         el.value = raw? fmtRibuan(val) : "";
       }
     }
-    const map={alDapur:"slDapur", alCemilan:"slCemilan", alTabungan:"slTabungan", alCadangan:"slCadangan", alWill:"slWill", alIstri:"slIstri", alLaundry:"slLaundry"};
+    const map={alDapur:"slDapur", alCemilan:"slCemilan", alTabungan:"slTabungan", alCadangan:"slCadangan", alWill:"slWill", alIstri:"slIstri", alLaundry:"slLaundry", alART:"slART"};
     if(map[id]){
       const clampedVal=num(id);
       document.getElementById(map[id]).value=clampedVal;
@@ -1479,7 +1485,7 @@ ids.forEach(id=>{
     calc();
   });
 });
-[["slDapur","alDapur"],["slCemilan","alCemilan"],["slTabungan","alTabungan"],["slCadangan","alCadangan"],["slWill","alWill"],["slIstri","alIstri"],["slLaundry","alLaundry"]].forEach(([sl,inp])=>{
+[["slDapur","alDapur"],["slCemilan","alCemilan"],["slTabungan","alTabungan"],["slCadangan","alCadangan"],["slWill","alWill"],["slIstri","alIstri"],["slLaundry","alLaundry"],["slART","alART"]].forEach(([sl,inp])=>{
   document.getElementById(sl).addEventListener("input", e=>{
     let val=Number(e.target.value)||0;
     const clamped=clampAlokasi(inp, val);
@@ -1518,7 +1524,7 @@ document.getElementById('btnSaveMode')?.addEventListener('click', ()=>{
   // kunci otomatis setelah simpan
   setTimeout(()=>{ localStorage.setItem('budget-alokasi-locked','1'); calc(); }, 300);
   if(!nama) return;
-  const vals=["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry"].map(k=>num(k));
+  const vals=["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry","alART"].map(k=>num(k));
   const sum=vals.reduce((a,b)=>a+b,0);
   if(!sum) return alert('Alokasi masih 0 — atur dulu');
   customModes.push({id:Date.now().toString(), nama:nama.trim(), vals, createdAt:new Date().toISOString()});
@@ -1537,9 +1543,9 @@ document.querySelectorAll('[data-preset]').forEach(b=> b.addEventListener('click
   const renTot=rencana.reduce((a,r)=>{ if(!r.bulanan) ensureBulanan(r); const k=Math.max(0,r.target-r.terkumpul); if(k<=0) return a; return a+getBulananForCurrent(r); },0);
   const sisaB=Math.max(0, base - mut - fixed - anak - varTot - renTot);
   let dapur=Math.round(sisaB*pct.alDapur), rek=Math.round(sisaB*pct.alCemilan), skin=Math.round(sisaB*pct.alTabungan), cad=Math.round(sisaB*pct.alCadangan);
-  let will=Math.round(sisaB*pct.alWill), istri=Math.round(sisaB*pct.alIstri), laundry=Math.round(sisaB*pct.alLaundry);
+  let will=Math.round(sisaB*pct.alWill), istri=Math.round(sisaB*pct.alIstri), laundry=Math.round(sisaB*pct.alLaundry), art=Math.round(sisaB*pct.alART);
   // adjust rounding remainder to cadangan
-  let sum = dapur+rek+skin+cad+will+istri+laundry;
+  let sum = dapur+rek+skin+cad+will+istri+laundry+art;
   let diff = sisaB - sum;
   cad += diff;
   if(cad<0) cad=0;
@@ -1550,6 +1556,7 @@ document.querySelectorAll('[data-preset]').forEach(b=> b.addEventListener('click
   document.getElementById('alWill').value=fmtRibuan(will);
   document.getElementById('alIstri').value=fmtRibuan(istri);
   document.getElementById('alLaundry').value=fmtRibuan(laundry);
+  document.getElementById('alART').value=fmtRibuan(art);
   document.querySelectorAll('[data-preset]').forEach(x=> x.classList.toggle('active', x===b));
   syncSliders(); calc();
 }));
@@ -1560,9 +1567,9 @@ document.getElementById('btnBagi').addEventListener('click', ()=>{
   const totalVariabel=variabel.reduce((a,v)=>a+monthlyOf(v),0);
   const totalRencana=rencana.reduce((a,r)=> a + (function(r){ const k=Math.max(0,r.target-r.terkumpul); if(k<=0) return 0; if(r.bulanan) ensureBulanan(r); return getBulananForCurrent(r); })(r),0);
   const sisaBersih=income-fixed-anak-totalVariabel-totalRencana;
-  const each=Math.floor(sisaBersih/7);
-  ["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry"].forEach(id=> document.getElementById(id).value=fmtRibuan(each));
-  const rem=sisaBersih - each*7;
+  const each=Math.floor(sisaBersih/8);
+  ["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry","alART"].forEach(id=> document.getElementById(id).value=fmtRibuan(each));
+  const rem=sisaBersih - each*8;
   if(rem) document.getElementById("alDapur").value=fmtRibuan(each+rem);
   syncSliders(); calc();
 });
@@ -1600,7 +1607,7 @@ document.getElementById('btnExport').addEventListener('click', async ()=>{
   });
   t+=`Total Rencana: ${rp(totalRencana)}/bln\n`;
   t+=`Sisa Bersih: ${rp(income-mutasi-fixed-anak-totalVariabel-totalRencana)}\n`;
-  t+=`Alokasi: Dapur ${rp(num("alDapur"))} | Jajan ${rp(num("alCemilan"))} | Skincare ${rp(num("alTabungan"))} | Cadangan ${rp(num("alCadangan"))} | Will ${rp(num("alWill"))} | Istri ${rp(num("alIstri"))} | Laundry ${rp(num("alLaundry"))}\n`;
+  t+=`Alokasi: Dapur ${rp(num("alDapur"))} | Jajan ${rp(num("alCemilan"))} | Skincare ${rp(num("alTabungan"))} | Cadangan ${rp(num("alCadangan"))} | Will ${rp(num("alWill"))} | Istri ${rp(num("alIstri"))} | Laundry ${rp(num("alLaundry"))} | ART ${rp(num("alART"))}\n`;
   await saveFileCapacitorOrBrowser('rekap-budget-lengkap.txt', t, 'text/plain');
 });
 
@@ -1756,7 +1763,7 @@ calc = function(){
   // dashboard quick
   const tv = document.getElementById('totalVariabel')?.textContent || 'Rp0';
   const tr = document.getElementById('totalRencana')?.textContent || 'Rp0';
-  const al = num('alDapur')+num('alCemilan')+num('alTabungan')+num('alCadangan')+num('alWill')+num('alIstri')+num('alLaundry');
+  const al = num('alDapur')+num('alCemilan')+num('alTabungan')+num('alCadangan')+num('alWill')+num('alIstri')+num('alLaundry')+num('alART');
   const pct = document.getElementById('pctAlokasi')?.textContent || '0%';
   const elV=document.getElementById('dashVarTotal'); if(elV) elV.textContent=tv;
   const elR=document.getElementById('dashRenTotal'); if(elR) elR.textContent=tr;
@@ -1876,7 +1883,8 @@ function applyData(obj){
     if(obj.modes){
       // migrasi modes lama 6 vals → 7 vals
       const migrated=obj.modes.map(m=>{
-        if(m.vals && m.vals.length===6) return {...m, vals:[m.vals[0],m.vals[1],m.vals[2],m.vals[3],m.vals[4],m.vals[5],350000]};
+        if(m.vals && m.vals.length===6) return {...m, vals:[...m.vals,350000,300000]};
+        if(m.vals && m.vals.length===7) return {...m, vals:[...m.vals,300000]};
         return m;
       });
       localStorage.setItem('budget-modes', JSON.stringify(migrated));
@@ -2165,7 +2173,8 @@ function applyDataSilent(obj){
     if(obj.modes){
       // migrasi modes lama 6 vals → 7 vals
       const migrated=obj.modes.map(m=>{
-        if(m.vals && m.vals.length===6) return {...m, vals:[m.vals[0],m.vals[1],m.vals[2],m.vals[3],m.vals[4],m.vals[5],350000]};
+        if(m.vals && m.vals.length===6) return {...m, vals:[...m.vals,350000,300000]};
+        if(m.vals && m.vals.length===7) return {...m, vals:[...m.vals,300000]};
         return m;
       });
       localStorage.setItem('budget-modes', JSON.stringify(migrated));
