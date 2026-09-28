@@ -873,13 +873,21 @@ function saveCore(){
   try{ localStorage.setItem('budget-data', JSON.stringify(data)); localStorage.setItem('budget-last-modified', new Date().toISOString()); }catch(e){}
 }
 function loadCore(){
-  let saved={}; try{ saved=JSON.parse(localStorage.getItem('budget-data')||'{}'); }catch(e){}
+  let saved=null; try{ const raw=localStorage.getItem('budget-data'); if(raw) saved=JSON.parse(raw); }catch(e){ saved=null; }
+  // jika belum pernah simpan sama sekali (null), pakai defaults — tapi jangan timpa jika sudah ada data walau 0
+  const useDefaults = (saved===null || typeof saved!=='object');
   ids.forEach(id=>{
-    const v = saved[id]!==undefined ? saved[id] : defaults[id];
+    let v;
+    if(useDefaults) v = defaults[id];
+    else v = (saved[id]!==undefined ? saved[id] : defaults[id]);
+    // untuk popok/susu dan pemasukan yang sering berubah, jangan paksa defaults kalau sudah ada
     const el=document.getElementById(id);
+    if(!el) return;
+    // khusus popok/susu: jika saved 0 tetap pakai 0, jangan balik ke 2
     el.value = moneyIds.includes(id) ? fmtRibuan(v) : v;
   });
   syncSliders();
+  console.log('[loadCore] useDefaults='+useDefaults+' savedKeys='+(saved?Object.keys(saved).length:0));
 }
 function syncSliders(){
   [["alDapur","slDapur"],["alCemilan","slCemilan"],["alTabungan","slTabungan"],["alCadangan","slCadangan"],["alWill","slWill"],["alIstri","slIstri"],["alLaundry","slLaundry"],["alART","slART"]].forEach(([a,b])=>{
@@ -2258,16 +2266,19 @@ async function connectSync(){
       const localPushed=collectAll()._meta?.pushedAt||'';
       const remotePushed=remote._meta?.pushedAt||'';
       // jika cloud lebih baru dan autoSync ON, langsung pull otomatis
-      if(autoSync && remotePushed && remotePushed !== localPushed){
+      if(remotePushed && remotePushed !== localPushed){
         if(remotePushed > localPushed){
           const localMod=localStorage.getItem('budget-last-modified')||'';
-          if(localMod && new Date(localMod).getTime() > new Date(localPushed).getTime()){
-            setStatus(`⚠️ Cloud ${new Date(remotePushed).toLocaleTimeString('id-ID')} vs Lokal ${new Date(localMod).toLocaleTimeString('id-ID')} — konflik, tidak auto-pull. Cek manual.`, true);
-          } else {
-            if(confirm(`Cloud lebih baru @ ${new Date(remotePushed).toLocaleString('id-ID')} — terapkan ke HP ini?`)){
-              applyDataSilent(remote);
-              setStatus(`🔄 Auto Pull — cloud diterapkan`, true);
+          // jika autoSync ON dan lokal tidak baru diedit, tanya
+          if(autoSync){
+            if(localMod && new Date(localMod).getTime() > new Date(localPushed).getTime()){
+              setStatus(`⚠️ Cloud ${new Date(remotePushed).toLocaleTimeString('id-ID')} vs Lokal ${new Date(localMod).toLocaleTimeString('id-ID')} — konflik, tidak auto-pull. Klik Pull jika mau timpa.`, true);
+            } else {
+              // autoSync ON tapi tetap tanya dulu, jangan diam-diam timpa popok/susu
+              setStatus(`🔄 Cloud update @ ${new Date(remotePushed).toLocaleString('id-ID')} — klik Pull untuk terapkan`, true);
             }
+          } else {
+            setStatus(`🔗 Cloud lebih baru @ ${new Date(remotePushed).toLocaleString('id-ID')} — klik Pull untuk sync (Auto-sync OFF)`, true);
           }
         }
       } else {
@@ -2283,18 +2294,8 @@ async function connectSync(){
           if(rp && rp !== lp){
             if(r._meta?.pushedFrom===navigator.userAgent.slice(0,60) && rp===localStorage.getItem('budget-sync-last')) return;
             const localMod=localStorage.getItem('budget-last-modified')||'';
-            const remoteTime=new Date(rp).getTime();
-            const localTime=new Date(localMod).getTime();
-            // jika lokal baru diedit (<2 menit) dan remote lebih baru, tanya dulu jangan langsung timpa
-            if(localMod && remoteTime > localTime && (Date.now()-localTime)<120000){
-              setStatus(`⚠️ Konflik: Cloud update @ ${new Date(rp).toLocaleTimeString('id-ID')} tapi HP ini baru edit ${Math.round((Date.now()-localTime)/1000)} detik lalu — klik Pull untuk timpa atau Push untuk pertahankan lokal`, true);
-              return;
-            }
-            if(confirm(`🔄 Cloud ada update baru @ ${new Date(rp).toLocaleString('id-ID')}\nKode ${code}\nTerapkan ke HP ini? (Cancel = biarkan lokal)`)){
-              applyDataSilent(r);
-            } else {
-              setStatus(`ℹ️ Cloud update diabaikan — lokal dipertahankan. Klik Pull manual jika mau timpa.`, true);
-            }
+            // jangan auto-pull diam-diam — cuma notif, user klik Pull manual
+            setStatus(`🔄 Cloud update @ ${new Date(rp).toLocaleTimeString('id-ID')} — ada perubahan di device lain. Klik Pull untuk terapkan (lokal tidak ditimpa otomatis)`, true);
           }
         });
       }
@@ -2317,14 +2318,18 @@ document.getElementById('chkAutoSync')?.addEventListener('change', (e)=>{
 // restore autoSync state
 try{
   let a=localStorage.getItem('budget-auto-sync');
-  if(a===null && getCodeFromStorage()) a='1'; // default ON jika sudah ada kode GHANIA354
-  else if(a===null) a='0';
+  // default OFF — user harus centang manual biar tidak timpa diam-diam
+  if(a===null) a='0';
   else a = (a==='1' ? '1' : '0');
   const isOn=a==='1';
   const chk=document.getElementById('chkAutoSync');
   if(chk) chk.checked=isOn;
   autoSync=isOn;
-  if(isOn && getCodeFromStorage()) setTimeout(connectSync, 800);
+  // jangan auto connect+pull diam-diam saat load — hanya jika user sudah ON dan mau
+  // if(isOn && getCodeFromStorage()) setTimeout(connectSync, 800);
+  if(isOn && getCodeFromStorage()){
+    setStatus('Auto-sync ON — klik Connect untuk sync wills123', true);
+  }
 }catch(e){}
 if(!isFirebaseReady()){
   setStatus('⚠️ Firebase belum config — buka <code>www/firebase-config.js</code> isi dari Firebase Console. Sementara data hanya lokal.', false);
