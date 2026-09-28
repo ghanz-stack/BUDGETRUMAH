@@ -468,7 +468,7 @@ html,body{overflow-x:hidden; max-width:100vw}
       <div class="var-form" id="varForm">
         <div><label>Nama pengeluaran</label><input class="txt" id="varNama" placeholder="cth: Kuota Internet"></div>
         <div><label>Kategori</label><select id="varKategori">
-          <option>Komunikasi</option><option>Kendaraan</option><option>Pajak & STNK</option><option>Anak & Susu</option><option>Pendidikan</option><option>Perawatan</option><option>Belanja Dapur & Masak</option><option>Jajan / Rekreasi</option><option>Skincare / Personal Care</option><option>Cadangan Dana</option><option>Uang Pegangan Will</option><option>Uang Pegangan Istri</option><option>Laundry</option><option>ART</option><option>Langganan</option><option>Lainnya</option>
+          <option>Komunikasi</option><option>Kendaraan</option><option>Pajak & STNK</option><option>Anak & Susu</option><option>Pendidikan</option><option>Perawatan</option><option>Belanja Dapur & Masak</option><option>Jajan / Rekreasi</option><option>Skincare / Personal Care</option><option>Kuota</option><option>Uang Pegangan Will</option><option>Uang Pegangan Istri</option><option>Laundry</option><option>ART</option><option>Langganan</option><option>Lainnya</option>
         </select></div>
         <div><label>Nominal (Rp)</label><input class="txt" id="varNominal" inputmode="numeric" placeholder="200000"></div>
         <div><label>Periode <span title="Bulanan=tap bulan nominal tetap | Bulanan Variabel=tap bulan nominal beda (isi estimasi) | Tidak Tentu=insidental, isi estimasi/bulan atau 0 | Tahunan=1x/tahun auto ÷12" style="cursor:help; border:1px solid var(--border); border-radius:50%; width:16px; height:16px; display:inline-grid; place-items:center; font-size:10px; background:#F1F5F9">?</span></label><select id="varPeriode">
@@ -581,7 +581,7 @@ html,body{overflow-x:hidden; max-width:100vw}
         
       </div>
         <div class="row" style="flex-direction:column; align-items:stretch; gap:6px; margin-top:10px">
-          <div style="display:flex; justify-content:space-between"><label>🛡️ Cadangan Dana</label><input class="money" id="alCadangan" inputmode="numeric" style="width:140px"></div>
+          <div style="display:flex; justify-content:space-between"><label>📶 Kuota</label><input class="money" id="alCadangan" inputmode="numeric" style="width:140px"></div>
           <input type="range" class="slider" id="slCadangan" min="0" max="1500000" step="50000">
         
       </div>
@@ -604,6 +604,12 @@ html,body{overflow-x:hidden; max-width:100vw}
         <div style="display:flex; justify-content:space-between"><label>👩‍🍳 ART</label><input class="money" id="alART" inputmode="numeric" style="width:140px"></div>
         <input type="range" class="slider" id="slART" min="0" max="1000000" step="50000">
         <div class="muted" id="info_alART" style="font-size:.72rem; display:flex; justify-content:space-between; gap:8px"><span>Terpakai: Rp0</span><span>Sisa: Rp0</span></div><div class="alokasi-bar" id="bar_alART"><div class="fill-terpakai" style="width:0%"></div><div class="fill-sisa" style="width:0%"></div></div><div style="display:flex; justify-content:space-between; font-size:.68rem; color:var(--muted); margin-top:2px"><span id="pct_alART_terpakai">0% terpakai</span><span id="pct_alART_sisa">100% sisa</span></div>
+      </div>
+      <div class="row" style="flex-direction:column; align-items:stretch; gap:6px; margin-top:10px; background:#F0FDF4; border:1px solid #BBF7D0; border-radius:12px; padding:10px">
+        <div style="display:flex; justify-content:space-between; align-items:center"><label style="font-weight:800; color:#065F46">💰 Sisa Alokasi</label><span class="badge" id="badgeSisaAlokasi" style="background:#065F46; color:#fff">Rp0</span></div>
+        <input type="range" class="slider" id="slSisa" min="0" max="4000000" step="10000" disabled style="opacity:0.7">
+        <div style="display:flex; justify-content:space-between; font-size:.72rem; color:var(--muted)"><span id="info_sisaAlokasi">Otomatis: Sisa Bersih − Total 8 Alokasi</span><span id="pctSisaAlokasi" style="font-weight:700; color:#059669">0%</span></div>
+        <div class="alokasi-bar" id="bar_sisaAlokasi"><div class="fill-sisa" style="width:0%; background:#059669"></div></div>
       </div>
         <hr class="sep">
         <div class="total-row"><span>Terpakai dari sisa bersih</span><span id="pctAlokasi2">0%</span></div>
@@ -946,6 +952,14 @@ function loadVariabel(){
   }catch(e){ return JSON.parse(JSON.stringify(defaultVariabel)); }
 }
 let variabel = loadVariabel();
+// migrasi kategori lama Cadangan Dana -> Kuota
+try{
+  let changed=false;
+  variabel.forEach(v=>{
+    if(v.kategori==='Cadangan Dana'){ v.kategori='Kuota'; changed=true; }
+  });
+  if(changed){ localStorage.setItem('budget-variabel', JSON.stringify(variabel)); }
+}catch(e){}
 function saveVariabel(){ try{ localStorage.setItem('budget-variabel', JSON.stringify(variabel)); localStorage.setItem('budget-last-modified', new Date().toISOString()); }catch(e){} }
 function monthlyOf(v){
   if(v.periode==="Tahunan") return Math.round(v.nominal/12);
@@ -1285,7 +1299,16 @@ function calc(){
   document.getElementById("perHari").textContent=rp(Math.round(sisaBersih/30));
   document.getElementById("perMinggu").textContent=rp(Math.round(sisaBersih/4.3));
   // slider max + PAGAR KERAS — over = kunci total, tidak bisa tambah lagi
-  const totalAlokasiForPagar = num("alDapur")+num("alCemilan")+num("alTabungan")+num("alCadangan")+num("alWill")+num("alIstri")+num("alLaundry")+num("alART");
+  // Sisa Alokasi — otomatis sisaBersih - sum 8 alokasi, masuk ke slider Sisa
+  const sum8 = num("alDapur")+num("alCemilan")+num("alTabungan")+num("alCadangan")+num("alWill")+num("alIstri")+num("alLaundry")+num("alART");
+  const sisaAlokasiVal2 = Math.max(0, sisaBersih - sum8);
+  const slSisa2=document.getElementById('slSisa'); if(slSisa2){ slSisa2.max=Math.max(100000, sisaBersih); slSisa2.value=sisaAlokasiVal2; }
+  const badgeSisa2=document.getElementById('badgeSisaAlokasi'); if(badgeSisa2) badgeSisa2.textContent=rp(sisaAlokasiVal2);
+  const pctSisa2=document.getElementById('pctSisaAlokasi'); if(pctSisa2) pctSisa2.textContent=sisaBersih? Math.round(sisaAlokasiVal2/sisaBersih*100)+'% sisa' : '0%';
+  const barSisa2=document.getElementById('bar_sisaAlokasi'); if(barSisa2){ const f=barSisa2.querySelector('.fill-sisa'); if(f) f.style.width=(sisaBersih? Math.round(sisaAlokasiVal2/sisaBersih*100):0)+'%'; }
+  const infoSisa2=document.getElementById('info_sisaAlokasi'); if(infoSisa2) infoSisa2.textContent=sisaAlokasiVal2? `Sisa: ${rp(sisaAlokasiVal2)} belum dialokasikan` : 'Sisa habis teralokasikan';
+
+    const totalAlokasiForPagar = num("alDapur")+num("alCemilan")+num("alTabungan")+num("alCadangan")+num("alWill")+num("alIstri")+num("alLaundry")+num("alART");
   const isOverAll = totalAlokasiForPagar > sisaBersih;
   ["slDapur","slCemilan","slTabungan","slCadangan","slWill","slIstri","slLaundry"].forEach(id=>{
     const el=document.getElementById(id); if(!el) return;
@@ -1357,7 +1380,7 @@ function calc(){
   const colsDraw = sisaBelum>0 ? ['#0E7490','#8B5CF6','#059669','#E11D48','#0EA5E9','#EC4899','#F59E0B','#E2E8F0'] : ['#0E7490','#8B5CF6','#059669','#E11D48','#0EA5E9','#EC4899','#F59E0B'];
   drawDonut(valsDraw, colsDraw);
   const labels=['Dapur & Masak','Jajan/Rekreasi','Skincare','Cadangan','Will','Istri','Laundry','ART'];
-  const mapKat={0:'Belanja Dapur & Masak',1:'Jajan / Rekreasi',2:'Skincare / Personal Care',3:'Cadangan Dana',4:'Uang Pegangan Will',5:'Uang Pegangan Istri',6:'Laundry'};
+  const mapKat={0:'Belanja Dapur & Masak',1:'Jajan / Rekreasi',2:'Skincare / Personal Care',3:'Kuota',4:'Uang Pegangan Will',5:'Uang Pegangan Istri',6:'Laundry'};
   const legendHtml = labels.map((l,i)=> {
     const v=valsAlok[i]||0;
     const kat=mapKat[i];
@@ -1370,7 +1393,7 @@ function calc(){
   const legEl=document.getElementById('legend'); if(legEl) legEl.innerHTML=legendHtml;
   // === ALOKASI TERPAKAI & SISA — pengeluaran se-kategori kurangi alokasi ===
   (function(){
-    const map={alDapur:'Belanja Dapur & Masak', alCemilan:'Jajan / Rekreasi', alTabungan:'Skincare / Personal Care', alCadangan:'Cadangan Dana', alWill:'Uang Pegangan Will', alIstri:'Uang Pegangan Istri', alLaundry:'Laundry', alART:'ART'};
+    const map={alDapur:'Belanja Dapur & Masak', alCemilan:'Jajan / Rekreasi', alTabungan:'Skincare / Personal Care', alCadangan:'Kuota', alWill:'Uang Pegangan Will', alIstri:'Uang Pegangan Istri', alLaundry:'Laundry', alART:'ART'};
     let totalTerpakai=0, totalAlokasi=0;
     Object.entries(map).forEach(([alId, kat])=>{
       const alVal=num(alId);
@@ -2381,7 +2404,7 @@ function buildSnapshot(){
   const alVals=["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry"].map(k=>num(k));
   const alTot=alVals.reduce((a,b)=>a+b,0);
   const terpakaiByAlokasi={};
-  const mapAlok={alDapur:'Belanja Dapur & Masak', alCemilan:'Jajan / Rekreasi', alTabungan:'Skincare / Personal Care', alCadangan:'Cadangan Dana', alWill:'Uang Pegangan Will', alIstri:'Uang Pegangan Istri', alLaundry:'Laundry'};
+  const mapAlok={alDapur:'Belanja Dapur & Masak', alCemilan:'Jajan / Rekreasi', alTabungan:'Skincare / Personal Care', alCadangan:'Kuota', alWill:'Uang Pegangan Will', alIstri:'Uang Pegangan Istri', alLaundry:'Laundry'};
   Object.entries(mapAlok).forEach(([alId,kat])=>{
     terpakaiByAlokasi[alId]=variabel.reduce((a,v)=>a+(v.kategori===kat? (v.periode==="Tahunan"?Math.round(v.nominal/12):v.nominal):0),0);
   });
@@ -2492,7 +2515,7 @@ function renderDeck(){
   const alList=document.getElementById('deckAlokasiList');
   if(alList){
     alList.innerHTML=alVals.map((v,i)=>{
-      const kat=['Belanja Dapur & Masak','Jajan / Rekreasi','Skincare / Personal Care','Cadangan Dana','Uang Pegangan Will','Uang Pegangan Istri','Laundry'][i];
+      const kat=['Belanja Dapur & Masak','Jajan / Rekreasi','Skincare / Personal Care','Kuota','Uang Pegangan Will','Uang Pegangan Istri','Laundry'][i];
       const ter=snap.terpakaiByAlokasi[['alDapur','alCemilan','alTabungan','alCadangan','alWill','alIstri','alLaundry'][i]]||0;
       const sisa=v - ter;
       const pct=v? Math.round(ter/v*100):0;
