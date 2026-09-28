@@ -1344,7 +1344,7 @@ function calc(){
   });
   // kunci alokasi jika terkunci
   const locked = localStorage.getItem('budget-alokasi-locked')==='1';
-  ["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry","slDapur","slCemilan","slTabungan","slCadangan","slWill","slIstri","slLaundry"].forEach(id=>{
+  ["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry","alART","slDapur","slCemilan","slTabungan","slCadangan","slWill","slIstri","slLaundry","slART"].forEach(id=>{
     const el=document.getElementById(id); if(el) el.disabled=locked;
   });
   const lockBtn=document.getElementById('btnLockAlokasi'); if(lockBtn) lockBtn.textContent=locked?'🔓 Buka Kunci':'🔒 Terkunci';
@@ -1377,10 +1377,10 @@ function calc(){
   })();
   const sisaBelum = Math.max(0, sisaBersihVal - sumAlok);
   const valsDraw = sisaBelum>0 ? [...valsAlok, sisaBelum] : valsAlok;
-  const colsDraw = sisaBelum>0 ? ['#0E7490','#8B5CF6','#059669','#E11D48','#0EA5E9','#EC4899','#F59E0B','#E2E8F0'] : ['#0E7490','#8B5CF6','#059669','#E11D48','#0EA5E9','#EC4899','#F59E0B'];
+  const colsDraw = sisaBelum>0 ? ['#0E7490','#8B5CF6','#059669','#0E7490','#0EA5E9','#EC4899','#F59E0B','#F97316','#E2E8F0'] : ['#0E7490','#8B5CF6','#059669','#0E7490','#0EA5E9','#EC4899','#F59E0B','#F97316'];
   drawDonut(valsDraw, colsDraw);
-  const labels=['Dapur & Masak','Jajan/Rekreasi','Skincare','Cadangan','Will','Istri','Laundry','ART'];
-  const mapKat={0:'Belanja Dapur & Masak',1:'Jajan / Rekreasi',2:'Skincare / Personal Care',3:'Kuota',4:'Uang Pegangan Will',5:'Uang Pegangan Istri',6:'Laundry'};
+  const labels=['Dapur & Masak','Jajan/Rekreasi','Skincare','Kuota','Will','Istri','Laundry','ART'];
+  const mapKat={0:'Belanja Dapur & Masak',1:'Jajan / Rekreasi',2:'Skincare / Personal Care',3:'Kuota',4:'Uang Pegangan Will',5:'Uang Pegangan Istri',6:'Laundry',7:'ART'};
   const legendHtml = labels.map((l,i)=> {
     const v=valsAlok[i]||0;
     const kat=mapKat[i];
