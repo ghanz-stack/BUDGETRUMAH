@@ -544,7 +544,17 @@ html,body{overflow-x:hidden; max-width:100vw}
 
   <!-- ALOKASI -->
   <section class="page" id="page-alokasi">
-    <div class="page-title"><div class="icon emerald">🍳</div><div><h2>Alokasi Sisa Bersih</h2><p>Dari sisa bersih setelah variabel & rencana — atur dapur, jajan, tabungan & cadangan</p></div><span class="badge" id="pctAlokasi">0%</span></div>
+    <div class="page-title"><div class="icon emerald">🍳</div><div><h2>Alokasi Sisa Bersih</h2><p>Dari sisa bersih — 8 poin: Dapur, Jajan, Skincare, Kuota, Will, Istri, Laundry, ART</p></div><span class="badge" id="pctAlokasi">0%</span></div>
+    <div class="card" style="margin-bottom:12px; border-left:4px solid #0E7490">
+      <div class="card-head"><div class="icon teal">📌</div><div><h2>Acuan — Tabungan & Anak</h2><p>Live dari Menu Pemasukan, jadi dasar hitung alokasi</p></div><button class="btn btn-soft" style="margin-left:auto; padding:6px 10px; font-size:.76rem" onclick="goPage('pemasukan')">✏️ Edit di Pemasukan</button></div>
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px" class="rekap-grid">
+        <div style="background:#FEF2F2; border:1px solid #FECACA; border-radius:12px; padding:10px"><div class="muted" style="font-size:.70rem; font-weight:700">🏦 TABUNGAN (MUTASI)</div><div id="refMutasiVal" style="font-weight:800">Rp0</div><div class="muted" id="refMutasiKet" style="font-size:.72rem">—</div></div>
+        <div style="background:#FFFBEB; border:1px solid #FDE68A; border-radius:12px; padding:10px"><div class="muted" style="font-size:.70rem; font-weight:700">👶 POPOK</div><div id="refPopokVal" style="font-weight:800">0×Rp0</div><div class="muted" id="refPopokTotal" style="font-size:.72rem">= Rp0</div></div>
+        <div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:12px; padding:10px"><div class="muted" style="font-size:.70rem; font-weight:700">🥛 SUSU</div><div id="refSusuVal" style="font-weight:800">0×Rp0</div><div class="muted" id="refSusuTotal" style="font-size:.72rem">= Rp0</div></div>
+      </div>
+      <div class="total-row"><span>Total Anak (Popok+Susu) — sudah kepotong sebelum alokasi</span><span id="refAnakTotal">Rp0</span></div>
+      <div style="display:flex; justify-content:space-between; font-size:.78rem; margin-top:6px"><span class="muted">Sisa Bersih buat 8 alokasi</span><span id="refSisaBersih" style="font-weight:800; color:#059669">Rp0</span></div>
+    </div>
     <div class="grid2">
       <div class="card">
         <div class="presets">
@@ -554,7 +564,7 @@ html,body{overflow-x:hidden; max-width:100vw}
         </div>
         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px">
           <button class="btn btn-accent" id="btnSaveMode" style="padding:8px 12px; font-size:.8rem">💾 Simpan Mode</button>
-          <span class="muted" style="font-size:.72rem">Simpan racikan 7 alokasi</span>
+          <span class="muted" style="font-size:.72rem">Simpan racikan 8 alokasi</span>
           <button class="btn btn-soft" id="btnLockAlokasi" style="margin-left:auto; padding:8px 12px; font-size:.8rem; border-color:#E11D48; color:#E11D48">🔒 Terkunci</button>
         </div>
         <div id="customModes" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px"></div>
@@ -1288,6 +1298,20 @@ function calc(){
   document.getElementById("totalIncome").textContent=rp(income);
   document.getElementById("totalFixed").textContent=rp(fixed);
   document.getElementById("totalAnak").textContent=rp(anak);
+  // Acuan di Menu Alokasi — Tabungan, Popok, Susu live dari sumber
+  (function(){
+    const pq=num('popokQty'), ph=num('popokHarga'), sq=num('susuQty'), sh=num('susuHarga');
+    const setT=(id,txt)=>{ const e=document.getElementById(id); if(e) e.textContent=txt; };
+    setT('refMutasiVal','−'+rp(mutasi));
+    const mk=(document.getElementById('mutasiKet')||{}).value||'';
+    setT('refMutasiKet', mk ? mk : (mutasi? 'Pindah ke tabungan' : 'Tidak ada mutasi'));
+    setT('refPopokVal', pq+'×'+rp(ph));
+    setT('refPopokTotal','= '+rp(pq*ph));
+    setT('refSusuVal', sq+'×'+rp(sh));
+    setT('refSusuTotal','= '+rp(sq*sh));
+    setT('refAnakTotal', rp(anak));
+    setT('refSisaBersih', rp(sisaBersih));
+  })();
   document.getElementById("sisa").textContent=rp(sisaBruto);
   document.getElementById("sisaSetelahVariabel").textContent=rp(sisaSetelahVariabel);
   document.getElementById("sisaBersih").textContent=rp(sisaBersih);
