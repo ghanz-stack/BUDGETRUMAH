@@ -762,7 +762,7 @@ html,body{overflow-x:hidden; max-width:100vw}
         <button class="btn btn-soft" id="btnSyncPull" style="flex:1">⬇️ Pull dari Cloud</button>
         <label style="display:flex; align-items:center; gap:6px; font-size:.78rem; font-weight:700"><input type="checkbox" id="chkAutoSync"> Auto-sync</label>
       </div>
-      <div class="muted" style="margin-top:8px; font-size:.72rem" id="syncStatus">Belum connect — buat Kode Sync (6-12 huruf/angka), klik Connect, lalu Push. Di HP lain masukkan Kode sama → Pull.</div>
+      <div class="muted" style="margin-top:8px; font-size:.72rem" id="syncStatus">Belum connect — buat Kode Sync (6-12 huruf/angka), klik Connect. Auto-sync ON: data nyusul sendiri antar HP, Push/Pull tetap ada bila perlu manual.</div>
       <div class="muted" style="font-size:.70rem; margin-top:4px">Butuh 1x setup Firebase gratis: <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a> → Create Project → Firestore → Create (test mode) → copy config ke <code>www/firebase-config.js</code> → push. Tanpa config, sync offline (localStorage saja).</div>
       <div style="display:none"><span id="syncLast"></span></div>
     </div>
@@ -819,6 +819,45 @@ html,body{overflow-x:hidden; max-width:100vw}
 </nav>
 
 <script>
+
+// === FOCUS GUARD — kursor tetap nempel di kolom yang lagi diketik ===
+// Fired otomatis saat calc()/render/sync mengganti isi kolom di bawah kursor.
+(function(){
+  let held=null;
+  const editable=el=>el&&(el.tagName==='INPUT'||el.tagName==='TEXTAREA'||el.tagName==='SELECT'||el.isContentEditable);
+  function grab(){
+    const a=document.activeElement;
+    if(!editable(a)||!a.id){ return; }
+    const sel=('selectionStart' in a)?{s:a.selectionStart,e:a.selectionEnd}:{s:null,e:null};
+    if(!held||held.id!==a.id) held={id:a.id,s:sel.s,e:sel.e,t:Date.now()};
+    else { held.s=sel.s; held.e=sel.e; held.t=Date.now(); }
+  }
+  function drop(){ held=null; }
+  function restore(){
+    if(!held) return;
+    if(Date.now()-held.t>20000) return;      // jangan pegang kursor >20 detik
+    const a=document.activeElement;
+    if(editable(a)&&a.id===held.id) return;  // masih di kolom yang sama → takusa
+    const el=document.getElementById(held.id);
+    if(!el||el.disabled||el.readOnly||el.offsetParent===null) return;
+    try{
+      el.focus({preventScroll:true});
+      if(held.s!=null&&'setSelectionRange' in el){ try{ el.setSelectionRange(held.s,held.e); }catch(e){} }
+    }catch(e){}
+  }
+  document.addEventListener('focusin', grab, true);
+  document.addEventListener('input', grab, true);
+  document.addEventListener('focusout', ()=>{ setTimeout(()=>{ const a=document.activeElement; if(!editable(a)||!a.id||a.id!==(held&&held.id)) drop(); },0); }, true);
+  // stampil saat DOM berubah (re-render, apply sync, slider, dsb)
+  let queued=false;
+  const mo=new MutationObserver(()=>{
+    if(queued) return; queued=true;
+    requestAnimationFrame(()=>{ queued=false; restore(); });
+  });
+  function start(){ mo.observe(document.body||document.documentElement,{childList:true,subtree:true}); }
+  if(document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+  window.__focusGuardRestore=restore;
+})();
 
 const ids = ["incWill","incWife","fixBensin","fixCicilan","fixRumah","popokQty","popokHarga","susuQty","susuHarga","alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry","alART","mutasiTabungan","mutasiKet"];
 const moneyIds = ["incWill","incWife","fixBensin","fixCicilan","fixRumah","popokHarga","susuHarga","alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry","alART","mutasiTabungan"];
@@ -1902,7 +1941,7 @@ calc = function(){
 // === DATA MANAGEMENT ===
 function collectAll(){
   return {
-    _meta:{ app:"Budget Keluarga", version:2, exportedAt:new Date().toISOString() },
+    _meta:{ app:"Budget Keluarga", version:2, exportedAt:new Date().toISOString(), pushedAt: (function(){ try{ return localStorage.getItem('budget-sync-last')||''; }catch(e){ return ''; } })() },
     core: JSON.parse(localStorage.getItem('budget-data')||'{}'),
     tambahan: JSON.parse(localStorage.getItem('budget-tambahan')||'[]'),
     variabel: JSON.parse(localStorage.getItem('budget-variabel')||'[]'),
@@ -2209,6 +2248,16 @@ import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstat
 
 let db=null, unsub=null;
 let autoSync=false;
+let _applyingRemote=false;
+// waktu push terakhir yang SUDAH tersinkron ke cloud (lokal)
+function localPushedAt(){ try{ return localStorage.getItem('budget-sync-last')||''; }catch(e){ return ''; } }
+// apakah ada edit lokal yang belum ikut ter-push?
+function hasLocalUnsynced(){
+  const lp=localPushedAt(), lm=(function(){ try{ return localStorage.getItem('budget-last-modified')||''; }catch(e){ return ''; } })();
+  if(!lp) return true;               // belum pernah push
+  if(!lm) return false;
+  return new Date(lm).getTime() > new Date(lp).getTime();
+}
 
 function isFirebaseReady(){
   const c=window.FIREBASE_CONFIG;
@@ -2242,7 +2291,7 @@ async function ensureDb(){
   return db;
 }
 
-async function pushToCloud(){
+async function pushToCloud(silent){
   try{
     const code=getSyncCode();
     if(!code || code.length<4) return alert('Kode Sync minimal 4 huruf/angka (contoh KELUARGA123)');
@@ -2252,9 +2301,13 @@ async function pushToCloud(){
     data._meta.pushedAt=new Date().toISOString();
     data._meta.pushedFrom=navigator.userAgent.slice(0,60);
     await setDoc(doc(db,'budgets',code), data);
-    setStatus(`⬆️ Push OK — <b>${code}</b> @ ${new Date().toLocaleTimeString('id-ID')} — buka HP lain → kode sama → Pull`, true);
-    localStorage.setItem('budget-sync-last', new Date().toISOString());
-  }catch(e){ alert('Push gagal: '+e.message); setStatus('❌ Push gagal: '+e.message, false); console.error(e); }
+    localStorage.setItem('budget-sync-last', data._meta.pushedAt);
+    if(silent) setStatus(`✅ Auto-sync — tersimpan ke cloud @ ${new Date().toLocaleTimeString('id-ID')}`, true);
+    else setStatus(`⬆️ Push OK — <b>${code}</b> @ ${new Date().toLocaleTimeString('id-ID')}`, true);
+  }catch(e){
+    if(silent){ setStatus('⚠️ Auto-sync gagal push: '+e.message, false); console.error(e); return; }
+    alert('Push gagal: '+e.message); setStatus('❌ Push gagal: '+e.message, false); console.error(e);
+  }
 }
 async function pullFromCloud(){
   try{
@@ -2290,7 +2343,7 @@ function applyDataSilent(obj){
     // reload data ke memory tanpa reload halaman
     try{ 
       const d=JSON.parse(localStorage.getItem('budget-data')||'{}');
-      Object.keys(d).forEach(k=>{ const el=document.getElementById(k); if(el) el.value = (["incWill","incWife","fixBensin","fixCicilan","fixRumah","popokHarga","susuHarga","alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry","alART","mutasiTabungan"].includes(k) ? fmtRibuan(d[k]) : d[k]); });
+      Object.keys(d).forEach(k=>{ const el=document.getElementById(k); if(!el) return; if(document.activeElement===el) return; el.value = (["incWill","incWife","fixBensin","fixCicilan","fixRumah","popokHarga","susuHarga","alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry","alART","mutasiTabungan"].includes(k) ? fmtRibuan(d[k]) : d[k]); });
     }catch(e){}
     try{ pemasukanTambahan=JSON.parse(localStorage.getItem('budget-tambahan')||'[]'); renderTambahan(); }catch(e){}
     try{ variabel=JSON.parse(localStorage.getItem('budget-variabel')||'[]'); renderVariabel(); }catch(e){}
@@ -2310,45 +2363,54 @@ async function connectSync(){
     const snap=await getDoc(doc(db,'budgets',code));
     if(snap.exists()){
       const remote=snap.data();
-      const localPushed=collectAll()._meta?.pushedAt||'';
+      const localPushed=localPushedAt();
       const remotePushed=remote._meta?.pushedAt||'';
-      // jika cloud lebih baru dan autoSync ON, langsung pull otomatis
+      // cloud lebih baru & lokal tidak ada edit yang belum ter-push → langsung terapkan
       if(remotePushed && remotePushed !== localPushed){
         if(remotePushed > localPushed){
-          const localMod=localStorage.getItem('budget-last-modified')||'';
-          // jika autoSync ON dan lokal tidak baru diedit, tanya
-          if(autoSync){
-            if(localMod && new Date(localMod).getTime() > new Date(localPushed).getTime()){
-              setStatus(`⚠️ Cloud ${new Date(remotePushed).toLocaleTimeString('id-ID')} vs Lokal ${new Date(localMod).toLocaleTimeString('id-ID')} — konflik, tidak auto-pull. Klik Pull jika mau timpa.`, true);
-            } else {
-              // autoSync ON tapi tetap tanya dulu, jangan diam-diam timpa popok/susu
-              setStatus(`🔄 Cloud update @ ${new Date(remotePushed).toLocaleString('id-ID')} — klik Pull untuk terapkan`, true);
-            }
+          if(autoSync && !hasLocalUnsynced()){
+            _applyingRemote=true;
+            applyDataSilent(remote);
+            _applyingRemote=false;
+            localStorage.setItem('budget-sync-last', remotePushed);
+            setStatus(`✅ Auto-sync — data cloud terpasang otomatis @ ${new Date(remotePushed).toLocaleTimeString('id-ID')}`, true);
+          } else if(autoSync){
+            await pushToCloud(true); // lokal lebih baru → menang, dorong ke cloud
+            setStatus(`⬆️ Auto-sync — edit lokal lebih baru, sudah dorong ke cloud`, true);
           } else {
-            setStatus(`🔗 Cloud lebih baru @ ${new Date(remotePushed).toLocaleString('id-ID')} — klik Pull untuk sync (Auto-sync OFF)`, true);
+            setStatus(`🔗 Cloud lebih baru @ ${new Date(remotePushed).toLocaleString('id-ID')} — centang Auto-sync atau klik Pull`, true);
           }
         }
       } else {
-        setStatus(`🔗 Connect OK — <b>${code}</b> ada di cloud (update ${new Date(remotePushed||'').toLocaleString('id-ID')})${autoSync?' • Auto-sync ON':''}`, true);
+        if(autoSync && hasLocalUnsynced()) await pushToCloud(true);
+        setStatus(`🔗 Sync OK — <b>${code}</b> • Auto-sync ON • data cloud ter-sync`, true);
       }
       if(autoSync){
         if(unsub) unsub();
         unsub=onSnapshot(doc(db,'budgets',code), (s)=>{
-          if(!s.exists()) return;
+          if(!s.exists() || _applyingRemote) return;
           const r=s.data();
-          const lp=collectAll()._meta?.pushedAt||'';
+          const lp=localPushedAt();
           const rp=r._meta?.pushedAt||'';
-          if(rp && rp !== lp){
-            if(r._meta?.pushedFrom===navigator.userAgent.slice(0,60) && rp===localStorage.getItem('budget-sync-last')) return;
-            const localMod=localStorage.getItem('budget-last-modified')||'';
-            // jangan auto-pull diam-diam — cuma notif, user klik Pull manual
-            setStatus(`🔄 Cloud update @ ${new Date(rp).toLocaleTimeString('id-ID')} — ada perubahan di device lain. Klik Pull untuk terapkan (lokal tidak ditimpa otomatis)`, true);
+          if(!rp || rp===lp) return;                    // sama → abaikan
+          if(r._meta?.pushedFrom===navigator.userAgent.slice(0,60) && rp===lp) return;
+          if(rp < lp) return;                            // cloud lebih lama → abaikan
+          if(hasLocalUnsynced()){
+            pushToCloud(true);                           // ada edit lokal → lokal menang
+            setStatus('⬆️ Auto-sync — edit di device ini lebih baru,/cloud diperbarui', true);
+            return;
           }
+          // cloud menang & lokal bersih → terapkan diam-diam, kursor tetap aman
+          _applyingRemote=true;
+          applyDataSilent(r);
+          _applyingRemote=false;
+          localStorage.setItem('budget-sync-last', rp);
+          setStatus(`✅ Auto-sync — data dari device lain terpasang otomatis @ ${new Date(rp).toLocaleTimeString('id-ID')}`, true);
         });
       }
     } else {
       setStatus(`🔗 Connect OK — <b>${code}</b> belum ada di cloud → auto push data HP ini`, true);
-      if(autoSync) await pushToCloud();
+      if(autoSync) await pushToCloud(true);
     }
   }catch(e){ setStatus('❌ Connect gagal: '+e.message, false); }
 }
@@ -2365,17 +2427,18 @@ document.getElementById('chkAutoSync')?.addEventListener('change', (e)=>{
 // restore autoSync state
 try{
   let a=localStorage.getItem('budget-auto-sync');
-  // default OFF — user harus centang manual biar tidak timpa diam-diam
-  if(a===null) a='0';
+  // migrasi v2: paksa ON sekali — user tidak boleh harus push/pull manual
+  const mig=localStorage.getItem('budget-autosync-v2');
+  if(mig!=='1'){ a='1'; localStorage.setItem('budget-autosync-v2','1'); localStorage.setItem('budget-auto-sync','1'); }
+  else if(a===null) a='1';
   else a = (a==='1' ? '1' : '0');
   const isOn=a==='1';
   const chk=document.getElementById('chkAutoSync');
   if(chk) chk.checked=isOn;
   autoSync=isOn;
-  // jangan auto connect+pull diam-diam saat load — hanya jika user sudah ON dan mau
-  // if(isOn && getCodeFromStorage()) setTimeout(connectSync, 800);
   if(isOn && getCodeFromStorage()){
-    setStatus('Auto-sync ON — klik Connect untuk sync wills123', true);
+    setStatus('Auto-sync ON — menghubungkan ke cloud…', true);
+    setTimeout(connectSync, 700);   // auto connect + auto tarik data terbaru
   }
 }catch(e){}
 if(!isFirebaseReady()){
@@ -2392,15 +2455,13 @@ window.calc = function(){
   _origCalcForSync();
   // also keep header/data UI fresh
   try{ updateHeaderSubtitle(); updateDataUI(); }catch(e){}
-  if(autoSync && isFirebaseReady() && getSyncCode()){
+  if(autoSync && !_applyingRemote && isFirebaseReady() && getSyncCode()){
     clearTimeout(_pushTimer);
     _pushTimer=setTimeout(async ()=>{
-      const cur=collectAll()._meta?.pushedAt||'';
-      if(cur===_lastPushedAt) return;
+      if(!hasLocalUnsynced()) return;      // tidak ada edit baru → jangan push sia-sia
       try{
-        await pushToCloud();
-        _lastPushedAt=collectAll()._meta?.pushedAt||'';
-        localStorage.setItem('budget-sync-last', _lastPushedAt);
+        await pushToCloud(true);
+        _lastPushedAt=localPushedAt();
       }catch(e){}
     }, 1800);
   }
