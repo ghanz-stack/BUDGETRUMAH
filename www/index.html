@@ -333,6 +333,18 @@ html,body{overflow-x:hidden; max-width:100vw}
 </head>
 <body>
 
+<!-- BANNER PERIODE BARU — muncul saat lewat hari ke-25, TIDAK auto-reset -->
+<div id="periodeBanner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:9999; background:linear-gradient(135deg,#7C3AED,#EC4899); color:#fff; padding:9px 12px; box-shadow:0 6px 20px rgba(0,0,0,.3)">
+  <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; max-width:1100px; margin:0 auto">
+    <span style="font-weight:800; font-size:.82rem">🗓️ Periode baru sudah masuk</span>
+    <span id="periodeBannerInfo" style="font-size:.74rem; opacity:.92"></span>
+    <span style="margin-left:auto; display:flex; gap:6px">
+      <button id="btnMulaiPeriode" style="background:#fff; color:#7C3AED; border:0; border-radius:8px; padding:6px 10px; font-weight:800; font-size:.74rem; cursor:pointer">🔒 Tutup Periode &amp; Mulai Baru</button>
+      <button id="btnPeriodeNanti" style="background:rgba(255,255,255,.18); color:#fff; border:1px solid rgba(255,255,255,.5); border-radius:8px; padding:6px 10px; font-size:.74rem; cursor:pointer">Nanti</button>
+    </span>
+  </div>
+</div>
+
 <header class="header">
   <div class="header-inner">
     <div class="brand">
@@ -417,6 +429,25 @@ html,body{overflow-x:hidden; max-width:100vw}
         <div class="card-head"><div class="icon violet">🏠</div><div><h2>Tetap</h2><p>Wajib tiap bulan</p></div><span class="badge" id="pctFixed">46%</span></div>
         <div class="row"><label>⛽ Bensin mobil</label><input class="money" id="fixBensin" inputmode="numeric"></div>
         <div class="row"><label>🚗 Cicilan mobil</label><input class="money" id="fixCicilan" inputmode="numeric"></div>
+        <div id="cicilanMobilBox" style="margin:-2px 0 6px; background:#EFF6FF; border:1px solid #BFDBFE; border-radius:10px; padding:8px">
+          <div style="display:flex; justify-content:space-between; align-items:center; font-size:.74rem">
+            <span style="font-weight:800; color:#1E40AF">🗓️ Cicilan mobil</span>
+            <span id="cicMobilSisa" style="font-weight:800; color:#1D4ED8">—</span>
+          </div>
+          <div style="height:6px; background:#E2E8F0; border-radius:999px; overflow:hidden; margin-top:6px">
+            <div id="cicMobilBar" style="width:0%; background:#1D4ED8; height:100%; transition:width .3s"></div>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:.68rem; color:var(--muted); margin-top:4px">
+            <span id="cicMobilInfo">—</span><span id="cicMobilSelesai">—</span>
+          </div>
+          <div style="display:flex; gap:6px; margin-top:7px; align-items:center; flex-wrap:wrap">
+            <span style="font-size:.66rem; color:var(--muted)">Mulai</span>
+            <input class="txt" id="cicMobilMulai" placeholder="YYYY-MM" style="width:84px; font-size:.72rem; padding:4px 6px">
+            <span style="font-size:.66rem; color:var(--muted)">Sisa bln</span>
+            <input class="qty" id="cicMobilSisaAwal" type="number" min="0" style="width:56px">
+            <button class="btn btn-soft" id="btnCicMobilSave" style="font-size:.68rem; padding:4px 8px">💾</button>
+          </div>
+        </div>
         <div class="row"><label>🏡 Rumah</label><input class="money" id="fixRumah" inputmode="numeric"></div>
         <div class="total-row"><span>Total Tetap</span><span id="totalFixed">Rp0</span></div>
         <div style="margin-top:10px; background:#F8FAFC; border:1px solid var(--border); border-radius:10px; padding:10px">
@@ -690,6 +721,8 @@ html,body{overflow-x:hidden; max-width:100vw}
         <div class="deck-slide"><div class="deck-card">
           <div class="deck-header" style="background:linear-gradient(135deg,#7C3AED,#EC4899)"><h3 class="deck-title">Pemasukan & Mutasi</h3><p class="deck-sub">Will, Istri, tambahan & pindah ke tabungan</p></div>
           <div class="deck-body">
+            <div id="deckPeriodePemasukan" style="display:none; margin-bottom:8px"></div>
+            <canvas id="deckPeriodeChart" width="320" height="130" style="display:none; max-width:100%; margin-top:8px"></canvas>
             <div id="deckPemasukanList" style="display:grid; gap:6px"></div>
             <div class="total-row"><span>Total Pemasukan</span><span id="deckPemasukanTotal">Rp0</span></div>
             <div class="muted" id="deckMutasiInfo" style="margin-top:6px; font-size:.76rem"></div>
@@ -700,6 +733,7 @@ html,body{overflow-x:hidden; max-width:100vw}
         <div class="deck-slide"><div class="deck-card">
           <div class="deck-header" style="background:linear-gradient(135deg,#0284C7,#22D3EE)"><h3 class="deck-title">Pengeluaran — Tetap, Anak & Variabel</h3><p class="deck-sub">Per kategori, hemat & terbesar</p></div>
           <div class="deck-body">
+            <div id="deckPeriodePengeluaran" style="display:none; margin-bottom:8px"></div>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px">
               <div style="background:#F8FAFC; border:1px solid var(--border); border-radius:10px; padding:8px">
                 <b>Tetap</b> <span id="deckTetap" style="font-weight:800">Rp0</span> <span class="muted" id="deckTetapPct">0%</span>
@@ -716,13 +750,16 @@ html,body{overflow-x:hidden; max-width:100vw}
         </div></div>
         <!-- Slide 4: Alokasi -->
         <div class="deck-slide"><div class="deck-card">
-          <div class="deck-header" style="background:linear-gradient(135deg,#059669,#10B981)"><h3 class="deck-title">Alokasi 8 Poin — Terpakai & Sisa</h3><p class="deck-sub">Dapur, Jajan, Skincare, Kuota, Will, Istri, Laundry, ART</p></div>
+          <div class="deck-header" style="background:linear-gradient(135deg,#059669,#10B981)"><h3 class="deck-title">Alokasi — Tetap, Anak & 8 Poin</h3><p class="deck-sub">Pengeluaran tetap + kebutuhan anak + 8 alokasi variabel</p></div>
           <div class="deck-body">
+            <div style="font-size:.70rem; font-weight:800; text-transform:uppercase; letter-spacing:.04em; color:#7C3AED; margin-bottom:6px">🔒 Grup 1 — Alokasi Tetap (kepotong sebelum dibagi)</div>
+            <div id="deckAlokasiTetapList" style="display:grid; gap:6px"></div>
+            <div style="font-size:.70rem; font-weight:800; text-transform:uppercase; letter-spacing:.04em; color:#059669; margin:12px 0 6px">🎯 Grup 2 — Alokasi 8 Poin (Terpakai & Sisa)</div>
             <canvas id="deckAlokasiChart" width="320" height="180" style="max-width:100%"></canvas>
             <div id="deckAlokasiList" style="display:grid; gap:6px; margin-top:10px"></div>
-            <div class="total-row"><span>Total Alokasi</span><span id="deckAlokasiTotal">Rp0</span></div>
-            <div style="display:flex; justify-content:space-between; font-size:.76rem; margin-top:4px"><span class="muted">Terpakai</span><span id="deckAlokasiTerpakai" style="font-weight:700">Rp0</span></div>
-            <div style="display:flex; justify-content:space-between; font-size:.76rem"><span class="muted">Sisa Alokasi</span><span id="deckAlokasiSisa" style="font-weight:700; color:#059669">Rp0</span></div>
+            <div class="total-row"><span>Total Alokasi (Tetap + Anak + 8 Poin)</span><span id="deckAlokasiTotal">Rp0</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:.76rem; margin-top:4px"><span class="muted">Terpakai (Tetap + Anak + Variabel)</span><span id="deckAlokasiTerpakai" style="font-weight:700">Rp0</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:.76rem"><span class="muted">Sisa Alokasi (8 Poin saja)</span><span id="deckAlokasiSisa" style="font-weight:700; color:#059669">Rp0</span></div>
           </div>
         </div></div>
         <!-- Slide 5: Rencana -->
@@ -997,6 +1034,143 @@ function deleteTetapSesi(id){
   if(!confirm('Hapus sesi ini?')) return;
   tetapSessions=tetapSessions.filter(x=>x.id!==id);
   saveTetapSessions(); renderTetapSessions();
+}
+
+// === TRACKER CICILAN MOBIL ===
+let cicilanMobil={mulai:'', sisaAwal:28};
+try{ const _r=localStorage.getItem('budget-cicilan-mobil'); if(_r){ const o=JSON.parse(_r); if(o&&typeof o==='object') cicilanMobil={mulai:o.mulai||'', sisaAwal:isNaN(+o.sisaAwal)?28:+o.sisaAwal}; } }catch(e){}
+function saveCicilanMobil(){ try{ localStorage.setItem('budget-cicilan-mobil', JSON.stringify(cicilanMobil)); }catch(e){} }
+function _mkToNum(ym){ const p=String(ym||'').split('-'); return p.length===2? (+p[0])*12+(+p[1])-1 : null; }
+function _numToMk(n){ const y=Math.floor(n/12), m=n%12+1; return y+'-'+String(m).padStart(2,'0'); }
+function _fmtBulan(ym){ const p=String(ym||'').split('-'); if(p.length!==2) return '—';
+  return new Date(+p[0], +p[1]-1, 1).toLocaleDateString('id-ID',{month:'short', year:'numeric'}); }
+function hitungCicilanMobil(){
+  const now=getBulanKey();
+  const mulai=cicilanMobil.mulai||now;
+  const awal=Math.max(0, parseInt(cicilanMobil.sisaAwal,10)||0);
+  const a=_mkToNum(mulai), b=_mkToNum(now);
+  let lewat=(a===null||b===null)?0:(b-a); if(lewat<0) lewat=0;
+  const sisa=Math.max(0, awal-lewat);
+  const selesaiKey=(a===null)? '': _numToMk(a+awal);
+  const pct=awal? Math.min(100, Math.round(lewat/awal*100)) : 100;
+  return {mulai, awal, lewat, sisa, selesaiKey, pct, lunas: awal>0 && sisa===0};
+}
+function renderCicilanMobil(){
+  const h=hitungCicilanMobil();
+  const set=(id,v)=>{ const e=document.getElementById(id); if(e) e.textContent=v; };
+  const bar=document.getElementById('cicMobilBar');
+  if(!document.getElementById('cicMobilSisa')) return;
+  if(h.awal<=0){
+    set('cicMobilSisa',' belum diatur'); set('cicMobilInfo','Isi "Sisa bln" di bawah'); set('cicMobilSelesai','');
+    if(bar) bar.style.width='0%';
+  } else if(h.lunas){
+    set('cicMobilSisa','✅ LUNAS'); set('cicMobilInfo','Selesai '+_fmtBulan(h.selesaiKey)); set('cicMobilSelesai','');
+    if(bar) bar.style.width='100%';
+  } else {
+    set('cicMobilSisa','Sisa '+h.sisa+' bulan');
+    set('cicMobilInfo', h.pct+'% lunas • mulai '+_fmtBulan(h.mulai));
+    set('cicMobilSelesai','Selesai '+_fmtBulan(h.selesaiKey));
+    if(bar) bar.style.width=h.pct+'%';
+  }
+  const mi=document.getElementById('cicMobilMulai');
+  if(mi && document.activeElement!==mi) mi.value=cicilanMobil.mulai||'';
+  const sa=document.getElementById('cicMobilSisaAwal');
+  if(sa && document.activeElement!==sa) sa.value=String(cicilanMobil.sisaAwal);
+  // KPI header ikut update
+  const kpi=document.getElementById('kpiCicilan');
+  if(kpi) kpi.title='Sumber: Menu Pemasukan & Tetap → Cicilan mobil = '+rp(num('fixCicilan'))+(h.awal>0? (' • '+h.sisa+' bulan lagi, selesai '+_fmtBulan(h.selesaiKey)) : '');
+}
+function initCicilanMobil(){
+  const mi=document.getElementById('cicMobilMulai');
+  if(mi && !cicilanMobil.mulai){ cicilanMobil.mulai=getBulanKey(); saveCicilanMobil(); }
+  mi?.addEventListener('change', ()=>{
+    const v=(mi.value||'').trim();
+    if(!/^\d{4}-\d{2}$/.test(v)){ renderCicilanMobil(); return; }
+    cicilanMobil.mulai=v; saveCicilanMobil(); renderCicilanMobil();
+  });
+  const sa=document.getElementById('cicMobilSisaAwal');
+  sa?.addEventListener('change', ()=>{
+    const v=parseInt(sa.value,10);
+    cicilanMobil.sisaAwal=isNaN(v)||v<0?0:v; saveCicilanMobil(); renderCicilanMobil();
+  });
+  document.getElementById('btnCicMobilSave')?.addEventListener('click', ()=>{
+    const vMi=(mi?.value||'').trim(), vSa=parseInt(sa?.value,10);
+    if(/^\d{4}-\d{2}$/.test(vMi)) cicilanMobil.mulai=vMi;
+    if(!isNaN(vSa) && vSa>=0) cicilanMobil.sisaAwal=vSa;
+    saveCicilanMobil(); renderCicilanMobil();
+    alert('✅ Cicilan mobil disimpan — sisa '+hitungCicilanMobil().sisa+' bulan');
+  });
+  renderCicilanMobil();
+}
+
+// === PERIODE BUDGET (anchor hari ke-25) — TIDAK auto-reset, harus klik tombol ===
+const PERIODE_ANCHOR_DEFAULT=25;
+function muatPeriode(){ try{ const o=JSON.parse(localStorage.getItem('budget-periode')||'{}'); return (o&&typeof o==='object')?o:{}; }catch(e){ return {}; } }
+function simpanPeriode(o){ try{ localStorage.setItem('budget-periode', JSON.stringify(o)); }catch(e){} }
+function getPeriodeAnchor(){ const a=+muatPeriode().anchor; return (isNaN(a)||a<1||a>28)? PERIODE_ANCHOR_DEFAULT : a; }
+function getPeriodeKey(d=new Date()){
+  const anchor=getPeriodeAnchor();
+  const y=d.getFullYear(), m=d.getMonth(), hari=d.getDate();
+  let sy=y, sm=m;
+  if(hari<anchor){ sm=m-1; if(sm<0){ sm=11; sy=y-1; } }
+  return sy+'-'+String(sm+1).padStart(2,'0');
+}
+function labelPeriode(kunci){
+  const p=String(kunci||'').split('-'); if(p.length!==2) return kunci||'—';
+  const y=+p[0], m=+p[1]-1, anchor=getPeriodeAnchor();
+  const f=d=> d.toLocaleDateString('id-ID',{day:'numeric', month:'short', year:'numeric'});
+  return f(new Date(y,m,anchor))+' → '+f(new Date(y,m+1,anchor-1));
+}
+function cekPeriode(){
+  const p=muatPeriode();
+  const kunciBaru=getPeriodeKey();
+  if(!p.kunci){ simpanPeriode(Object.assign({},p,{anchor:p.anchor||PERIODE_ANCHOR_DEFAULT, kunci:kunciBaru})); return; }
+  if(p.kunci!==kunciBaru) tampilkanBannerPeriode(p.kunci, kunciBaru);
+}
+function tampilkanBannerPeriode(lama, baru){
+  const b=document.getElementById('periodeBanner'); if(!b) return;
+  const info=document.getElementById('periodeBannerInfo');
+  if(info) info.textContent='Periode '+labelPeriode(lama)+' selesai → '+labelPeriode(baru)+'. Belum diarsip & belum direset.';
+  b.style.display='block';
+}
+function mulaiPeriodeBaru(){
+  const p=muatPeriode();
+  const lama=p.kunci||getPeriodeKey();
+  const baru=getPeriodeKey();
+  if(lama===baru){ alert('Masih di periode yang sama — '+labelPeriode(baru)); return; }
+  if(!confirm('Tutup periode '+labelPeriode(lama)+' ?\n\n✓ Diarsipkan jadi laporan bulan itu\n✓ TETAP: Pengeluaran Tetap, tracker cicilan, RENCANA (lanjut)\n✓ Di-reset: Pemasukan, Anak, Alokasi, Variabel, Pemasukan Tambahan')) return;
+  // 1. ARSIP
+  let snap;
+  try{
+    snap=buildSnapshot();
+    snap._meta.bulan=lama;
+    snap._meta.periode=labelPeriode(lama);
+    const reports=loadReports();
+    reports[lama]=snap;
+    saveReports(reports);
+  }catch(e){ console.warn('[periode] arsip gagal', e); alert('Gagal arsip: '+e.message); return; }
+  // 2. RESET — kecuali Pengeluaran Tetap
+  const TETAP=['fixBensin','fixCicilan','fixRumah'];
+  let old={}; try{ old=JSON.parse(localStorage.getItem('budget-data')||'{}'); }catch(e){}
+  const newCore={};
+  ids.forEach(id=>{
+    if(TETAP.includes(id)){ newCore[id]= (old[id]!==undefined? old[id] : (defaults[id]!==undefined? defaults[id] : 0)); return; }
+    newCore[id]= (id==='mutasiKet') ? '' : (defaults[id]!==undefined? defaults[id] : 0);
+  });
+  localStorage.setItem('budget-data', JSON.stringify(newCore));
+  localStorage.setItem('budget-variabel', JSON.stringify([]));
+  localStorage.setItem('budget-tambahan', JSON.stringify([]));
+  // rencana[] & cicilanMobil TIDAK disentuh
+  // 3. tandai periode baru
+  simpanPeriode(Object.assign({},p,{kunci:baru}));
+  location.reload();
+}
+function initPeriode(){
+  document.getElementById('btnMulaiPeriode')?.addEventListener('click', mulaiPeriodeBaru);
+  document.getElementById('btnPeriodeNanti')?.addEventListener('click', ()=>{
+    const b=document.getElementById('periodeBanner'); if(b) b.style.display='none';
+  });
+  cekPeriode();
 }
 
 // === VARIABEL ===
@@ -1629,6 +1803,7 @@ const isOverAll = totalAlokasiForPagar > sisaBersih;
   else add('ok',`[OK] Sisa bersih aman`);
   if(getSisaTotal()<0) add('err',`[OVER] Pengeluaran melebihi sisa bersih ${rp(Math.abs(getSisaTotal()))}`);
   document.getElementById('log').innerHTML=lines.join('<br>');
+  renderCicilanMobil();
   saveCore();
 }
 
@@ -1929,6 +2104,8 @@ renderVariabel();
 renderRencana();
 renderCustomModes();
 renderTetapSessions();
+initCicilanMobil();
+initPeriode();
 calc();
 
 </script>
@@ -2001,6 +2178,9 @@ function collectAll(){
     rencana: JSON.parse(localStorage.getItem('budget-rencana')||'[]'),
     modes: JSON.parse(localStorage.getItem('budget-modes')||'[]'),
     tetapSessions: JSON.parse(localStorage.getItem('budget-tetap-sessions')||'[]'),
+    cicilanMobil: JSON.parse(localStorage.getItem('budget-cicilan-mobil')||'{}'),
+    periode: JSON.parse(localStorage.getItem('budget-periode')||'{}'),
+    reports: JSON.parse(localStorage.getItem('budget-reports')||'{}'),
     page: localStorage.getItem('budget-page')||'dashboard'
   };
 }
@@ -2087,6 +2267,9 @@ function applyData(obj){
       localStorage.setItem('budget-modes', JSON.stringify(migrated));
     }
     if(obj.tetapSessions) localStorage.setItem('budget-tetap-sessions', JSON.stringify(obj.tetapSessions));
+    if(obj.cicilanMobil) localStorage.setItem('budget-cicilan-mobil', JSON.stringify(obj.cicilanMobil));
+    if(obj.periode) localStorage.setItem('budget-periode', JSON.stringify(obj.periode));
+    if(obj.reports) localStorage.setItem('budget-reports', JSON.stringify(obj.reports));
     if(obj.page) localStorage.setItem('budget-page', obj.page);
     // support old export where tambahan was missing
     if(obj.core && obj.core.tambahan) localStorage.setItem('budget-tambahan', JSON.stringify(obj.core.tambahan));
@@ -2392,6 +2575,9 @@ function applyDataSilent(obj){
       localStorage.setItem('budget-modes', JSON.stringify(migrated));
     }
     if(obj.tetapSessions) localStorage.setItem('budget-tetap-sessions', JSON.stringify(obj.tetapSessions));
+    if(obj.cicilanMobil) localStorage.setItem('budget-cicilan-mobil', JSON.stringify(obj.cicilanMobil));
+    if(obj.periode) localStorage.setItem('budget-periode', JSON.stringify(obj.periode));
+    if(obj.reports) localStorage.setItem('budget-reports', JSON.stringify(obj.reports));
     if(obj.page) localStorage.setItem('budget-page', obj.page);
     // reload data ke memory tanpa reload halaman
     try{ 
@@ -2567,6 +2753,11 @@ function refreshLaporanBulanSelect(){
   const keys=Object.keys(reports).sort().reverse();
   const cur=getBulanKey();
   sel.innerHTML='';
+  if(keys.length){
+    const all=document.createElement('option'); all.value='__ALL__';
+    all.textContent='📊 SEMUA PERIODE — Rekap Antar Bulan ('+keys.length+')';
+    sel.appendChild(all);
+  }
   if(!keys.includes(cur)){
     const opt=document.createElement('option'); opt.value=cur; opt.textContent=cur+' (bulan ini — belum disimpan)'; sel.appendChild(opt);
   }
@@ -2574,22 +2765,150 @@ function refreshLaporanBulanSelect(){
     const opt=document.createElement('option'); opt.value=k; opt.textContent=k + (k===cur?' • tersimpan':'');
     sel.appendChild(opt);
   });
-  if(!sel.value) sel.value=cur;
+  if(!sel.value) sel.value=keys.includes(cur)?cur:(keys[0]||cur);
+}
+const ALOKASI_KUNCI={alDapur:'dapur',alCemilan:'rekreasi',alTabungan:'skincare',alCadangan:'cadangan',alWill:'will',alIstri:'istri',alLaundry:'laundry',alART:'art'};
+function getAnakRows(snap){
+  if(snap && Array.isArray(snap.anakRows)) return snap.anakRows;
+  const a=(snap&&snap.anakInfo)||{};
+  return [
+    {icon:'🧷', k:'Popok', qty:a.qtyPopok||0, hrg:a.hargaPopok||0, unit:'pack',  v:(a.qtyPopok||0)*(a.hargaPopok||0)},
+    {icon:'🥛', k:'Susu',  qty:a.qtySusu||0,  hrg:a.hargaSusu||0,  unit:'karton', v:(a.qtySusu||0)*(a.hargaSusu||0)},
+  ];
+}
+function rowVal(r){ return (r.qty&&r.hrg)? r.qty*r.hrg : (r.v||0); }
+function buildRekapSemua(){
+  const reports=loadReports();
+  const keys=Object.keys(reports).sort();
+  if(!keys.length) return null;
+  const FL=['base','mut','fixed','anak','varTot','renTot','alTot','terpakaiAlokasi','terpakaiAll','sisa'];
+  const acc={}; FL.forEach(f=>acc[f]=0);
+  const alokasi={dapur:0,rekreasi:0,skincare:0,cadangan:0,will:0,istri:0,laundry:0,art:0};
+  const terpakaiByAlokasi={};
+  const tetap={bensin:0,cicilan:0,rumah:0};
+  const pemasukan={will:0,istri:0,tambahan:[]};
+  const anakRows=[{icon:'🧷',k:'Popok',v:0},{icon:'🥛',k:'Susu',v:0}];
+  const perPeriode=[];
+  let variabel=[], rencana=null, anakInfo=null;
+  keys.forEach(k=>{
+    const r=reports[k]||{};
+    FL.forEach(f=>acc[f]+= (r[f]||0));
+    const al=r.alokasi||{};
+    Object.keys(alokasi).forEach(kk=>alokasi[kk]+= (al[kk]||0));
+    Object.entries(r.terpakaiByAlokasi||{}).forEach(([id,v])=>{ terpakaiByAlokasi[id]=(terpakaiByAlokasi[id]||0)+(v||0); });
+    if(r.tetap){ tetap.bensin+=r.tetap.bensin||0; tetap.cicilan+=r.tetap.cicilan||0; tetap.rumah+=r.tetap.rumah||0; }
+    let tambahan=0;
+    if(r.pemasukan){
+      pemasukan.will+=r.pemasukan.will||0; pemasukan.istri+=r.pemasukan.istri||0;
+      (r.pemasukan.tambahan||[]).forEach(t=>{ tambahan+=t.nominal||0; pemasukan.tambahan.push(Object.assign({},t,{_periode:k})); });
+    }
+    const ai=r.anakInfo||{};
+    anakRows[0].v+=(ai.qtyPopok||0)*(ai.hargaPopok||0);
+    anakRows[1].v+=(ai.qtySusu||0)*(ai.hargaSusu||0);
+    anakInfo=ai;
+    (r.variabel||[]).forEach(v=>variabel.push(Object.assign({},v,{_periode:k})));
+    if(r.rencana) rencana=r.rencana;
+    perPeriode.push({ k, label:(r._meta&&r._meta.periode)||labelPeriode(k),
+      base:r.base||0, mut:r.mut||0, fixed:r.fixed||0, anak:r.anak||0, varTot:r.varTot||0,
+      renTot:r.renTot||0, tambahan,
+      will:(r.pemasukan&&r.pemasukan.will)||0, istri:(r.pemasukan&&r.pemasukan.istri)||0,
+      terpakaiAll:r.terpakaiAll||0, sisa:r.sisa||0 });
+  });
+  const alTot=ALOKASI_IDS.reduce((a,id)=>a+(alokasi[ALOKASI_KUNCI[id]]||0),0);
+  return {
+    _meta:{ bulan:keys[0], dibuat:new Date().toISOString(), semua:true, jumlah:keys.length,
+            periodeAwal:keys[0], periodeAkhir:keys[keys.length-1] },
+    ...acc,
+    alVals:ALOKASI_IDS.map(id=>alokasi[ALOKASI_KUNCI[id]]||0),
+    alTot, alokasi, terpakaiByAlokasi,
+    pemasukan, tetap, anakRows, anakInfo:anakInfo||{},
+    variabel, rencana:rencana||[], perPeriode
+  };
+}
+function renderPeriodeTable(el, snap, mode){
+  if(!el) return;
+  if(!snap || !snap._meta || !snap._meta.semua){ el.style.display='none'; el.innerHTML=''; return; }
+  el.style.display='block';
+  const rows=snap.perPeriode||[];
+  if(!rows.length){ el.innerHTML='<span class="muted" style="font-size:.74rem">Belum ada laporan tersimpan</span>'; return; }
+  const head = mode==='pemasukan'
+    ? ['Periode','Will','Istri','Tambahan','Total']
+    : ['Periode','Tetap','Anak','Variabel','Rencana','Total'];
+  const cellsOf = r => mode==='pemasukan'
+    ? [r.will, r.istri, r.tambahan, r.base]
+    : [r.fixed, r.anak, r.varTot, r.renTot, r.terpakaiAll];
+  const sum=f=>rows.reduce((a,r)=>a+(r[f]||0),0);
+  const sums = mode==='pemasukan'
+    ? [sum('will'), sum('istri'), sum('tambahan'), sum('base')]
+    : [sum('fixed'), sum('anak'), sum('varTot'), sum('renTot'), sum('terpakaiAll')];
+  const th=`<tr style="background:#F1F5F9">${head.map((h,i)=>`<th style="text-align:${i?'right':'left'}; padding:4px 3px; font-size:.66rem">${h}</th>`).join('')}</tr>`;
+  const tb=rows.map(r=>`<tr style="border-bottom:1px solid #EEF2F7">
+      <td style="padding:4px 3px; font-size:.68rem">${r.label}</td>
+      ${cellsOf(r).map(v=>`<td style="text-align:right; padding:4px 3px; font-size:.68rem">${rp(v||0)}</td>`).join('')}
+    </tr>`).join('');
+  const tf=`<tr style="font-weight:800; border-top:2px solid var(--border); background:#F8FAFC">
+      <td style="padding:4px 3px; font-size:.68rem">TOTAL (${rows.length} periode)</td>
+      ${sums.map(v=>`<td style="text-align:right; padding:4px 3px; font-size:.68rem">${rp(v)}</td>`).join('')}
+    </tr>`;
+  const title = mode==='pemasukan' ? 'Pemasukan per periode' : 'Pengeluaran per periode';
+  el.innerHTML=`<div style="font-size:.66rem; font-weight:800; color:var(--muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:.4px">${title}</div>
+    <table style="width:100%; border-collapse:collapse">${th}${tb}${tf}</table>`;
+}
+function renderPeriodeChart(snap){
+  const c=document.getElementById('deckPeriodeChart');
+  if(!c) return;
+  if(!snap || !snap._meta || !snap._meta.semua){ c.style.display='none'; return; }
+  const rows=snap.perPeriode||[];
+  if(!rows.length){ c.style.display='none'; return; }
+  c.style.display='block';
+  try{
+    const ctx=c.getContext('2d');
+    ctx.clearRect(0,0,c.width,c.height);
+    const W=c.width, H=c.height, pad=24;
+    const max=Math.max(1, ...rows.map(r=>Math.max(r.base, r.terpakaiAll)));
+    const gw=(W-pad*2)/rows.length;
+    ctx.font='9px Segoe UI';
+    rows.forEach((r,i)=>{
+      const x=pad+i*gw;
+      const h1=(r.base/max)*(H-40);
+      const h2=(r.terpakaiAll/max)*(H-40);
+      ctx.fillStyle='#059669'; ctx.fillRect(x+gw*0.12, H-22-h1, gw*0.34, h1);
+      ctx.fillStyle='#E11D48'; ctx.fillRect(x+gw*0.5,  H-22-h2, gw*0.34, h2);
+      ctx.fillStyle='#64748B'; ctx.textAlign='center';
+      ctx.fillText(r.k.slice(2).replace('-','/'), x+gw/2, H-8);
+    });
+    ctx.textAlign='left';
+    ctx.fillStyle='#059669'; ctx.fillRect(pad, 4, 8, 8); ctx.fillStyle='#334155'; ctx.fillText('Masuk', pad+11, 11);
+    ctx.fillStyle='#E11D48'; ctx.fillRect(pad+52, 4, 8, 8); ctx.fillStyle='#334155'; ctx.fillText('Keluar', pad+63, 11);
+    ctx.fillStyle='#475569'; ctx.fillText('maks '+rp(max), pad+112, 11);
+  }catch(e){}
 }
 function renderDeck(){
   const sel=document.getElementById('laporanBulan');
   const key=sel? sel.value : getBulanKey();
   const reports=loadReports();
-  let snap=reports[key];
-  // jika belum ada snapshot untuk bulan ini, pakai live
-  if(!snap){
-    snap=buildSnapshot();
-    snap._meta.live=true;
+  let snap;
+  if(key==='__ALL__'){
+    snap=buildRekapSemua();
+    if(!snap){ snap=buildSnapshot(); snap._meta.live=true; }
+  } else {
+    snap=reports[key];
+    // jika belum ada snapshot untuk bulan ini, pakai live
+    if(!snap){ snap=buildSnapshot(); snap._meta.live=true; }
   }
+  const SEMUA=!!(snap._meta && snap._meta.semua);
+  renderPeriodeTable(document.getElementById('deckPeriodePemasukan'), snap, 'pemasukan');
+  renderPeriodeTable(document.getElementById('deckPeriodePengeluaran'), snap, 'pengeluaran');
+  renderPeriodeChart(snap);
   // Cover
-  const bulanLabel=new Date(snap._meta.bulan+'-01').toLocaleDateString('id-ID',{month:'long', year:'numeric'});
-  document.getElementById('deckCoverTitle').textContent='Laporan — '+bulanLabel;
-  document.getElementById('deckCoverSub').textContent= snap._meta.live ? 'Live — belum disimpan • '+new Date().toLocaleDateString('id-ID') : 'Snapshot '+new Date(snap._meta.dibuat).toLocaleString('id-ID');
+  if(SEMUA){
+    document.getElementById('deckCoverTitle').textContent='Rekap — Semua Periode';
+    document.getElementById('deckCoverSub').textContent=snap._meta.jumlah+' periode • '+labelPeriode(snap._meta.periodeAwal)+' → '+labelPeriode(snap._meta.periodeAkhir);
+  } else {
+    const bulanLabel=new Date(snap._meta.bulan+'-01').toLocaleDateString('id-ID',{month:'long', year:'numeric'});
+    document.getElementById('deckCoverTitle').textContent='Laporan — '+bulanLabel;
+    document.getElementById('deckCoverSub').textContent= snap._meta.live ? 'Live — belum disimpan • '+new Date().toLocaleDateString('id-ID') : 'Snapshot '+new Date(snap._meta.dibuat).toLocaleString('id-ID');
+  }
   document.getElementById('deckCoverPemasukan').textContent=rp(snap.base);
   document.getElementById('deckCoverTerpakai').textContent=rp(snap.terpakaiAll);
   document.getElementById('deckCoverSisa').textContent=rp(snap.sisa);
@@ -2650,14 +2969,10 @@ function renderDeck(){
   // DETAIL Pengeluaran sub-Anak — popok & susu (qty × harga)
   const anakEl=document.getElementById('deckAnakDetail');
   if(anakEl){
-    const a=snap.anakInfo||{};
-    const rows=[
-      {k:'Popok', icon:'🧷', qty:a.qtyPopok||0, hrg:a.hargaPopok||0, unit:'pack'},
-      {k:'Susu', icon:'🥛', qty:a.qtySusu||0, hrg:a.hargaSusu||0, unit:'karton'},
-    ].filter(r=>r.qty*r.hrg>0);
+    const rows=getAnakRows(snap).filter(r=>rowVal(r)>0);
     anakEl.innerHTML = rows.length
-      ? rows.map(r=>`<div style="display:flex; align-items:center; gap:6px"><span>${r.icon}</span><span style="flex:1">${r.k} <span class="muted">${r.qty} ${r.unit}×${rp(r.hrg)}</span></span><b>${rp(r.qty*r.hrg)}</b></div>`).join('')
-        + `<div style="display:flex; border-top:1px dashed var(--border); padding-top:3px; margin-top:2px"><span style="flex:1" class="muted">Jumlah</span><b>${rp(rows.reduce((x,r)=>x+r.qty*r.hrg,0))}</b></div>`
+      ? rows.map(r=>`<div style="display:flex; align-items:center; gap:6px"><span>${r.icon}</span><span style="flex:1">${r.k}${(r.qty&&r.hrg)?` <span class="muted">${r.qty} ${r.unit}×${rp(r.hrg)}</span>`:''}</span><b>${rp(rowVal(r))}</b></div>`).join('')
+        + `<div style="display:flex; border-top:1px dashed var(--border); padding-top:3px; margin-top:2px"><span style="flex:1" class="muted">Jumlah</span><b>${rp(rows.reduce((x,r)=>x+rowVal(r),0))}</b></div>`
       : '<span class="muted">Tidak ada pengeluaran anak</span>';
   }
   const vList=document.getElementById('deckVariabelList');
@@ -2675,9 +2990,30 @@ function renderDeck(){
   const alKat=['Belanja Dapur & Masak','Jajan / Rekreasi','Skincare / Personal Care','Kuota','Uang Pegangan Will','Uang Pegangan Istri','Laundry','ART'];
   const alId=['alDapur','alCemilan','alTabungan','alCadangan','alWill','alIstri','alLaundry','alART'];
   const alVals=alId.map(id=> (snap.alokasi||{})[({alDapur:'dapur',alCemilan:'rekreasi',alTabungan:'skincare',alCadangan:'cadangan',alWill:'will',alIstri:'istri',alLaundry:'laundry',alART:'art'})[id]] || 0);
-  document.getElementById('deckAlokasiTotal').textContent=rp(snap.alTot);
-  document.getElementById('deckAlokasiTerpakai').textContent=rp(snap.terpakaiAlokasi);
-  document.getElementById('deckAlokasiSisa').textContent=rp(snap.alTot - snap.terpakaiAlokasi);
+  // GRUP 1 — Alokasi Tetap (Pengeluaran Tetap + Anak) — kepotong sebelum dibagi
+  const _t=snap.tetap||{};
+  const tetapRows=[
+    {icon:'🏠', k:'Rumah', v:_t.rumah||0},
+    {icon:'💳', k:'Cicilan mobil', v:_t.cicilan||0},
+    {icon:'⛽', k:'Bensin', v:_t.bensin||0},
+    ...getAnakRows(snap).map(r=>({icon:r.icon, k:r.k, v:rowVal(r)})),
+  ];
+  const tetapTotal=tetapRows.reduce((a,r)=>a+r.v,0);
+  const tetapList=document.getElementById('deckAlokasiTetapList');
+  if(tetapList){
+    tetapList.innerHTML = tetapRows.filter(r=>r.v>0).map(r=>`
+      <div style="border:1px solid var(--border); border-radius:10px; padding:8px; background:#fff">
+        <div style="display:flex; justify-content:space-between; font-size:.78rem"><b>${r.icon} ${r.k}</b><span>${rp(r.v)}</span></div>
+        <div style="height:6px; background:#E2E8F0; border-radius:999px; overflow:hidden; display:flex; margin-top:4px"><div style="width:100%; background:#7C3AED; height:100%"></div></div>
+        <div style="display:flex; justify-content:space-between; font-size:.70rem; color:var(--muted); margin-top:4px"><span>Terpakai ${rp(r.v)} (100%)</span><span style="color:#6B7A99">Sisa Rp0</span></div>
+      </div>`).join('') || '<span class="muted" style="font-size:.76rem">Tidak ada pengeluaran tetap/anak</span>';
+  }
+  // GRUP 2 — Alokasi 8 poin + total gabungan
+  const totalAlokasiAll = tetapTotal + (snap.alTot||0);
+  const totalTerpakaiAll = tetapTotal + (snap.terpakaiAlokasi||0);
+  document.getElementById('deckAlokasiTotal').textContent=rp(totalAlokasiAll);
+  document.getElementById('deckAlokasiTerpakai').textContent=rp(totalTerpakaiAll);
+  document.getElementById('deckAlokasiSisa').textContent=rp((snap.alTot||0) - (snap.terpakaiAlokasi||0));
   const alList=document.getElementById('deckAlokasiList');
   if(alList){
     alList.innerHTML=alVals.map((v,i)=>{
@@ -2790,15 +3126,22 @@ document.getElementById('btnExportLaporan')?.addEventListener('click', async ()=
   txt+=`Tetap: ${rp(snap.fixed)} | Anak: ${rp(snap.anak)} | Mutasi: ${rp(snap.mut)}\n`;
   const _t=snap.tetap||{};
   txt+=`  - Tetap: Rumah ${rp(_t.rumah||0)} | Cicilan ${rp(_t.cicilan||0)} | Bensin ${rp(_t.bensin||0)}\n`;
-  const _a=snap.anakInfo||{};
-  txt+=`  - Anak: Popok ${_a.qtyPopok||0} pack×${rp(_a.hargaPopok||0)}=${rp((_a.qtyPopok||0)*(_a.hargaPopok||0))} | Susu ${_a.qtySusu||0} karton×${rp(_a.hargaSusu||0)}=${rp((_a.qtySusu||0)*(_a.hargaSusu||0))}\n`;
+  const _ar=getAnakRows(snap);
+  txt+=`  - Anak: ${_ar.map(r=>`${r.k}${(r.qty&&r.hrg)?` ${r.qty} ${r.unit}×${rp(r.hrg)}`:''}=${rp(rowVal(r))}`).join(' | ')||'-'}\n`;
+  if(snap._meta && snap._meta.semua){
+    txt+=`\n=== REKAP ANTAR PERIODE (${(snap.perPeriode||[]).length}) ===\n`;
+    (snap.perPeriode||[]).forEach(p=>{
+      txt+=`${p.label}\n  Masuk ${rp(p.base)} (Will ${rp(p.will||0)} + Istri ${rp(p.istri||0)} + Tambahan ${rp(p.tambahan||0)}) | Keluar ${rp(p.terpakaiAll)} (Tetap ${rp(p.fixed)} + Anak ${rp(p.anak)} + Variabel ${rp(p.varTot)} + Rencana ${rp(p.renTot)}) | Sisa ${rp(p.sisa)}\n`;
+    });
+    txt+=`\n`;
+  }
   txt+=`Variabel: ${rp(snap.varTot)} (${snap.variabel.length} pengeluaran)\n`;
   snap.variabel.forEach(v=> txt+=`- ${v.nama} [${v.kategori}] ${rp(v.periode==="Tahunan"?Math.round(v.nominal/12):v.nominal)} — ${v.ket}\n`);
   txt+=`Rencana: ${rp(snap.renTot)}/bln\n`;
   snap.rencana.forEach(r=> txt+=`- ${r.nama} Target ${rp(r.target)} Terkumpul ${rp(r.terkumpul)} Kurang ${rp(Math.max(0,r.target-r.terkumpul))}\n`);
   txt+=`Alokasi 8: Dapur ${rp(snap.alokasi.dapur)} | Jajan ${rp(snap.alokasi.rekreasi)} | Skincare ${rp(snap.alokasi.skincare)} | Kuota ${rp(snap.alokasi.cadangan)} | Will ${rp(snap.alokasi.will)} | Istri ${rp(snap.alokasi.istri)} | Laundry ${rp(snap.alokasi.laundry)} | ART ${rp(snap.alokasi.art||0)}\n`;
   txt+=`Terpakai: ${rp(snap.terpakaiAll)} | Sisa: ${rp(snap.sisa)}\n`;
-  await saveFileCapacitorOrBrowser('laporan-'+key+'.txt', txt, 'text/plain');
+  await saveFileCapacitorOrBrowser((key==='__ALL__'? 'rekap-semua-periode' : 'laporan-'+key)+'.txt', txt, 'text/plain');
 });
 document.getElementById('btnDeckPrint')?.addEventListener('click', ()=> window.print());
 document.getElementById('btnDeckShare')?.addEventListener('click', async ()=>{
