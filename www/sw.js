@@ -1,5 +1,5 @@
-const CACHE='budget-keluarga-v3-ec9009f';
-const ASSETS=['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png'];
+const CACHE='budget-keluarga-v4';
+const ASSETS=['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png','./firebase-config.js'];
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));
   self.skipWaiting();
