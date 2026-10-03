@@ -572,6 +572,10 @@ html,body{overflow-x:hidden; max-width:100vw}
           <b style="color:#991B1B">🔒 Alokasi Terkunci</b><div class="muted" style="font-size:.76rem">Simpan mode mengunci alokasi — klik Buka Kunci untuk edit lagi</div>
           <button class="btn btn-accent" id="btnUnlockAlokasi" style="margin-top:8px">🔓 Buka Kunci Alokasi</button>
         </div>
+        <div id="overAlokasiBanner" style="display:none; background:#FFFBEB; border:1px solid #FDE68A; border-radius:12px; padding:10px; margin-top:8px; text-align:center">
+          <b style="color:#92400E">⚠️ Alokasi Melebihi Sisa Bersih</b>
+          <div class="muted" style="font-size:.76rem">Ini bukan terkunci — total alokasi sudah Rp<span id="overSelisih">0</span> melebihi sisa bersih. Turunkan salah satu alokasi dulu untuk bisa menambah yang lain.</div>
+        </div>
         <div class="row" style="flex-direction:column; align-items:stretch; gap:6px">
           <div style="display:flex; justify-content:space-between"><label>🥦 Belanja Dapur & Masak</label><input class="money" id="alDapur" inputmode="numeric" style="width:140px"></div>
           <input type="range" class="slider" id="slDapur" min="0" max="4000000" step="50000">
@@ -1290,7 +1294,29 @@ function drawDonut(values, colors){
   ctx.fillText(rp(total),cx,cy-2);
   ctx.fillStyle='#64748B'; ctx.font='600 10px Segoe UI'; ctx.fillText('dialokasikan',cx,cy+12);
 }
+// === KUNCI ALOKASI — mandiri, tidak bergantung hitungan lain ===
+const ALOKASI_IDS=["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry","alART"];
+const ALOKASI_SLIDERS=["slDapur","slCemilan","slTabungan","slCadangan","slWill","slIstri","slLaundry","slART"];
+function isAlokasiLocked(){ try{ return localStorage.getItem('budget-alokasi-locked')==='1'; }catch(e){ return false; } }
+function applyLockState(){
+  const locked=isAlokasiLocked();
+  ALOKASI_IDS.concat(ALOKASI_SLIDERS).forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.disabled=locked;
+  });
+  const lockBtn=document.getElementById('btnLockAlokasi');
+  if(lockBtn) lockBtn.textContent=locked?'🔓 Buka Kunci':'🔒 Kunci Alokasi';
+  const overlay=document.getElementById('alokasiLockOverlay');
+  if(overlay){ overlay.style.display=locked?'block':'none'; overlay.hidden=!locked; }
+}
+function setAlokasiLock(locked){
+  try{ localStorage.setItem('budget-alokasi-locked', locked?'1':'0'); }catch(e){}
+  applyLockState();                 // langsung, tanpa nunggu hitungan lain
+  calc();
+  setTimeout(applyLockState, 60);   // amankan bila ada render/sync yang telat
+}
 function calc(){
+  applyLockState(); // kunci alokasi selalu sinkron, walau hitungan lain error
   const incomeBase=num("incWill")+num("incWife"); const tambahan=pemasukanTambahan.reduce((a,t)=>a+t.nominal,0); const mutasi=num("mutasiTabungan")||0; const income=incomeBase+tambahan; // total = Will+Istri+Tambahan, mutasi mindahin
   const fixed=num("fixBensin")+num("fixCicilan")+num("fixRumah");
   const anak=num("popokQty")*num("popokHarga")+num("susuQty")*num("susuHarga");
@@ -1372,10 +1398,11 @@ function calc(){
   const infoSisa2=document.getElementById('info_sisaAlokasi'); if(infoSisa2) infoSisa2.textContent=sisaAlokasiVal2? `Sisa: ${rp(sisaAlokasiVal2)} belum dialokasikan` : 'Sisa habis teralokasikan';
 
     const totalAlokasiForPagar = num("alDapur")+num("alCemilan")+num("alTabungan")+num("alCadangan")+num("alWill")+num("alIstri")+num("alLaundry")+num("alART");
-  const isOverAll = totalAlokasiForPagar > sisaBersih;
-  ["slDapur","slCemilan","slTabungan","slCadangan","slWill","slIstri","slLaundry"].forEach(id=>{
+const isOverAll = totalAlokasiForPagar > sisaBersih;
+  const _slMap={slDapur:"alDapur",slCemilan:"alCemilan",slTabungan:"alTabungan",slCadangan:"alCadangan",slWill:"alWill",slIstri:"alIstri",slLaundry:"alLaundry",slART:"alART"};
+  ALOKASI_SLIDERS.forEach(id=>{
     const el=document.getElementById(id); if(!el) return;
-    const alId={slDapur:"alDapur",slCemilan:"alCemilan",slTabungan:"alTabungan",slCadangan:"slCadangan",slWill:"alWill",slIstri:"slIstri",slLaundry:"alLaundry"}[id];
+    const alId=_slMap[id];
     const cur=num(alId);
     if(isOverAll){
       el.max=cur; // pagar: mentok di nilai saat ini, cuma bisa kurangi
@@ -1390,7 +1417,7 @@ function calc(){
     }
   });
   // money input juga pagar keras saat over
-  ["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry"].forEach(id=>{
+  ALOKASI_IDS.forEach(id=>{
     const el=document.getElementById(id); if(!el) return;
     if(isOverAll){
       el.style.borderColor="#FECACA";
@@ -1405,13 +1432,14 @@ function calc(){
     if(isOverAll){ b.disabled=true; b.style.opacity="0.45"; b.style.cursor="not-allowed"; b.title="OVERBUDGET — kurangi alokasi dulu"; }
     else { b.disabled=false; b.style.opacity="1"; b.style.cursor="pointer"; b.title=""; }
   });
-  // kunci alokasi jika terkunci
-  const locked = localStorage.getItem('budget-alokasi-locked')==='1';
-  ["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry","alART","slDapur","slCemilan","slTabungan","slCadangan","slWill","slIstri","slLaundry","slART"].forEach(id=>{
-    const el=document.getElementById(id); if(el) el.disabled=locked;
-  });
-  const lockBtn=document.getElementById('btnLockAlokasi'); if(lockBtn) lockBtn.textContent=locked?'🔓 Buka Kunci':'🔒 Terkunci';
-  const overlay=document.getElementById('alokasiLockOverlay'); if(overlay) overlay.style.display=locked?'block':'none';
+  // kunci alokasi — panggilan applyLockState() di awal calc() sudah menangani semua
+  const locked = isAlokasiLocked();
+  // banner over-budget (bedakan dari "terkunci")
+  const overBanner=document.getElementById('overAlokasiBanner');
+  if(overBanner){
+    overBanner.style.display=isOverAll?'block':'none';
+    const sel=document.getElementById('overSelisih'); if(sel) sel.textContent=fmtRibuan(Math.max(0,totalAlokasiForPagar-sisaBersih));
+  }
   const pct = sisaBersih>0 ? Math.min(100, (alokasi/sisaBersih)*100) : 0;
   document.getElementById("barFill").style.width=pct+"%";
   document.getElementById("pctAlokasi").textContent=Math.round(pct)+"%";
@@ -1577,7 +1605,7 @@ function clampAlokasi(changedId, proposed){
   let sumOthers=0;
   alokasiIds.forEach(id=>{ if(id!==changedId) sumOthers+=num(id); });
   // pagar keras: jika sudah over, max = nilai saat ini (cuma boleh kurangi)
-  const total=num("alDapur")+num("alCemilan")+num("alTabungan")+num("alCadangan")+num("alWill")+num("alIstri")+num("alLaundry");
+  const total=ALOKASI_IDS.reduce((a,id)=>a+num(id),0);
   const isOver = total > sisa;
   const cur=num(changedId);
   if(isOver){
@@ -1652,25 +1680,22 @@ document.querySelectorAll('.money, .txt, .qty, input[inputmode="numeric"]').forE
   // auto format ribuan on blur already handled, keep
 });
 document.getElementById('btnLockAlokasi')?.addEventListener('click', ()=>{
-  const cur=localStorage.getItem('budget-alokasi-locked')==='1';
-  localStorage.setItem('budget-alokasi-locked', cur?'0':'1');
-  calc();
+  setAlokasiLock(!isAlokasiLocked());
 });
 document.getElementById('btnUnlockAlokasi')?.addEventListener('click', ()=>{
-  localStorage.setItem('budget-alokasi-locked','0');
-  calc();
+  setAlokasiLock(false);
 });
 document.getElementById('btnSaveMode')?.addEventListener('click', ()=>{
   const nama=prompt('Nama mode (mis: Mode Lebaran, Mode Hemat Ekstra):');
   // kunci otomatis setelah simpan
-  setTimeout(()=>{ localStorage.setItem('budget-alokasi-locked','1'); calc(); }, 300);
+  setTimeout(()=>{ setAlokasiLock(true); }, 300);
   if(!nama) return;
-  const vals=["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry","alART"].map(k=>num(k));
+  const vals=ALOKASI_IDS.map(k=>num(k));
   const sum=vals.reduce((a,b)=>a+b,0);
   if(!sum) return alert('Alokasi masih 0 — atur dulu');
   customModes.push({id:Date.now().toString(), nama:nama.trim(), vals, createdAt:new Date().toISOString()});
   saveModes(); renderCustomModes();
-  localStorage.setItem('budget-alokasi-locked','1'); calc();
+  setAlokasiLock(true);
   alert('✅ Mode "'+nama+'" tersimpan & alokasi terkunci! Klik Buka Kunci untuk edit.');
 });
 document.querySelectorAll('[data-preset]').forEach(b=> b.addEventListener('click', ()=>{
