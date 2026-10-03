@@ -1298,6 +1298,26 @@ function drawDonut(values, colors){
 const ALOKASI_IDS=["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry","alART"];
 const ALOKASI_SLIDERS=["slDapur","slCemilan","slTabungan","slCadangan","slWill","slIstri","slLaundry","slART"];
 function isAlokasiLocked(){ try{ return localStorage.getItem('budget-alokasi-locked')==='1'; }catch(e){ return false; } }
+// === RUMUS KANONIK — semua tampilan, donat, clamp & bagi rata WAJIB pakai ini ===
+// sebelumnya tiap bagian punya rumus sendiri → sisa occasionally selisih
+function getTotalVariabel(){ return variabel.reduce((a,v)=>a+monthlyOf(v),0); }
+function getTotalRencana(){
+  return rencana.reduce((a,r)=>{
+    const kurang=Math.max(0, r.target-r.terkumpul);
+    if(kurang<=0) return a;
+    if(!r.bulanan || typeof r.bulanan!=='object') ensureBulanan(r);
+    return a+getBulananForCurrent(r);
+  },0);
+}
+function getSisaBersihNow(){
+  const base=num('incWill')+num('incWife')+pemasukanTambahan.reduce((a,t)=>a+t.nominal,0);
+  const mut=num('mutasiTabungan')||0;
+  const fixed=num('fixBensin')+num('fixCicilan')+num('fixRumah');
+  const anak=num('popokQty')*num('popokHarga')+num('susuQty')*num('susuHarga');
+  return Math.max(0, base - mut - fixed - anak - getTotalVariabel() - getTotalRencana());
+}
+function getSumAlokasi(){ return ALOKASI_IDS.reduce((a,id)=>a+num(id),0); }
+function getSisaBelumAlokasi(){ return getSisaBersihNow() - getSumAlokasi(); } // bisa negatif = over budget
 function applyLockState(){
   const locked=isAlokasiLocked();
   ALOKASI_IDS.concat(ALOKASI_SLIDERS).forEach(id=>{
@@ -1324,11 +1344,8 @@ function calc(){
   const sisaSetelahMutasi=sisaBruto - mutasi;
   const badgeMut=document.getElementById("badgeMutasi"); if(badgeMut) badgeMut.textContent=rp(mutasi);
   const effEl=document.getElementById("totalEfektif"); if(effEl) effEl.textContent=rp(income - mutasi); // kas tersedia setelah mutasi
-  const totalVariabel=variabel.reduce((a,v)=>a+monthlyOf(v),0);
-  const totalRencana=rencana.reduce((a,r)=>{
-    const kurang=Math.max(0, r.target - r.terkumpul);
-    return a + (kurang? Math.ceil(kurang/monthsUntil(r.deadline)) : 0);
-  },0);
+  const totalVariabel=getTotalVariabel();
+  const totalRencana=getTotalRencana();
   const sisaSetelahVariabel=sisaSetelahMutasi-totalVariabel;
   const sisaBersih=sisaSetelahVariabel-totalRencana;
     const alokasi=num("alDapur")+num("alCemilan")+num("alTabungan")+num("alCadangan")+num("alWill")+num("alIstri")+num("alLaundry")+num("alART");
@@ -1338,8 +1355,8 @@ function calc(){
     const _pq=num('popokQty'), _ph=num('popokHarga'), _sq=num('susuQty'), _sh=num('susuHarga');
     const _popok=_pq*_ph, _susu=_sq*_sh;
     const _base=num('incWill')+num('incWife');
-    const _varTot=variabel.reduce((a,v)=>a+(v.periode==="Tahunan"?Math.round(v.nominal/12):v.nominal),0);
-    const _renTot=rencana.reduce((a,r)=>{ const k=Math.max(0,r.target-r.terkumpul); const m=(function(d){ if(!d) return 12; const [y,m]=d.split('-').map(Number); const now=new Date(); let diff=(y-now.getFullYear())*12+(m-(now.getMonth()+1)); return diff<=0?1:diff; })(r.deadline); return a+(k?Math.ceil(k/m):0); },0);
+    const _varTot=getTotalVariabel();
+    const _renTot=getTotalRencana();
     const set=(id,txt,title)=>{ const e=document.getElementById(id); if(e){ e.textContent=txt; e.title=title; }};
     set('kpiRumah','🏠 Rumah: '+rp(_rumah),'Sumber: Menu Pemasukan & Tetap → Rumah = '+rp(_rumah));
     set('kpiCicilan','🚗 Cicilan: '+rp(_cicilan),'Sumber: Menu Pemasukan & Tetap → Cicilan mobil = '+rp(_cicilan));
@@ -1389,13 +1406,18 @@ function calc(){
   document.getElementById("perMinggu").textContent=rp(Math.round(sisaBersih/4.3));
   // slider max + PAGAR KERAS — over = kunci total, tidak bisa tambah lagi
   // Sisa Alokasi — otomatis sisaBersih - sum 8 alokasi, masuk ke slider Sisa
-  const sum8 = num("alDapur")+num("alCemilan")+num("alTabungan")+num("alCadangan")+num("alWill")+num("alIstri")+num("alLaundry")+num("alART");
-  const sisaAlokasiVal2 = Math.max(0, sisaBersih - sum8);
-  const slSisa2=document.getElementById('slSisa'); if(slSisa2){ slSisa2.max=Math.max(100000, sisaBersih); slSisa2.value=sisaAlokasiVal2; }
-  const badgeSisa2=document.getElementById('badgeSisaAlokasi'); if(badgeSisa2) badgeSisa2.textContent=rp(sisaAlokasiVal2);
+  const sum8 = getSumAlokasi();
+  const sisaAlokasiVal2 = sisaBersih - sum8; // bisa negatif = over budget
+  const slSisa2=document.getElementById('slSisa'); if(slSisa2){ slSisa2.max=Math.max(100000, sisaBersih); slSisa2.value=Math.max(0, sisaAlokasiVal2); }
+  const badgeSisa2=document.getElementById('badgeSisaAlokasi'); if(badgeSisa2){
+    badgeSisa2.textContent = sisaAlokasiVal2 < 0 ? 'OVER '+rp(Math.abs(sisaAlokasiVal2)) : rp(sisaAlokasiVal2);
+    badgeSisa2.style.background = sisaAlokasiVal2 < 0 ? '#E11D48' : '#065F46';
+  }
   const pctSisa2=document.getElementById('pctSisaAlokasi'); if(pctSisa2) pctSisa2.textContent=sisaBersih? Math.round(sisaAlokasiVal2/sisaBersih*100)+'% sisa' : '0%';
-  const barSisa2=document.getElementById('bar_sisaAlokasi'); if(barSisa2){ const f=barSisa2.querySelector('.fill-sisa'); if(f) f.style.width=(sisaBersih? Math.round(sisaAlokasiVal2/sisaBersih*100):0)+'%'; }
-  const infoSisa2=document.getElementById('info_sisaAlokasi'); if(infoSisa2) infoSisa2.textContent=sisaAlokasiVal2? `Sisa: ${rp(sisaAlokasiVal2)} belum dialokasikan` : 'Sisa habis teralokasikan';
+  const barSisa2=document.getElementById('bar_sisaAlokasi'); if(barSisa2){ const f=barSisa2.querySelector('.fill-sisa'); if(f) f.style.width=(sisaBersih? Math.max(0, Math.min(100, Math.round(sisaAlokasiVal2/sisaBersih*100))):0)+'%'; }
+  const infoSisa2=document.getElementById('info_sisaAlokasi'); if(infoSisa2) infoSisa2.textContent = sisaAlokasiVal2 < 0
+    ? `OVER ${rp(Math.abs(sisaAlokasiVal2))} — alokasi melebihi sisa bersih, turunkan salah satu`
+    : (sisaAlokasiVal2 ? `Sisa: ${rp(sisaAlokasiVal2)} belum dialokasikan` : 'Sisa habis teralokasikan');
 
     const totalAlokasiForPagar = num("alDapur")+num("alCemilan")+num("alTabungan")+num("alCadangan")+num("alWill")+num("alIstri")+num("alLaundry")+num("alART");
 const isOverAll = totalAlokasiForPagar > sisaBersih;
@@ -1457,16 +1479,8 @@ const isOverAll = totalAlokasiForPagar > sisaBersih;
   // DONAT: berdasar Sisa Bersih, bukan ngawur — 4 alokasi + sisa belum dialokasikan
   const valsAlok=[num("alDapur"),num("alCemilan"),num("alTabungan"),num("alCadangan"),num("alWill"),num("alIstri"),num("alLaundry"),num("alART")];
   const sumAlok=valsAlok.reduce((a,b)=>a+b,0);
-  const sisaBersihVal = (function(){
-    const base=num('incWill')+num('incWife')+pemasukanTambahan.reduce((a,t)=>a+t.nominal,0);
-    const mut=num('mutasiTabungan')||0;
-    const fixed=num('fixBensin')+num('fixCicilan')+num('fixRumah');
-    const anak=num('popokQty')*num('popokHarga')+num('susuQty')*num('susuHarga');
-    const varTot=variabel.reduce((a,v)=>a+(v.periode==="Tahunan"?Math.round(v.nominal/12):v.nominal),0);
-    const renTot=rencana.reduce((a,r)=>{ if(!r.bulanan) ensureBulanan(r); const k=Math.max(0,r.target-r.terkumpul); if(k<=0) return a; return a+getBulananForCurrent(r); },0);
-    return Math.max(0, base - mut - fixed - anak - varTot - renTot);
-  })();
-  const sisaBelum = Math.max(0, sisaBersihVal - sumAlok);
+  const sisaBersihVal = getSisaBersihNow();
+  const sisaBelum = getSisaBelumAlokasi(); // bisa negatif = over
   const valsDraw = sisaBelum>0 ? [...valsAlok, sisaBelum] : valsAlok;
   const colsDraw = sisaBelum>0 ? ['#0E7490','#8B5CF6','#059669','#0E7490','#0EA5E9','#EC4899','#F59E0B','#F97316','#E2E8F0'] : ['#0E7490','#8B5CF6','#059669','#0E7490','#0EA5E9','#EC4899','#F59E0B','#F97316'];
   drawDonut(valsDraw, colsDraw);
@@ -1480,7 +1494,7 @@ const isOverAll = totalAlokasiForPagar > sisaBersih;
     const pct=sisaBersihVal? Math.round(v/sisaBersihVal*100):0;
     const terPct=v? Math.round(terpakai/v*100):0;
     return `<span style="display:block; border:1px solid var(--border); border-radius:10px; padding:8px; background:#fff"><div style="display:flex; align-items:center; gap:6px"><i style="background:${colsDraw[i]}; width:10px; height:10px; border-radius:3px; display:inline-block"></i><b>${l}</b><span style="margin-left:auto; font-size:.72rem; font-weight:700">${rp(v)} • ${pct}%</span></div><div style="height:6px; background:#E2E8F0; border-radius:999px; overflow:hidden; display:flex; margin-top:6px"><div style="width:${Math.min(100,terPct)}%; background:#E11D48; height:100%"></div><div style="width:${Math.max(0,100-terPct)}%; background:#059669; height:100%"></div></div><div style="display:flex; justify-content:space-between; font-size:.68rem; color:var(--muted); margin-top:4px"><span>Terpakai ${rp(terpakai)} (${terPct}%)</span><span style="color:${sisa<0?'#E11D48':'#059669'}">Sisa ${rp(sisa)}${sisa<0?' Over!':''}</span></div></span>`;
-  }).join('') + (sisaBelum>0 ? `<span style="display:block; border:1px dashed #CBD5E1; border-radius:10px; padding:8px; background:#F8FAFC; text-align:center"><i style="background:#E2E8F0; width:10px; height:10px; border-radius:3px; display:inline-block"></i> Belum dialokasikan <b>${rp(sisaBelum)}</b> • ${Math.round(sisaBelum/sisaBersihVal*100)}% sisa</span>` : '<span style="display:block; text-align:center; color:#059669; font-weight:700; font-size:.78rem">✅ Sisa habis teralokasikan — ${rp(sisaBersihVal)} pas!</span>');
+  }).join('') + (sisaBelum>0 ? `<span style="display:block; border:1px dashed #CBD5E1; border-radius:10px; padding:8px; background:#F8FAFC; text-align:center"><i style="background:#E2E8F0; width:10px; height:10px; border-radius:3px; display:inline-block"></i> Belum dialokasikan <b>${rp(sisaBelum)}</b> • ${Math.round(sisaBelum/sisaBersihVal*100)}% sisa</span>` : (sisaBelum<0 ? `<span style="display:block; border:1px solid #FECACA; border-radius:10px; padding:8px; background:#FEF2F2; text-align:center; color:#991B1B"><i style="background:#E11D48; width:10px; height:10px; border-radius:3px; display:inline-block"></i> <b>OVER ${rp(Math.abs(sisaBelum))}</b> — alokasi melebihi sisa bersih, turunkan salah satu</span>` : '<span style="display:block; text-align:center; color:#059669; font-weight:700; font-size:.78rem">✅ Sisa habis teralokasikan — ${rp(sisaBersihVal)} pas!</span>'));
   const legEl=document.getElementById('legend'); if(legEl) legEl.innerHTML=legendHtml;
   // === ALOKASI TERPAKAI & SISA — pengeluaran se-kategori kurangi alokasi ===
   (function(){
@@ -1570,7 +1584,7 @@ const isOverAll = totalAlokasiForPagar > sisaBersih;
     const te=document.getElementById('dashTerbesar'); if(te) te.textContent=maxItem.k;
     const tePct=document.getElementById('dashTerbesarPct'); if(tePct) tePct.textContent=pct(maxItem.v)+'%';
     // keep hidden old ids for compat
-    const sisaBVal = base - mut - fixed - anak - varTot - renTot;
+    const sisaBVal = getSisaBersihNow();
     const sisaBEl=document.getElementById('sisaBersih'); if(sisaBEl) sisaBEl.textContent=rp(Math.max(0,sisaBVal));
     const sisaEl=document.getElementById('sisa'); if(sisaEl) sisaEl.textContent=rp(base - fixed - anak);
     const sisaVarEl=document.getElementById('sisaSetelahVariabel'); if(sisaVarEl) sisaVarEl.textContent=rp(base - mut - fixed - anak - varTot);
@@ -1579,8 +1593,9 @@ const isOverAll = totalAlokasiForPagar > sisaBersih;
   const lines=[];
   const add=(c,m)=> lines.push(`<span class="${c}">${m}</span>`);
   add('info',`[BRUTO] ${rp(income)} − ${rp(fixed)} − ${rp(anak)} = ${rp(sisaBruto)}`);
-  add('mut',`[VARIABEL] ${variabel.length} pos = ${rp(totalVariabel)}/bln | [RENCANA] ${rencana.length} target = ${rp(totalRencana)}/bln`);
-  add('info',`[BERSIH] ${rp(sisaBruto)} − ${rp(totalVariabel)} − ${rp(totalRencana)} = ${rp(sisaBersih)} → ${rp(Math.round(sisaBersih/30))}/hari`);
+  add('mut',`[MUTASI] −${rp(mutasi)} | [VARIABEL] ${variabel.length} pos = ${rp(totalVariabel)}/bln | [RENCANA] ${rencana.length} target = ${rp(totalRencana)}/bln`);
+  add('info',`[BERSIH] ${rp(sisaBruto)} − ${rp(mutasi)} − ${rp(totalVariabel)} − ${rp(totalRencana)} = ${rp(sisaBersih)} → ${rp(Math.round(sisaBersih/30))}/hari`);
+  add('info',`[ALOKASI] ${rp(getSumAlokasi())} dari ${rp(sisaBersih)} → sisa belum teralokasi ${rp(getSisaBelumAlokasi())}`);
   if(diff<0) add('err',`[OVER] Alokasi melebihi sisa bersih ${rp(Math.abs(diff))}`);
   else if(diff>400000) add('warn',`[LONG] Masih longgar ${rp(diff)} — bisa tambah tabungan rencana`);
   else add('ok',`[OK] Sisa bersih aman`);
@@ -1591,19 +1606,12 @@ const isOverAll = totalAlokasiForPagar > sisaBersih;
 
 
 function getSisaBersih(){
-  const base=num('incWill')+num('incWife')+pemasukanTambahan.reduce((a,t)=>a+t.nominal,0);
-  const mut=num('mutasiTabungan')||0;
-  const fixed=num('fixBensin')+num('fixCicilan')+num('fixRumah');
-  const anak=num('popokQty')*num('popokHarga')+num('susuQty')*num('susuHarga');
-  const varTot=variabel.reduce((a,v)=>a+(v.periode==="Tahunan"?Math.round(v.nominal/12):v.nominal),0);
-  const renTot=rencana.reduce((a,r)=>{ if(!r.bulanan) ensureBulanan(r); const k=Math.max(0,r.target-r.terkumpul); if(k<=0) return a; return a+getBulananForCurrent(r); },0);
-  return Math.max(0, base - mut - fixed - anak - varTot - renTot);
+  return getSisaBersihNow();
 }
 function clampAlokasi(changedId, proposed){
-  const sisa=getSisaBersih();
-  const alokasiIds=["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry","alART"];
+  const sisa=getSisaBersihNow();
   let sumOthers=0;
-  alokasiIds.forEach(id=>{ if(id!==changedId) sumOthers+=num(id); });
+  ALOKASI_IDS.forEach(id=>{ if(id!==changedId) sumOthers+=num(id); });
   // pagar keras: jika sudah over, max = nilai saat ini (cuma boleh kurangi)
   const total=ALOKASI_IDS.reduce((a,id)=>a+num(id),0);
   const isOver = total > sisa;
@@ -1700,14 +1708,8 @@ document.getElementById('btnSaveMode')?.addEventListener('click', ()=>{
 });
 document.querySelectorAll('[data-preset]').forEach(b=> b.addEventListener('click', ()=>{
   const pct=presetsPct[b.dataset.preset]; if(!pct) return;
-  // hitung sisa bersih saat ini — biar pas, misal 3.719.000 → Seimbang pas 3.719.000
-  const base=num('incWill')+num('incWife')+pemasukanTambahan.reduce((a,t)=>a+t.nominal,0);
-  const mut=num('mutasiTabungan')||0;
-  const fixed=num('fixBensin')+num('fixCicilan')+num('fixRumah');
-  const anak=num('popokQty')*num('popokHarga')+num('susuQty')*num('susuHarga');
-  const varTot=variabel.reduce((a,v)=>a+(v.periode==="Tahunan"?Math.round(v.nominal/12):v.nominal),0);
-  const renTot=rencana.reduce((a,r)=>{ if(!r.bulanan) ensureBulanan(r); const k=Math.max(0,r.target-r.terkumpul); if(k<=0) return a; return a+getBulananForCurrent(r); },0);
-  const sisaB=Math.max(0, base - mut - fixed - anak - varTot - renTot);
+// hitung sisa bersih saat ini — rumus kanonik, biar pas dan ga selisih
+  const sisaB=getSisaBersihNow();
   let dapur=Math.round(sisaB*pct.alDapur), rek=Math.round(sisaB*pct.alCemilan), skin=Math.round(sisaB*pct.alTabungan), cad=Math.round(sisaB*pct.alCadangan);
   let will=Math.round(sisaB*pct.alWill), istri=Math.round(sisaB*pct.alIstri), laundry=Math.round(sisaB*pct.alLaundry), art=Math.round(sisaB*pct.alART);
   // adjust rounding remainder to cadangan
@@ -1727,16 +1729,12 @@ document.querySelectorAll('[data-preset]').forEach(b=> b.addEventListener('click
   syncSliders(); calc();
 }));
 document.getElementById('btnBagi').addEventListener('click', ()=>{
-  const incomeBase=num("incWill")+num("incWife"); const tambahan=pemasukanTambahan.reduce((a,t)=>a+t.nominal,0); const mutasi=num("mutasiTabungan")||0; const income=incomeBase+tambahan; // total = Will+Istri+Tambahan, mutasi mindahin
-  const fixed=num("fixBensin")+num("fixCicilan")+num("fixRumah");
-  const anak=num("popokQty")*num("popokHarga")+num("susuQty")*num("susuHarga");
-  const totalVariabel=variabel.reduce((a,v)=>a+monthlyOf(v),0);
-  const totalRencana=rencana.reduce((a,r)=> a + (function(r){ const k=Math.max(0,r.target-r.terkumpul); if(k<=0) return 0; if(r.bulanan) ensureBulanan(r); return getBulananForCurrent(r); })(r),0);
-  const sisaBersih=income-fixed-anak-totalVariabel-totalRencana;
+  // BUG FIX: dulu mutasi tabungan TIDAK dikurangi & ensureBulanan dipakai terbalik
+  const sisaBersih=getSisaBersihNow();
   const each=Math.floor(sisaBersih/8);
-  ["alDapur","alCemilan","alTabungan","alCadangan","alWill","alIstri","alLaundry","alART"].forEach(id=> document.getElementById(id).value=fmtRibuan(each));
+  ALOKASI_IDS.forEach(id=>{ const el=document.getElementById(id); if(el) el.value=fmtRibuan(each); });
   const rem=sisaBersih - each*8;
-  if(rem) document.getElementById("alDapur").value=fmtRibuan(each+rem);
+  if(rem){ const el=document.getElementById('alDapur'); if(el) el.value=fmtRibuan(each+rem); }
   syncSliders(); calc();
 });
 document.getElementById('resetBtn').addEventListener('click', ()=>{
