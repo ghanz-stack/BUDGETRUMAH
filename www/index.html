@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="id">
 <head>
 <meta charset="UTF-8">
@@ -345,6 +345,35 @@ html,body{overflow-x:hidden; max-width:100vw}
   </div>
 </div>
 
+<!-- POPUP PERIODE MANUAL — muncul saat tombol "Sesi Baru" ditekan.
+     User mengisi tanggal mulai periode yang AKAN berjalan; hasilnya disimpan ke
+     budget-periode (kunci+anchor) sehingga ikut tampil di kolom periode laporan. -->
+<div id="periodeModal" style="display:none; position:fixed; inset:0; z-index:10001; background:rgba(15,23,42,.55); padding:16px; overflow:auto; -webkit-overflow-scrolling:touch">
+  <div style="background:#fff; border-radius:16px; max-width:440px; margin:7vh auto 0; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.4)">
+    <div style="background:linear-gradient(135deg,#7C3AED,#EC4899); color:#fff; padding:14px 16px">
+      <div style="font-weight:800; font-size:.95rem">🗓️ Mulai Sesi / Periode Baru</div>
+      <div id="periodeModalSub" style="font-size:.74rem; opacity:.93; margin-top:3px; line-height:1.5">—</div>
+    </div>
+    <div style="padding:14px 16px 4px">
+      <div style="background:#F8FAFC; border:1px dashed var(--border); border-radius:10px; padding:9px 10px">
+        <div style="font-size:.63rem; font-weight:800; text-transform:uppercase; letter-spacing:.5px; color:var(--muted)">Sesi sekarang (akan diarsipkan)</div>
+        <div id="periodeModalLama" style="font-weight:800; font-size:.84rem; margin-top:2px">—</div>
+      </div>
+      <label for="periodeModalMulai" style="display:block; font-size:.70rem; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; margin:13px 0 5px">Mulai periode baru</label>
+      <input type="date" id="periodeModalMulai" style="width:100%; padding:11px 10px; border:1.5px solid var(--border); border-radius:11px; font-size:.95rem; font-weight:700; box-sizing:border-box">
+      <div style="display:flex; justify-content:space-between; gap:10px; margin-top:9px; font-size:.78rem; background:#ECFDF5; border:1px solid #A7F3D0; border-radius:10px; padding:8px 10px">
+        <span style="color:#065F46">Periode baru</span><b id="periodeModalBaru" style="color:#065F46; text-align:right">—</b>
+      </div>
+      <div id="periodeModalErr" style="display:none; margin-top:9px; background:#FEF2F2; border:1px solid #FECACA; color:#991B1B; border-radius:9px; padding:8px 10px; font-size:.74rem; line-height:1.5"></div>
+      <div class="muted" style="font-size:.67rem; margin-top:10px; line-height:1.55">Isi tanggal mulai sesi (tgl 1–28). Sistem otomatis menutup 1 hari sebelum tanggal yang sama di bulan berikutnya — hasilnya tersimpan di kolom <b>Periode</b> pada menu Laporan.</div>
+    </div>
+    <div style="display:flex; gap:8px; padding:12px 16px 16px">
+      <button id="btnPeriodeBatal" class="btn btn-soft" style="flex:1">Batal</button>
+      <button id="btnPeriodeOk" class="btn btn-accent" style="flex:2">Arsipkan &amp; Mulai</button>
+    </div>
+  </div>
+</div>
+
 <header class="header">
   <div class="header-inner">
     <div class="brand">
@@ -384,7 +413,7 @@ html,body{overflow-x:hidden; max-width:100vw}
 <div class="wrap">
   <!-- DASHBOARD -->
   <section class="page active" id="page-dashboard">
-    <div class="page-title"><div class="icon teal">📊</div><div><h2>Dashboard</h2><p>Ringkasan bruto → bersih, per hari & status</p></div><span class="badge live">auto hitung</span></div>
+    <div class="page-title"><div class="icon teal">📊</div><div><h2>Dashboard</h2><p>Ringkasan bruto → bersih &amp; status</p></div><span class="badge live">auto hitung</span></div>
 
     <!-- KALENDER + JAM LIVE -->
     <div class="card" id="kartuJam" style="background:linear-gradient(135deg,#0F766E,#0E7490); color:#fff; border:0; margin-bottom:12px">
@@ -408,7 +437,7 @@ html,body{overflow-x:hidden; max-width:100vw}
       <div class="sisa-grid rekap-grid">
         <div class="sisa-box"><div class="k">Pemasukan</div><div class="v" id="dashRekapPemasukan">Rp0</div><div class="k" style="margin-top:4px; opacity:.85" id="dashRekapPemasukanSub">Will+Istri</div></div>
         <div class="sisa-box"><div class="k">Terpakai</div><div class="v" id="dashRekapTerpakai">Rp0</div><div class="k" style="margin-top:4px; opacity:.85" id="dashRekapTerpakaiSub">0%</div></div>
-        <div class="sisa-box" style="background:rgba(255,255,255,.22); border-color:#fff"><div class="k">Sisa</div><div class="v" id="dashRekapSisa">Rp0</div><div class="k" style="margin-top:4px; opacity:.9" id="dashRekapSisaSub">/hari Rp0</div></div>
+        <div class="sisa-box" style="background:rgba(255,255,255,.22); border-color:#fff"><div class="k">Sisa</div><div class="v" id="dashRekapSisa">Rp0</div><div class="k" style="margin-top:4px; opacity:.9" id="dashRekapSisaSub">0% dari pemasukan</div></div>
       </div>
       <div id="dashBreakdown" style="margin-top:12px; display:grid; gap:5px"></div>
       <div style="margin-top:10px; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.22); border-radius:12px; padding:10px">
@@ -416,7 +445,7 @@ html,body{overflow-x:hidden; max-width:100vw}
         <div class="top3-grid" id="top3Grid"></div>
         <div style="display:none"><span id="dashTerbesar"></span><span id="dashTerbesarSub"></span><span id="dashTerbesarPct"></span></div>
       </div>
-      <div style="display:none"><span id="sisa"></span><span id="sisaSetelahVariabel"></span><span id="sisaBersih"></span><span id="perHari"></span><span id="perMinggu"></span><span id="pctAlokasiHero"></span><div id="barFill"></div><div id="statusText"></div></div>
+      <div style="display:none"><span id="sisa"></span><span id="sisaSetelahVariabel"></span><span id="sisaBersih"></span><span id="pctAlokasiHero"></span><div id="barFill"></div><div id="statusText"></div></div>
     </div>
 
     <div class="grid3" style="margin-top:14px">
@@ -446,24 +475,40 @@ html,body{overflow-x:hidden; max-width:100vw}
         <div class="card-head"><div class="icon violet">🏠</div><div><h2>Tetap</h2><p>Wajib tiap bulan</p></div><span class="badge" id="pctFixed">46%</span></div>
         <div class="row"><label>⛽ Bensin mobil</label><input class="money" id="fixBensin" inputmode="numeric"></div>
         <div class="row"><label>🚗 Cicilan mobil</label><input class="money" id="fixCicilan" inputmode="numeric"></div>
-        <div id="cicilanMobilBox" style="margin:-2px 0 6px; background:#EFF6FF; border:1px solid #BFDBFE; border-radius:10px; padding:8px">
-          <div style="display:flex; justify-content:space-between; align-items:center; font-size:.74rem">
+        <div id="cicilanMobilBox" style="margin:-2px 0 6px; background:#EFF6FF; border:1px solid #BFDBFE; border-radius:10px; padding:9px">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; font-size:.74rem">
             <span style="font-weight:800; color:#1E40AF">🗓️ Cicilan mobil</span>
-            <span id="cicMobilSisa" style="font-weight:800; color:#1D4ED8">—</span>
+            <span id="cicMobilSisa" style="font-weight:800; color:#1D4ED8; text-align:right">—</span>
           </div>
-          <div style="height:6px; background:#E2E8F0; border-radius:999px; overflow:hidden; margin-top:6px">
-            <div id="cicMobilBar" style="width:0%; background:#1D4ED8; height:100%; transition:width .3s"></div>
+          <div style="height:7px; background:#E2E8F0; border-radius:999px; overflow:hidden; margin-top:6px">
+            <div id="cicMobilBar" style="width:0%; background:linear-gradient(90deg,#60A5FA,#1D4ED8); height:100%; transition:width .3s"></div>
           </div>
-          <div style="display:flex; justify-content:space-between; font-size:.68rem; color:var(--muted); margin-top:4px">
-            <span id="cicMobilInfo">—</span><span id="cicMobilSelesai">—</span>
+          <div style="display:flex; justify-content:space-between; gap:8px; font-size:.66rem; color:var(--muted); margin-top:4px">
+            <span id="cicMobilInfo">—</span><span id="cicMobilSelesai" style="text-align:right">—</span>
+          </div>
+          <!-- 3 kartu angka biar tidak ambigu: semua satuan BULAN -->
+          <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:5px; margin-top:7px">
+            <div style="background:#fff; border:1px solid #BFDBFE; border-radius:8px; padding:5px 4px; text-align:center">
+              <div style="font-size:.57rem; color:var(--muted); text-transform:uppercase; letter-spacing:.4px">Sudah jalan</div>
+              <div id="cicMobilStatJalan" style="font-size:.84rem; font-weight:800; color:#1E3A8A">—</div>
+            </div>
+            <div style="background:#fff; border:1px solid #BFDBFE; border-radius:8px; padding:5px 4px; text-align:center">
+              <div style="font-size:.57rem; color:var(--muted); text-transform:uppercase; letter-spacing:.4px">Sisa waktu</div>
+              <div id="cicMobilStatSisa" style="font-size:.84rem; font-weight:800; color:#1D4ED8">—</div>
+            </div>
+            <div style="background:#fff; border:1px solid #BFDBFE; border-radius:8px; padding:5px 4px; text-align:center">
+              <div style="font-size:.57rem; color:var(--muted); text-transform:uppercase; letter-spacing:.4px">Tenor total</div>
+              <div id="cicMobilStatTenor" style="font-size:.84rem; font-weight:800; color:#1E3A8A">—</div>
+            </div>
           </div>
           <div style="display:flex; gap:6px; margin-top:7px; align-items:center; flex-wrap:wrap">
             <span style="font-size:.66rem; color:var(--muted)">Mulai</span>
             <input class="txt" id="cicMobilMulai" placeholder="YYYY-MM" style="width:84px; font-size:.72rem; padding:4px 6px">
-            <span style="font-size:.66rem; color:var(--muted)">Sisa bln</span>
+            <span style="font-size:.66rem; color:var(--muted)">Tenor (bln)</span>
             <input class="qty" id="cicMobilSisaAwal" type="number" min="0" style="width:56px">
             <button class="btn btn-soft" id="btnCicMobilSave" style="font-size:.68rem; padding:4px 8px">💾</button>
           </div>
+          <div style="font-size:.60rem; color:var(--muted); margin-top:6px; line-height:1.45">Bar &amp; persen = <b>seberapa besar waktu cicilan yang sudah berjalan</b>, bukan persentase pelunasan nominal.</div>
         </div>
         <div class="row"><label>🏡 Rumah</label><input class="money" id="fixRumah" inputmode="numeric"></div>
         <div class="total-row"><span>Total Tetap</span><span id="totalFixed">Rp0</span></div>
@@ -737,9 +782,12 @@ html,body{overflow-x:hidden; max-width:100vw}
               <div style="display:grid; grid-template-columns:1fr auto; gap:4px 8px; font-size:.76rem">
                 <span>💰 Pemasukan</span><b id="rkPemasukan" style="text-align:right">Rp0</b>
                 <span>🛒 Pengeluaran</span><b id="rkPengeluaran" style="text-align:right">Rp0</b>
+                <!-- JABARAN PER POS — total Pengeluaran dipecah jadi Tetap / Anak / Variabel / Rencana -->
+                <div id="rkPengeluaranDetail" style="grid-column:1 / -1; margin-top:2px; background:#F8FAFC; border:1px dashed var(--border); border-radius:8px; padding:6px 8px; font-size:.70rem; line-height:1.65; color:#334155; white-space:normal"></div>
                 <span>🏦 Tabungan (setoran mutasi)</span><b id="rkTabungan" style="text-align:right">Rp0</b>
                 <span>💸 Tarik dari tabungan</span><b id="rkTarikTab" style="text-align:right">Rp0</b>
                 <span>🏦 Saldo tabungan (kumulatif)</span><b id="rkSaldoTab" style="text-align:right">Rp0</b>
+                <div id="rkSaldoTabNote" style="grid-column:1 / -1; font-size:.64rem; color:var(--muted); line-height:1.45; margin:-2px 0 2px"></div>
                 <span>🎯 Dana terkumpul (rencana)</span><b id="rkDana" style="text-align:right">Rp0</b>
                 <span>🚗 Sisa cicilan mobil</span><b id="rkCicilan" style="text-align:right">—</b>
                 <span style="border-top:1px dashed var(--border); padding-top:4px; font-weight:800">Sisa akhir sesi</span>
@@ -747,10 +795,6 @@ html,body{overflow-x:hidden; max-width:100vw}
               </div>
             </div>
             <div id="deckArsipBadge" style="display:none; margin-top:10px; background:#EFF6FF; border:1px solid #BFDBFE; border-radius:12px; padding:8px; font-size:.78rem; font-weight:700; color:#1E40AF; text-align:center">🔒 Arsip — sesi sudah selesai, hanya bisa dilihat</div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; font-size:.76rem">
-              <div style="background:#F8FAFC; border:1px solid var(--border); border-radius:10px; padding:8px"><b>Per hari</b><br><span id="deckCoverHari">Rp0</span></div>
-              <div style="background:#F8FAFC; border:1px solid var(--border); border-radius:10px; padding:8px"><b>Per minggu</b><br><span id="deckCoverMinggu">Rp0</span></div>
-            </div>
           </div>
         </div></div>
         <!-- Slide 2: Pemasukan -->
@@ -1080,6 +1124,10 @@ function _mkToNum(ym){ const p=String(ym||'').split('-'); return p.length===2? (
 function _numToMk(n){ const y=Math.floor(n/12), m=n%12+1; return y+'-'+String(m).padStart(2,'0'); }
 function _fmtBulan(ym){ const p=String(ym||'').split('-'); if(p.length!==2) return '—';
   return new Date(+p[0], +p[1]-1, 1).toLocaleDateString('id-ID',{month:'short', year:'numeric'}); }
+// HARUS di blok script INI (blok awal): dipakai initCicilanMobil()/renderCicilanMobil()
+// yang jalan di akhir blok ini — kalau didefinisikan di blok script belakangan,
+// ReferenceError → init terhenti → jam/periode/calc tidak pernah jalan.
+function getBulanKey(d=new Date()){ return d.toISOString().slice(0,7); }
 function hitungCicilanMobil(){
   const now=getBulanKey();
   const mulai=cicilanMobil.mulai||now;
@@ -1097,15 +1145,23 @@ function renderCicilanMobil(){
   const bar=document.getElementById('cicMobilBar');
   if(!document.getElementById('cicMobilSisa')) return;
   if(h.awal<=0){
-    set('cicMobilSisa',' belum diatur'); set('cicMobilInfo','Isi "Sisa bln" di bawah'); set('cicMobilSelesai','');
+    set('cicMobilSisa','— belum diatur');
+    set('cicMobilInfo','Isi "Tenor (bln)" di bawah');
+    set('cicMobilSelesai','');
+    set('cicMobilStatJalan','—'); set('cicMobilStatSisa','—'); set('cicMobilStatTenor','—');
     if(bar) bar.style.width='0%';
   } else if(h.lunas){
-    set('cicMobilSisa','✅ LUNAS'); set('cicMobilInfo','Selesai '+_fmtBulan(h.selesaiKey)); set('cicMobilSelesai','');
+    set('cicMobilSisa','✅ LUNAS');
+    set('cicMobilInfo', h.awal+' dari '+h.awal+' bulan • 100% waktu berjalan');
+    set('cicMobilSelesai','Selesai '+_fmtBulan(h.selesaiKey));
+    set('cicMobilStatJalan', h.awal+' bln'); set('cicMobilStatSisa','0 bln'); set('cicMobilStatTenor', h.awal+' bln');
     if(bar) bar.style.width='100%';
   } else {
-    set('cicMobilSisa','Sisa '+h.sisa+' bulan');
-    set('cicMobilInfo', h.pct+'% lunas • mulai '+_fmtBulan(h.mulai));
+    // "Bulan ke-N" memakai lewat+1 biar bulan pertama tidak terbaca "bulan ke-0"
+    set('cicMobilSisa','Sisa '+h.sisa+' bln');
+    set('cicMobilInfo','Bulan ke-'+(h.lewat+1)+' dari '+h.awal+' • '+h.pct+'% waktu berjalan');
     set('cicMobilSelesai','Selesai '+_fmtBulan(h.selesaiKey));
+    set('cicMobilStatJalan', h.lewat+' bln'); set('cicMobilStatSisa', h.sisa+' bln'); set('cicMobilStatTenor', h.awal+' bln');
     if(bar) bar.style.width=h.pct+'%';
   }
   const mi=document.getElementById('cicMobilMulai');
@@ -1114,7 +1170,7 @@ function renderCicilanMobil(){
   if(sa && document.activeElement!==sa) sa.value=String(cicilanMobil.sisaAwal);
   // KPI header ikut update
   const kpi=document.getElementById('kpiCicilan');
-  if(kpi) kpi.title='Sumber: Menu Pemasukan & Tetap → Cicilan mobil = '+rp(num('fixCicilan'))+(h.awal>0? (' • '+h.sisa+' bulan lagi, selesai '+_fmtBulan(h.selesaiKey)) : '');
+  if(kpi) kpi.title='Sumber: Menu Pemasukan & Tetap → Cicilan mobil = '+rp(num('fixCicilan'))+(h.awal>0? (' • tenor '+h.awal+' bln • sudah jalan '+h.lewat+' bln • sisa '+h.sisa+' bln • selesai '+_fmtBulan(h.selesaiKey)) : '');
 }
 function initCicilanMobil(){
   const mi=document.getElementById('cicMobilMulai');
@@ -1161,7 +1217,9 @@ function cekPeriode(){
   const p=muatPeriode();
   const kunciBaru=getPeriodeKey();
   if(!p.kunci){ simpanPeriode(Object.assign({},p,{anchor:p.anchor||PERIODE_ANCHOR_DEFAULT, kunci:kunciBaru})); return; }
-  if(p.kunci!==kunciBaru) tampilkanBannerPeriode(p.kunci, kunciBaru);
+  // Hanya tampilkan banner kalau kalender sudah LEWAT sesi (kunciBaru > p.kunci)
+  // Kalau user manual set kunci ke masa depan (kunciBaru < p.kunci), jangan tampilkan banner.
+  if(p.kunci!==kunciBaru && kunciBaru>p.kunci) tampilkanBannerPeriode(p.kunci, kunciBaru);
 }
 function tampilkanBannerPeriode(lama, baru){
   const b=document.getElementById('periodeBanner'); if(!b) return;
@@ -1169,29 +1227,105 @@ function tampilkanBannerPeriode(lama, baru){
   if(info) info.textContent='Periode '+labelPeriode(lama)+' selesai → '+labelPeriode(baru)+'. Belum diarsip & belum direset.';
   b.style.display='block';
 }
-// KUNCI SESI = periode tempat data live saat ini berasal (dari budget-periode).
-// Bukan getPeriodeKey() — karena saat pergantian hari-25 data LAMA belum direset,
-// sehingga getPeriodeKey() sudah menunjuk sesi BARU sementara isinya masih sesi lama.
-function getSessionKey(){ const k=muatPeriode().kunci; return k || getPeriodeKey(); }
+// === POPUP PERIODE MANUAL helper ===
+// Format tanggal YYYY-MM-DD
+function _ymd(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+// Default awal periode berikutnya (bukan hari ini, tapi awal sesi selanjutnya)
+function _defaultMulaiPeriodeBaru(){
+  const a=getPeriodeAnchor();
+  const k=getSessionKey();
+  const kini=getPeriodeKey();
+  const key = (kini!==k)? kini : _bulanBerikut(k);
+  const p=String(key).split('-');
+  return new Date(+p[0], +p[1]-1, a);
+}
+function _bulanBerikut(kunci){ const p=String(kunci).split('-'); let y=+p[0], m=+p[1]; if(m>12){m=1;y++;} return y+'-'+String(m).padStart(2,'0'); }
+// Preview periode baru dari input tanggal
+function _sinkanPreviewPeriode(){
+  const inp=document.getElementById('periodeModalMulai');
+  const elBaru=document.getElementById('periodeModalBaru');
+  if(!inp || !elBaru) return;
+  const v=inp.value;
+  if(!v){ elBaru.textContent='-'; return; }
+  const parts=v.split('-');
+  if(parts.length!==3){ elBaru.textContent='-'; return; }
+  const y=+parts[0], m=+parts[1]-1, d=+parts[2];
+  if(isNaN(y)||isNaN(m)||isNaN(d)){ elBaru.textContent='-'; return; }
+  const anchor=Math.min(28, Math.max(1, d));
+  const kunci=y+'-'+String(m+1).padStart(2,'0');
+  const sampai=new Date(y, m+1, anchor-1);
+  const f=d=> d.toLocaleDateString('id-ID',{day:'numeric', month:'short', year:'numeric'});
+  elBaru.textContent=f(new Date(y,m,anchor))+' -> '+f(sampai);
+}
+function _tampilkanErrPeriode(msg){
+  const el=document.getElementById('periodeModalErr');
+  if(!el) return;
+  if(msg){ el.textContent=msg; el.style.display='block'; }
+  else { el.style.display='none'; }
+}
+function tutupModalPeriode(){
+  const m=document.getElementById('periodeModal');
+  if(m) m.style.display='none';
+}
 function mulaiPeriodeBaru(){
+  const modal=document.getElementById('periodeModal');
+  if(!modal){
+    const lama=getSessionKey();
+    const baru=getPeriodeKey();
+    if(lama===baru){ alert('Masih di periode yang sama - '+labelPeriode(baru)); return; }
+    if(!confirm(`Tutup periode ${labelPeriode(lama)} ?
+
+Diarsipkan jadi laporan bulan itu
+TETAP: Pengeluaran Tetap, tracker cicilan, RENCANA (lanjut)
+Di-reset: Pemasukan, Anak, Alokasi, Variabel, Pemasukan Tambahan`) return;
+    jalankanGantiPeriode(baru, getPeriodeAnchor());
+    return;
+  }
+  const lama=getSessionKey();
+  const sub=document.getElementById('periodeModalSub');
+  if(sub) sub.textContent='Sesi berjalan '+labelPeriode(lama)+' akan diarsip jadi laporan.';
+  const elLama=document.getElementById('periodeModalLama');
+  if(elLama) elLama.textContent='Kunci '+labelPeriode(lama);
+  const inp=document.getElementById('periodeModalMulai');
+  if(inp){ inp.value=_ymd(_defaultMulaiPeriodeBaru()); _sinkanPreviewPeriode(); }
+  _tampilkanErrPeriode('');
+  modal.style.display='block';
+}
+function konfirmasiPeriodeBaru(){
+  const inp=document.getElementById('periodeModalMulai');
+  const v=inp? inp.value : '';
+  const parts=String(v||'').split('-');
+  if(parts.length!==3){ _tampilkanErrPeriode('Isi tanggal mulai periode dulu.'); return; }
+  const y=+parts[0], m=+parts[1]-1, d=+parts[2];
+  if(isNaN(y)||isNaN(m)||isNaN(d)){ _tampilkanErrPeriode('Tanggal tidak valid.'); return; }
+  const anchor=Math.min(28, Math.max(1, d));
+  const kunci=y+'-'+String(m+1).padStart(2,'0');
+  const lama=getSessionKey();
+  if(kunci===lama){ _tampilkanErrPeriode('Periode baru sama dengan sesi sekarang ('+labelPeriode(lama)+'). Pilih tanggal lain.'); return; }
+  if(!confirm(`Tutup periode ${labelPeriode(lama)}?
+
+Periode baru: ${labelPeriode(kunci)}
+
+Diarsipkan jadi laporan
+TETAP: Pengeluaran Tetap, tracker cicilan, RENCANA
+Di-reset: Pemasukan, Anak, Alokasi, Variabel, Pemasukan Tambahan`) return;
+  jalankanGantiPeriode(kunci, anchor);
+}
+function jalankanGantiPeriode(baru, anchorBaru){
   const p=muatPeriode();
   const lama=getSessionKey();
-  const baru=getPeriodeKey();
-  if(lama===baru){ alert('Masih di periode yang sama — '+labelPeriode(baru)); return; }
-  if(!confirm('Tutup periode '+labelPeriode(lama)+' ?\n\n✓ Diarsipkan jadi laporan bulan itu\n✓ TETAP: Pengeluaran Tetap, tracker cicilan, RENCANA (lanjut)\n✓ Di-reset: Pemasukan, Anak, Alokasi, Variabel, Pemasukan Tambahan')) return;
-  // 1. ARSIP
+  if(lama===baru){ alert('Masih di periode yang sama - '+labelPeriode(baru)); return; }
   let snap;
   try{
     snap=buildSnapshot();
     snap._meta.bulan=lama;
     snap._meta.periode=labelPeriode(lama);
-    snap._meta.selesai=true;           // ARSIP — sesi selesai, tidak bisa diedit lagi
+    snap._meta.selesai=true;
     snap._meta.ditutup=new Date().toISOString();
     const reports=loadReports();
     reports[lama]=snap;
     saveReports(reports);
   }catch(e){ console.warn('[periode] arsip gagal', e); alert('Gagal arsip: '+e.message); return; }
-  // 2. RESET — kecuali Pengeluaran Tetap
   const TETAP=['fixBensin','fixCicilan','fixRumah'];
   let old={}; try{ old=JSON.parse(localStorage.getItem('budget-data')||'{}'); }catch(e){}
   const newCore={};
@@ -1202,16 +1336,21 @@ function mulaiPeriodeBaru(){
   localStorage.setItem('budget-data', JSON.stringify(newCore));
   localStorage.setItem('budget-variabel', JSON.stringify([]));
   localStorage.setItem('budget-tambahan', JSON.stringify([]));
-  // rencana[] & cicilanMobil TIDAK disentuh
-  // 3. tandai periode baru
-  simpanPeriode(Object.assign({},p,{kunci:baru}));
+  const a=(isNaN(+anchorBaru)||+anchorBaru<1||+anchorBaru>28)? getPeriodeAnchor() : +anchorBaru;
+  simpanPeriode(Object.assign({},p,{anchor:a, kunci:baru}));
   location.reload();
 }
+function getSessionKey(){ const k=muatPeriode().kunci; return k || getPeriodeKey(); }
 function initPeriode(){
   document.getElementById('btnMulaiPeriode')?.addEventListener('click', mulaiPeriodeBaru);
   document.getElementById('btnPeriodeNanti')?.addEventListener('click', ()=>{
     const b=document.getElementById('periodeBanner'); if(b) b.style.display='none';
   });
+  // Modal buttons
+  document.getElementById('btnPeriodeBatal')?.addEventListener('click', tutupModalPeriode);
+  document.getElementById('btnPeriodeOk')?.addEventListener('click', konfirmasiPeriodeBaru);
+  // Input date change -> update preview
+  document.getElementById('periodeModalMulai')?.addEventListener('change', _sinkanPreviewPeriode);
   cekPeriode();
 }
 // === JAM + KALENDER LIVE (dashboard) ===
@@ -1228,9 +1367,11 @@ function jamTick(){
   // Tombol sesi baru hanya berarti saat kunci kalender sudah bergeser (lewat tgl 25)
   const bs=document.getElementById('btnSesiBaru');
   if(bs){
-    bs.disabled = !lewat;
-    bs.title = lewat ? 'Arsipkan sesi ini lalu mulai '+labelPeriode(kini)
-                     : 'Periode belum berganti — sesi baru hanya bisa dibuka mulai tanggal ke-'+getPeriodeAnchor();
+    bs.disabled = false;
+    const maju = kini!==kunci && kini<kunci;
+    bs.title = lewat ? 'Arsipkan sesi '+labelPeriode(kunci)+' lalu mulai periode baru'
+                 : (maju ? 'Sesi sudah maju ke '+labelPeriode(kunci)+' — buka lagi untuk ganti periode'
+                         : 'Buka popup untuk arsipkan sesi ini & isi periode baru');
   }
   const inline=document.getElementById('periodeBannerInline');
   if(inline){
@@ -1633,20 +1774,44 @@ function getPengeluaranTabungan(){ return variabel.filter(v=>v.kategori===KATEGO
 function getSetoranTabungan(){ return Number(num('mutasiTabungan'))||0; }
 // baca budget-reports langsung dari localStorage (hindari ketergantungan ke script berikutnya)
 function _reportsRaw(){ try{ return JSON.parse(localStorage.getItem('budget-reports')||'{}'); }catch(e){ return {}; } }
-// Saldo Tabungan = Σ (setoran mutasi − pengeluaran kategori Tabungan) di semua sesi + sesi berjalan
+// Saldo Tabungan = Σ (setoran mutasi − pengeluaran kategori Tabungan) di sesi lampau + sesi berjalan.
+//
+// ANTI-HITUNG-DOBEL (bug: saldo jadi 2× saat "baru mulai"):
+// data TIDAK auto-reset saat tanggal lewat anchor. Kalau kunci sesi sempat bergeser
+// (restore backup / sinkron / sesi baru) tanpa reset, snapshot "Simpan Bulan Ini"
+// tersimpan di kunci LAMA berisi data hidup yang PERSIS SAMA seperti sesi berjalan.
+// Kalau snapshot itu ikut dijumlah → setoran yang sama jadi 2×.
+// Maka: entry ber-marker _meta.live===false yang BELUM selesai = draft lama → DILEWATI.
+// Arsip asli (_meta.selesai===true) dan data lawas tanpa _meta tetap dihitung.
 function getSaldoTabungan(){
   const reports=_reportsRaw();
   const kunci=(typeof getSessionKey==='function')? getSessionKey() : '';
-  let saldo=0;
+  let arsip=0;
   Object.keys(reports).sort().forEach(k=>{
     if(k===kunci) return;                       // sesi berjalan dihitung terpisah di bawah
-    const r=reports[k]||{}; const rk=r.rekap||{};
-    saldo += (Number(r.mut)||0) - (Number(rk.pengeluaranTabungan)||0);
+    const r=reports[k]||{};
+    if(r._meta && r._meta.selesai!==true && r._meta.live===false) return;   // draft lama — jangan dobel
+    const rk=r.rekap||{};
+    arsip += (Number(r.mut)||0) - (Number(rk.pengeluaranTabungan)||0);
   });
   const cur=reports[kunci];
   const setoran = cur ? (Number(cur.mut)||0) : getSetoranTabungan();
   const keluar  = cur ? (Number((cur.rekap||{}).pengeluaranTabungan)||0) : getPengeluaranTabungan();
-  return saldo + setoran - keluar;
+  return arsip + setoran - keluar;
+}
+// Keterangan kecil di deck: berapa laporan lama yang sengaja tidak ikut dijumlah.
+function catatanSaldoTabungan(){
+  try{
+    const reports=_reportsRaw();
+    const kunci=(typeof getSessionKey==='function')? getSessionKey() : '';
+    const stale=Object.keys(reports).filter(k=>{
+      if(k===kunci) return false;
+      const r=reports[k]||{};
+      return !!(r._meta && r._meta.selesai!==true && r._meta.live===false);
+    });
+    if(!stale.length) return '';
+    return 'ℹ️ '+stale.length+' laporan lama tidak dijumlahkan (isinya sama dengan sesi berjalan — biar saldo tidak dobel).';
+  }catch(e){ return ''; }
 }
 function applyLockState(){
   const locked=isAlokasiLocked();
@@ -1731,8 +1896,7 @@ function calc(){
   document.getElementById("hSisa").textContent=rp(sisaBersih);
   document.getElementById("pctFixed").textContent= income? Math.round(fixed/income*100)+"%" : "0%";
   document.getElementById("badgeAnak").textContent=rp(anak);
-  document.getElementById("perHari").textContent=rp(Math.round(sisaBersih/30));
-  document.getElementById("perMinggu").textContent=rp(Math.round(sisaBersih/4.3));
+  // "Per hari" / "Per minggu" DIHAPUS sesuai permintaan — tidak ada lagi turunan sisa per waktu.
   // slider max + PAGAR KERAS — over = kunci total, tidak bisa tambah lagi
   // Sisa Alokasi — badge = uang yang BELUM dibagi ke 8 pos (harus 0 setelah alokasi penuh).
   // Rumus lama (getSisaTotal) TIDAK berubah saat alokasi diisi → terbaca "masih ada sisa".
@@ -1896,7 +2060,7 @@ const isOverAll = totalAlokasiForPagar > sisaBersih;
     const elT=document.getElementById('dashRekapTerpakai'); if(elT) elT.textContent=rp(terpakai);
     const elS=document.getElementById('dashRekapSisa'); if(elS) elS.textContent=rp(sisaAkhir);
     const subT=document.getElementById('dashRekapTerpakaiSub'); if(subT) subT.textContent=pct(terpakai)+'% dari pemasukan';
-    const subS=document.getElementById('dashRekapSisaSub'); if(subS) subS.textContent='per hari '+rp(Math.round(sisaAkhir/30))+' • '+pct(sisaAkhir)+'%'+(overBudget? ' • ⚠️ over budget':'');
+    const subS=document.getElementById('dashRekapSisaSub'); if(subS) subS.textContent=pct(sisaAkhir)+'% dari pemasukan'+(overBudget? ' • ⚠️ over budget':'');
     const bdg=document.getElementById('badgeRekap'); if(bdg) bdg.textContent='live ●';
     const rpKecil=(v)=>{ const a=Math.abs(v); if(a>=1e9) return (v/1e9).toFixed(1).replace('.0','')+'M'; if(a>=1e6) return Math.round(v/1e6)+'jt'; if(a>=1e3) return Math.round(v/1e3)+'rb'; return rp(v); };
     // ===== BREAKDOWN BARU =====
@@ -1987,7 +2151,7 @@ const isOverAll = totalAlokasiForPagar > sisaBersih;
   add('info',`[BRUTO] ${rp(income)} − ${rp(fixed)} − ${rp(anak)} = ${rp(sisaBruto)}`);
   add('mut',`[MUTASI] −${rp(mutasi)} | [PENGELUARAN] ${variabel.length} pos = ${rp(getTotalTerpakai())}/bln (mengurangi alokasi) | [RENCANA] ${rencana.length} target = ${rp(totalRencana)}/bln`);
   if(getPengeluaranTabungan()>0) add('warn',`[TABUNGAN] tarik ${rp(getPengeluaranTabungan())}/bln dari saldo tabungan • saldo ${rp(getSaldoTabungan())}`);
-  add('info',`[BERSIH] ${rp(sisaBruto)} − ${rp(mutasi)} − ${rp(totalRencana)} = ${rp(sisaBersih)} → ${rp(Math.round(sisaBersih/30))}/hari`);
+  add('info',`[BERSIH] ${rp(sisaBruto)} − ${rp(mutasi)} − ${rp(totalRencana)} = ${rp(sisaBersih)}`);
   add('info',`[ALOKASI] ${rp(getSumAlokasi())} dari ${rp(sisaBersih)} → sisa belum teralokasi ${rp(getSisaBelumAlokasi())}`);
   add('info',`[SISA TOTAL] ${rp(sisaBersih)} − pengeluaran ${rp(getTotalTerpakai())} = ${rp(getSisaTotal())}`);
   if(getPengeluaranLuarAlokasi().length) add('err',`[LARANGAN] ${getPengeluaranLuarAlokasi().length} pengeluaran di luar 8 alokasi: ${getPengeluaranLuarAlokasi().map(v=>v.nama+' ('+v.kategori+')').join(', ')}`);
@@ -2909,7 +3073,6 @@ window.pullFromCloud=pullFromCloud;
 <script>
 // === LAPORAN DECK — per bulan, semua lini ===
 let laporanIdx=0;
-function getBulanKey(d=new Date()){ return d.toISOString().slice(0,7); }
 function loadReports(){
   try{ return JSON.parse(localStorage.getItem('budget-reports')||'{}'); }catch(e){ return {}; }
 }
@@ -3103,6 +3266,71 @@ function renderPeriodeChart(snap){
     ctx.fillStyle='#475569'; ctx.fillText('maks '+rp(max), pad+112, 11);
   }catch(e){}
 }
+// === JABARAN "PENGELUARAN" PER POS (deck laporan) ===
+// Total Pengeluaran dipecah: Tetap (Rumah/Cicilan/Bensin) • Anak (Popok/Susu)
+// • Variabel per kategori • Rencana per target — biar angkanya tidak "kotak hitam".
+function renderPengeluaranDetail(snap, totalPengeluaran){
+  const el=document.getElementById('rkPengeluaranDetail');
+  if(!el || !snap) return;
+  const money=(n)=>rp(Math.round(Number(n)||0));
+  const line=(label, sum, parts)=>{
+    const det=parts.filter(p=>Math.abs(p.v||0)>0)
+      .map(p=>p.k+' '+money(p.v)).join(' • ');
+    return '<div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap">'
+      + '<span><b>'+label+'</b></span><b style="margin-left:auto">'+money(sum)+'</b></div>'
+      + (det? '<div style="color:var(--muted); font-size:.66rem; margin:-2px 0 4px 2px">'+det+'</div>'
+             : '<div style="height:4px"></div>');
+  };
+  const out=[];
+  try{
+    const t=snap.tetap||{};
+    const tParts=[{k:'Rumah',v:t.rumah},{k:'Cicilan mobil',v:t.cicilan},{k:'Bensin',v:t.bensin}];
+    out.push(line('Tetap', tParts.reduce((a,p)=>a+(Number(p.v)||0),0), tParts));
+
+    const ai=snap.anakInfo||{};
+    const aParts=[
+      {k:'Popok '+(Number(ai.qtyPopok)||0)+'×'+money(ai.hargaPopok), v:(Number(ai.qtyPopok)||0)*(Number(ai.hargaPopok)||0)},
+      {k:'Susu '+(Number(ai.qtySusu)||0)+'×'+money(ai.hargaSusu),    v:(Number(ai.qtySusu)||0)*(Number(ai.hargaSusu)||0)}
+    ];
+    out.push(line('Anak', aParts.reduce((a,p)=>a+(Number(p.v)||0),0), aParts));
+
+    // Variabel dikelompokkan per kategori (8 alokasi dulu, sisanya menyusul)
+    const byKat={};
+    (snap.variabel||[]).forEach(v=>{
+      if(!v) return;
+      const k=(v.kategori||'Lainnya');
+      const val=(v.periode==='Tahunan')? Math.round((Number(v.nominal)||0)/12) : (Number(v.nominal)||0);
+      byKat[k]=(byKat[k]||0)+val;
+    });
+    const order=(typeof ALOKASI_KATEGORI!=='undefined' && Array.isArray(ALOKASI_KATEGORI))? ALOKASI_KATEGORI.slice() : [];
+    Object.keys(byKat).forEach(k=>{ if(order.indexOf(k)<0) order.push(k); });
+    const vParts=order.filter(k=>byKat[k]).map(k=>({k:k, v:byKat[k]}));
+    out.push(line('Variabel', vParts.reduce((a,p)=>a+(Number(p.v)||0),0), vParts));
+
+    // Rencana — nominal/bulan per target (kalau snapshot lama tanpa bulanan, tetap aman)
+    let renTot=0; const rParts=[];
+    (snap.rencana||[]).forEach(r=>{
+      if(!r) return;
+      let v=0;
+      try{ const kurang=Math.max(0,(Number(r.target)||0)-(Number(r.terkumpul)||0)); if(kurang>0 && typeof getBulananForCurrent==='function') v=Number(getBulananForCurrent(r))||0; }
+      catch(e){ v=0; }
+      if(v>0){ renTot+=v; rParts.push({k:r.nama||'Tanpa nama', v:v}); }
+    });
+    out.push(line('Rencana', renTot, rParts));
+
+    const sum=(Number(snap.fixed)||0)+(Number(snap.anak)||0)+(Number(snap.varTot)||0)+(Number(snap.renTot)||0);
+    out.push('<div style="display:flex; justify-content:space-between; gap:8px; border-top:1px dashed var(--border); padding-top:5px; margin-top:2px; font-weight:800">'
+      + '<span>= Total Pengeluaran</span><span>'+money(sum)+'</span></div>');
+    if(typeof totalPengeluaran==='number' && Math.abs(totalPengeluaran-sum)>1){
+      out.push('<div style="color:#B45309; font-size:.64rem">ℹ️ Snapshot menyimpan '+money(totalPengeluaran)+' — ada pos yang tidak ikut terjabar (arsip lama).</div>');
+    }
+    el.innerHTML=out.join('');
+    el.style.display='block';
+  }catch(e){
+    el.textContent='Detail tidak tersedia untuk snapshot ini.';
+    console.warn('[rkPengeluaranDetail] gagal', e);
+  }
+}
 function renderRekapSesi(snap, arsip){
   const box=document.getElementById('deckRekapSesi');
   if(!box) return;
@@ -3127,6 +3355,11 @@ function renderRekapSesi(snap, arsip){
   set('rkDana', rp(dana));
   set('rkCicilan', cicilanSisa===null ? '—' : (r.cicilanLunas||cicilanSisa<=0 ? '✅ Lunas' : cicilanSisa+' bulan lagi'+(r.cicilanSisaAwal? ' (awal '+r.cicilanSisaAwal+')':'')));
   set('rkSisa', rp(snap.sisa||0));
+  // catatan anti-double hanya relevan untuk tampilan LIVE (arsip sudah pakai angka tersimpan)
+  const note=document.getElementById('rkSaldoTabNote');
+  if(note){ const t=(arsip? '' : (typeof catatanSaldoTabungan==='function'? catatanSaldoTabungan() : '')) || '';
+            note.textContent=t; note.style.display=t? 'block':'none'; }
+  renderPengeluaranDetail(snap, pengeluaran);
 }
 function renderArsipMode(arsip, semua){
   const badge=document.getElementById('deckArsipBadge');
@@ -3174,8 +3407,6 @@ function renderDeck(){
   document.getElementById('deckCoverPemasukan').textContent=rp(snap.base);
   document.getElementById('deckCoverTerpakai').textContent=rp(snap.terpakaiAll);
   document.getElementById('deckCoverSisa').textContent=rp(snap.sisa);
-  document.getElementById('deckCoverHari').textContent=rp(Math.round(snap.sisa/30));
-  document.getElementById('deckCoverMinggu').textContent=rp(Math.round(snap.sisa/4.3));
   const statusEl=document.getElementById('deckCoverStatus');
   if(snap.sisa<0){ statusEl.textContent='⚠️ OVERBUDGET ' + rp(Math.abs(snap.sisa)); statusEl.style.background='#FEF2F2'; statusEl.style.borderColor='#FECACA'; statusEl.style.color='#991B1B'; }
   else if(snap.sisa < snap.base*0.1){ statusEl.textContent='⚠️ Sisa tipis ' + Math.round(snap.sisa/snap.base*100)+'%'; statusEl.style.background='#FFFBEB'; statusEl.style.borderColor='#FDE68A'; statusEl.style.color='#92400E'; }
