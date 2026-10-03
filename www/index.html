@@ -1743,12 +1743,11 @@ function isAlokasiLocked(){ try{ return localStorage.getItem('budget-alokasi-loc
 // sebelumnya tiap bagian punya rumus sendiri → sisa occasionally selisih
 function getTotalVariabel(){ return variabel.reduce((a,v)=>a+monthlyOf(v),0); }
 function getTotalRencana(){
-  return rencana.reduce((a,r)=>{
-    const kurang=Math.max(0, r.target-r.terkumpul);
-    if(kurang<=0) return a;
-    if(!r.bulanan || typeof r.bulanan!=='object') ensureBulanan(r);
-    return a+getBulananForCurrent(r);
-  },0);
+  // RENCANA = DINAMIS dari kelebihan budget setelah alokasi 8 poin penuh
+  // BUKAN pengeluaran tetap - hanya kelebihan budget setelah alokasi 8 poin penuh
+  const sisaBersih = getSisaBersihNow();
+  const totalAlokasi = getSumAlokasi();
+  return Math.max(0, sisaBersih - totalAlokasi);
 }
 function getSisaBersihNow(){
   const base=num('incWill')+num('incWife')+pemasukanTambahan.reduce((a,t)=>a+t.nominal,0);
@@ -1766,7 +1765,14 @@ function getPengeluaranLuarAlokasi(){ return variabel.filter(v=>v.kategori!==KAT
 // pengeluaran yang memang mengurangi alokasi
 function getTotalTerpakai(){ return variabel.filter(v=>ALOKASI_KATEGORI.includes(v.kategori)).reduce((a,v)=>a+monthlyOf(v),0); }
 // sisa total = Sisa Bersih − total pengeluaran (uang yang benar-benar tersisa)
-function getSisaTotal(){ return getSisaBersihNow() - getTotalTerpakai(); }
+function getSisaTotal(){ 
+  // Sisa Total = Sisa Bersih - Variabel - Rencana Dinamis
+  // Rencana dinamis = kelebihan budget setelah alokasi 8 poin penuh
+  const sisaBersih = getSisaBersihNow();
+  const totalTerpakai = getTotalTerpakai();
+  const rencanaDinamis = getTotalRencana();
+  return sisaBersih - totalTerpakai - rencanaDinamis;
+}
 // === TABUNGAN ===
 // Kategori 'Tabungan' = belanja yang dibiayai dari saldo tabungan (bukan dari alokasi bulan ini)
 // (deklarasi KATEGORI_TABUNGAN ada di atas, sebelum migrasi)
