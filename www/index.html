@@ -386,6 +386,23 @@ html,body{overflow-x:hidden; max-width:100vw}
   <section class="page active" id="page-dashboard">
     <div class="page-title"><div class="icon teal">📊</div><div><h2>Dashboard</h2><p>Ringkasan bruto → bersih, per hari & status</p></div><span class="badge live">auto hitung</span></div>
 
+    <!-- KALENDER + JAM LIVE -->
+    <div class="card" id="kartuJam" style="background:linear-gradient(135deg,#0F766E,#0E7490); color:#fff; border:0; margin-bottom:12px">
+      <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap">
+        <div style="font-size:2.1rem; font-weight:800; letter-spacing:1px; line-height:1; font-variant-numeric:tabular-nums" id="clockTime">--:--:--</div>
+        <div style="min-width:0">
+          <div style="font-size:.92rem; font-weight:800" id="clockDay">—</div>
+          <div style="font-size:.78rem; opacity:.9" id="clockDate">—</div>
+          <div style="font-size:.70rem; opacity:.75" id="clockPeriod">—</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:8px; flex-wrap:wrap">
+          <button class="btn" id="btnSesiBaru" style="background:#fff; color:#0F766E; border:0; font-weight:800">🔒 Tutup Sesi &amp; Mulai Baru</button>
+          <button class="btn" id="btnKeLaporan" style="background:rgba(255,255,255,.18); color:#fff; border:1px solid rgba(255,255,255,.5)">📑 Laporan</button>
+        </div>
+      </div>
+      <div id="periodeBannerInline" style="display:none; margin-top:8px; background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.35); border-radius:10px; padding:7px 9px; font-size:.76rem"></div>
+    </div>
+
     <div class="card sisa-card">
       <div class="card-head" style="margin-bottom:4px"><div class="icon" style="background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.25)">✨</div><div><h2 style="color:#fff">Rekap — Pemasukan & Terpakai</h2><p style="color:rgba(255,255,255,.85)">Pemasukan, terpakai, sisa & top 3 pengeluaran</p></div><span class="badge" style="background:#fff; color:#0E7490" id="badgeRekap">live</span></div>
       <div class="sisa-grid rekap-grid">
@@ -498,7 +515,10 @@ html,body{overflow-x:hidden; max-width:100vw}
     <div class="card">
       <div class="var-form" id="varForm">
         <div><label>Nama pengeluaran</label><input class="txt" id="varNama" placeholder="cth: Kuota Internet"></div>
-        <div><label>Kategori <span title="Pengeluaran mengurangi alokasi yang sesuai — kategori wajib salah satu dari 8 alokasi" style="cursor:help; border:1px solid var(--border); border-radius:50%; width:16px; height:16px; display:inline-grid; place-items:center; font-size:10px; background:#F1F5F9">?</span></label><select id="varKategori">
+        <div><label>Kategori <span title="Pengeluaran mengurangi alokasi yang sesuai — wajib salah satu dari 8 alokasi, atau 'Tabungan' kalau dananya ditarik dari saldo tabungan" style="cursor:help; border:1px solid var(--border); border-radius:50%; width:16px; height:16px; display:inline-grid; place-items:center; font-size:10px; background:#F1F5F9">?</span></label><select id="varKategori">
+          <option>Belanja Dapur & Masak</option><option>Jajan / Rekreasi</option><option>Skincare / Personal Care</option><option>Kuota</option><option>Uang Pegangan Will</option><option>Uang Pegangan Istri</option><option>Laundry</option><option>ART</option><option>Tabungan</option>
+        </select></div>
+        <div id="varTujuanWrap" style="display:none"><label>🏦 Alokasi tujuan <span>— dari 8 pos alokasi mana dananya diambil</span></label><select id="varTujuan">
           <option>Belanja Dapur & Masak</option><option>Jajan / Rekreasi</option><option>Skincare / Personal Care</option><option>Kuota</option><option>Uang Pegangan Will</option><option>Uang Pegangan Istri</option><option>Laundry</option><option>ART</option>
         </select></div>
         <div><label>Nominal (Rp)</label><input class="txt" id="varNominal" inputmode="numeric" placeholder="200000"></div>
@@ -717,7 +737,9 @@ html,body{overflow-x:hidden; max-width:100vw}
               <div style="display:grid; grid-template-columns:1fr auto; gap:4px 8px; font-size:.76rem">
                 <span>💰 Pemasukan</span><b id="rkPemasukan" style="text-align:right">Rp0</b>
                 <span>🛒 Pengeluaran</span><b id="rkPengeluaran" style="text-align:right">Rp0</b>
-                <span>🏦 Tabungan (mutasi)</span><b id="rkTabungan" style="text-align:right">Rp0</b>
+                <span>🏦 Tabungan (setoran mutasi)</span><b id="rkTabungan" style="text-align:right">Rp0</b>
+                <span>💸 Tarik dari tabungan</span><b id="rkTarikTab" style="text-align:right">Rp0</b>
+                <span>🏦 Saldo tabungan (kumulatif)</span><b id="rkSaldoTab" style="text-align:right">Rp0</b>
                 <span>🎯 Dana terkumpul (rencana)</span><b id="rkDana" style="text-align:right">Rp0</b>
                 <span>🚗 Sisa cicilan mobil</span><b id="rkCicilan" style="text-align:right">—</b>
                 <span style="border-top:1px dashed var(--border); padding-top:4px; font-weight:800">Sisa akhir sesi</span>
@@ -1192,6 +1214,49 @@ function initPeriode(){
   });
   cekPeriode();
 }
+// === JAM + KALENDER LIVE (dashboard) ===
+function jamTick(){
+  const now=new Date();
+  const set=(id,v)=>{ const e=document.getElementById(id); if(e) e.textContent=v; };
+  set('clockTime', now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+  set('clockDay', now.toLocaleDateString('id-ID',{weekday:'long'}));
+  set('clockDate', now.toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'})+' • '+now.getFullYear());
+  const kunci=getSessionKey();
+  const kini=getPeriodeKey();
+  const lewat = kini!==kunci;
+  set('clockPeriod','🗓️ Sesi '+labelPeriode(kunci)+(lewat? ' • ⚠️ sudah lewat tgl '+getPeriodeAnchor()+' — tutup sesi?' : ' • berjalan'));
+  // Tombol sesi baru hanya berarti saat kunci kalender sudah bergeser (lewat tgl 25)
+  const bs=document.getElementById('btnSesiBaru');
+  if(bs){
+    bs.disabled = !lewat;
+    bs.title = lewat ? 'Arsipkan sesi ini lalu mulai '+labelPeriode(kini)
+                     : 'Periode belum berganti — sesi baru hanya bisa dibuka mulai tanggal ke-'+getPeriodeAnchor();
+  }
+  const inline=document.getElementById('periodeBannerInline');
+  if(inline){
+    inline.style.display = lewat ? 'block' : 'none';
+    if(lewat) inline.textContent='⚠️ Tanggal sudah lewat tgl '+getPeriodeAnchor()+' — sesi '+labelPeriode(kunci)+' belum diarsip & belum direset. Klik "Tutup Sesi & Mulai Baru" untuk pindah ke '+labelPeriode(kini)+'.';
+  }
+}
+// Tombol "Simpan Bulan Ini" hanya aktif mulai tanggal ke-25 (awal sesi)
+function updateTombolSimpan(){
+  const b=document.getElementById('btnBuatLaporan'); if(!b) return;
+  const anchor=getPeriodeAnchor();
+  const hari=new Date().getDate();
+  const arsip = b.dataset.arsip==='1';
+  const boleh = hari>=anchor;
+  b.disabled = arsip || !boleh;
+  b.title = arsip ? 'Sesi sudah selesai — laporan arsip tidak bisa diubah'
+          : (boleh ? 'Simpan snapshot sesi '+labelPeriode(getSessionKey())
+                   : 'Dikunci — baru bisa disimpan mulai tanggal '+anchor+' (awal sesi)');
+  b.textContent = arsip ? '🔒 Terkunci (arsip)' : (boleh ? '📸 Simpan Bulan Ini' : '🔒 Simpan — buka tgl '+anchor);
+}
+function initJam(){
+  jamTick(); setInterval(jamTick, 1000);
+  updateTombolSimpan();
+  document.getElementById('btnSesiBaru')?.addEventListener('click', mulaiPeriodeBaru);
+  document.getElementById('btnKeLaporan')?.addEventListener('click', ()=>goPage('laporan'));
+}
 
 // === VARIABEL ===
 let editVarId=null;
@@ -1205,17 +1270,12 @@ function loadVariabel(){
   }catch(e){ return JSON.parse(JSON.stringify(defaultVariabel)); }
 }
 let variabel = loadVariabel();
-// migrasi kategori lama → 8 alokasi (pengeluaran tidak boleh di luar alokasi)
-try{
-  let changed=false;
-  variabel.forEach(v=>{
-    if(v.kategori==='Cadangan Dana'){ v.kategori='Kuota'; changed=true; }
-    else if(!ALOKASI_KATEGORI.includes(v.kategori)){
-      v.kategori=KATEGORI_LAMA_MAP[v.kategori]||'Kuota'; changed=true;
-    }
-  });
-  if(changed){ localStorage.setItem('budget-variabel', JSON.stringify(variabel)); }
-}catch(e){}
+// Kategori 'Tabungan' = ditarik dari saldo tabungan (BUKAN dari alokasi bulan ini).
+// Dideklarasikan di sini karena blok migrasi di bawah sudah memakainya.
+const KATEGORI_TABUNGAN='Tabungan';
+// migrasi kategori lama → 8 alokasi: lihat setelah KATEGORI_LAMA_MAP (di bawah).
+// TIDAK boleh ditaruh di sini — ALOKASI_KATEGORI & KATEGORI_LAMA_MAP baru dideklarasikan
+// lebih jauh di bawah, sehingga akan kena TDZ dan ditelan catch(e){}
 function saveVariabel(){ try{ localStorage.setItem('budget-variabel', JSON.stringify(variabel)); localStorage.setItem('budget-last-modified', new Date().toISOString()); }catch(e){} }
 function monthlyOf(v){
   if(v.periode==="Tahunan") return Math.round(v.nominal/12);
@@ -1231,7 +1291,10 @@ function renderVariabel(){
     if(v.periode==='Bulanan') tagClass='bulanan';
     else if(v.periode==='Bulanan Variabel') tagClass='variabel';
     else if(v.periode==='Tahunan') tagClass='tahunan';
-    tr.innerHTML=`<td><b>${v.nama}</b></td><td><span class="tag">${v.kategori}</span></td><td>${rp(v.nominal)}</td><td><span class="tag ${tagClass}">${v.periode}</span></td><td><b>${rp(per)}</b></td><td class="muted">${v.ket||'-'}</td><td><div class="actions"><button class="btn-icon" onclick="editVar(${v.id})" title="Edit">✏️</button><button class="btn-icon danger" onclick="delVar(${v.id})" title="Hapus">🗑️</button></div></td>`;
+    const ketTxt = v.kategori===KATEGORI_TABUNGAN
+      ? `🏦 Tabungan → ${v.tujuan||'?'}${v.ket? ' • '+v.ket : ''}`
+      : (v.ket||'-');
+    tr.innerHTML=`<td><b>${v.nama}</b></td><td><span class="tag" ${v.kategori===KATEGORI_TABUNGAN?'style="background:#FCE7F3; color:#9D174D; border-color:#FBCFE8"':''}>${v.kategori}</span></td><td>${rp(v.nominal)}</td><td><span class="tag ${tagClass}">${v.periode}</span></td><td><b>${rp(per)}</b></td><td class="muted">${ketTxt}</td><td><div class="actions"><button class="btn-icon" onclick="editVar(${v.id})" title="Edit">✏️</button><button class="btn-icon danger" onclick="delVar(${v.id})" title="Hapus">🗑️</button></div></td>`;
     body.appendChild(tr);
   });
   // cat rekap
@@ -1245,32 +1308,46 @@ function renderVariabel(){
   document.getElementById('kpiVariabel').textContent='📦 Variabel: '+variabel.length+' pos = '+rp(tot);
   document.getElementById('kpiVariabel').title='Sumber: Menu Variabel → '+variabel.length+' pos, total '+rp(tot)+'/bulan';
 }
+// tampilkan/sembunyikan pilihan alokasi tujuan (hanya saat kategori = Tabungan)
+function toggleVarTujuan(){
+  const sel=document.getElementById('varKategori'); const wrap=document.getElementById('varTujuanWrap');
+  if(!sel||!wrap) return;
+  wrap.style.display = sel.value===KATEGORI_TABUNGAN ? '' : 'none';
+}
 function addVar(){
   const nama=document.getElementById('varNama').value.trim();
   const kategori=document.getElementById('varKategori').value;
+  const tujuan=document.getElementById('varTujuan').value;
   const nominal=toNumStr(document.getElementById('varNominal').value);
   const periode=document.getElementById('varPeriode').value;
   const ket=document.getElementById('varKet').value.trim();
   if(!nama || !nominal){ alert('Isi nama & nominal'); return; }
-  if(!ALOKASI_KATEGORI.includes(kategori)){ alert('Kategori harus salah satu dari 8 alokasi — pengeluaran tidak boleh di luar alokasi'); return; }
+  if(kategori!==KATEGORI_TABUNGAN && !ALOKASI_KATEGORI.includes(kategori)){
+    alert('Kategori harus salah satu dari 8 alokasi, atau Tabungan (dananya ditarik dari saldo tabungan)'); return;
+  }
+  if(kategori===KATEGORI_TABUNGAN && !tujuan){ alert('Pilih alokasi tujuan — dana tabungan diambil dari pos alokasi mana?'); return; }
+  const tujuanSimpan = kategori===KATEGORI_TABUNGAN ? tujuan : '';
   if(editVarId!==null){
     const v=variabel.find(x=>x.id===editVarId);
-    if(v){ v.nama=nama; v.kategori=kategori; v.nominal=nominal; v.periode=periode; v.ket=ket; }
+    if(v){ v.nama=nama; v.kategori=kategori; v.nominal=nominal; v.periode=periode; v.ket=ket; v.tujuan=tujuanSimpan; }
     editVarId=null;
     document.getElementById('btnAddVar').style.display='';
     document.getElementById('btnSaveVar').style.display='none';
     document.getElementById('btnCancelVar').style.display='none';
     document.getElementById('btnAddVar').textContent='＋ Tambah';
   } else {
-    variabel.push({id:Date.now(), nama, kategori, nominal, periode, ket});
+    variabel.push({id:Date.now(), nama, kategori, nominal, periode, ket, tujuan:tujuanSimpan});
   }
   document.getElementById('varNama').value=''; document.getElementById('varNominal').value=''; document.getElementById('varKet').value='';
+  toggleVarTujuan();
   saveVariabel(); renderVariabel(); calc();
 }
 function editVar(id){
   const v=variabel.find(x=>x.id===id); if(!v) return;
   document.getElementById('varNama').value=v.nama;
   document.getElementById('varKategori').value=v.kategori;
+  document.getElementById('varTujuan').value=v.tujuan||document.getElementById('varTujuan').value;
+  toggleVarTujuan();
   document.getElementById('varNominal').value=fmtRibuan(v.nominal);
   document.getElementById('varPeriode').value=v.periode;
   document.getElementById('varKet').value=v.ket;
@@ -1284,6 +1361,8 @@ function saveEditVar(){ addVar(); }
 function cancelEditVar(){
   editVarId=null;
   document.getElementById('varNama').value=''; document.getElementById('varNominal').value=''; document.getElementById('varKet').value='';
+  document.getElementById('varKategori').selectedIndex=0;
+  toggleVarTujuan();
   document.getElementById('btnAddVar').style.display='';
   document.getElementById('btnSaveVar').style.display='none';
   document.getElementById('btnCancelVar').style.display='none';
@@ -1506,6 +1585,18 @@ const ALOKASI_KATEGORI=['Belanja Dapur & Masak','Jajan / Rekreasi','Skincare / P
 const ALOKASI_MAP={alDapur:'Belanja Dapur & Masak',alCemilan:'Jajan / Rekreasi',alTabungan:'Skincare / Personal Care',alCadangan:'Kuota',alWill:'Uang Pegangan Will',alIstri:'Uang Pegangan Istri',alLaundry:'Laundry',alART:'ART'};
 // migrasi kategori lama (di luar 8 alokasi) → Kuota sebagai catch-all
 const KATEGORI_LAMA_MAP={'Komunikasi':'Kuota','Kendaraan':'Kuota','Pajak & STNK':'Kuota','Anak & Susu':'Kuota','Pendidikan':'Kuota','Perawatan':'Skincare / Personal Care','Langganan':'Kuota','Lainnya':'Kuota','Belanja Bulanan':'Belanja Dapur & Masak','Belanja Dapur':'Belanja Dapur & Masak'};
+// migrasi kategori lama → 8 alokasi (pengeluaran tidak boleh di luar alokasi).
+// Harus di SINI (setelah konstanta dideklarasikan) — kalau dipindah ke atas, kena TDZ.
+try{
+  let changed=false;
+  variabel.forEach(v=>{
+    if(v.kategori==='Cadangan Dana'){ v.kategori='Kuota'; changed=true; }
+    else if(v.kategori!==KATEGORI_TABUNGAN && !ALOKASI_KATEGORI.includes(v.kategori)){
+      v.kategori=KATEGORI_LAMA_MAP[v.kategori]||'Kuota'; changed=true;
+    }
+  });
+  if(changed){ localStorage.setItem('budget-variabel', JSON.stringify(variabel)); }
+}catch(e){ console.warn('[migrasi kategori] gagal', e); }
 function isAlokasiLocked(){ try{ return localStorage.getItem('budget-alokasi-locked')==='1'; }catch(e){ return false; } }
 // === RUMUS KANONIK — semua tampilan, donat, clamp & bagi rata WAJIB pakai ini ===
 // sebelumnya tiap bagian punya rumus sendiri → sisa occasionally selisih
@@ -1529,11 +1620,34 @@ function getSisaBersihNow(){
 function getSumAlokasi(){ return ALOKASI_IDS.reduce((a,id)=>a+num(id),0); }
 function getSisaBelumAlokasi(){ return getSisaBersihNow() - getSumAlokasi(); } // bisa negatif = over budget
 // pengeluaran yang kategorinya tidak termasuk 8 alokasi (harus 0 setelah migrasi)
-function getPengeluaranLuarAlokasi(){ return variabel.filter(v=>!ALOKASI_KATEGORI.includes(v.kategori)); }
-// total pengeluaran yang memang mengurangi alokasi
+// 'Tabungan' dikecualikan — ia memang sengaja di luar 8 alokasi (ambil dari saldo tabungan)
+function getPengeluaranLuarAlokasi(){ return variabel.filter(v=>v.kategori!==KATEGORI_TABUNGAN && !ALOKASI_KATEGORI.includes(v.kategori)); }
+// pengeluaran yang memang mengurangi alokasi
 function getTotalTerpakai(){ return variabel.filter(v=>ALOKASI_KATEGORI.includes(v.kategori)).reduce((a,v)=>a+monthlyOf(v),0); }
 // sisa total = Sisa Bersih − total pengeluaran (uang yang benar-benar tersisa)
 function getSisaTotal(){ return getSisaBersihNow() - getTotalTerpakai(); }
+// === TABUNGAN ===
+// Kategori 'Tabungan' = belanja yang dibiayai dari saldo tabungan (bukan dari alokasi bulan ini)
+// (deklarasi KATEGORI_TABUNGAN ada di atas, sebelum migrasi)
+function getPengeluaranTabungan(){ return variabel.filter(v=>v.kategori===KATEGORI_TABUNGAN).reduce((a,v)=>a+monthlyOf(v),0); }
+function getSetoranTabungan(){ return Number(num('mutasiTabungan'))||0; }
+// baca budget-reports langsung dari localStorage (hindari ketergantungan ke script berikutnya)
+function _reportsRaw(){ try{ return JSON.parse(localStorage.getItem('budget-reports')||'{}'); }catch(e){ return {}; } }
+// Saldo Tabungan = Σ (setoran mutasi − pengeluaran kategori Tabungan) di semua sesi + sesi berjalan
+function getSaldoTabungan(){
+  const reports=_reportsRaw();
+  const kunci=(typeof getSessionKey==='function')? getSessionKey() : '';
+  let saldo=0;
+  Object.keys(reports).sort().forEach(k=>{
+    if(k===kunci) return;                       // sesi berjalan dihitung terpisah di bawah
+    const r=reports[k]||{}; const rk=r.rekap||{};
+    saldo += (Number(r.mut)||0) - (Number(rk.pengeluaranTabungan)||0);
+  });
+  const cur=reports[kunci];
+  const setoran = cur ? (Number(cur.mut)||0) : getSetoranTabungan();
+  const keluar  = cur ? (Number((cur.rekap||{}).pengeluaranTabungan)||0) : getPengeluaranTabungan();
+  return saldo + setoran - keluar;
+}
 function applyLockState(){
   const locked=isAlokasiLocked();
   ALOKASI_IDS.concat(ALOKASI_SLIDERS).forEach(id=>{
@@ -1620,22 +1734,28 @@ function calc(){
   document.getElementById("perHari").textContent=rp(Math.round(sisaBersih/30));
   document.getElementById("perMinggu").textContent=rp(Math.round(sisaBersih/4.3));
   // slider max + PAGAR KERAS — over = kunci total, tidak bisa tambah lagi
-  // Sisa Alokasi — sisa total = Sisa Bersih − total pengeluaran (bukan cuma sisaBersih − sum alokasi)
+  // Sisa Alokasi — badge = uang yang BELUM dibagi ke 8 pos (harus 0 setelah alokasi penuh).
+  // Rumus lama (getSisaTotal) TIDAK berubah saat alokasi diisi → terbaca "masih ada sisa".
   const sum8 = getSumAlokasi();
   const totalTerpakai = getTotalTerpakai();
-  const sisaTotal = getSisaTotal(); // Sisa Bersih − total pengeluaran
-  const belumDialokasi = getSisaBelumAlokasi(); // Sisa Bersih − sum alokasi (bisa negatif = over)
+  const sisaTotal = getSisaTotal(); // Sisa Bersih − total pengeluaran (untuk info)
+  const belumDialokasi = getSisaBelumAlokasi(); // Sisa Bersih − sum8 (bisa negatif = over)
   const sisaPerAlokasi = sum8 - totalTerpakai; // sisa yang sudah dialokasikan tapi belum terpakai
-  const slSisa2=document.getElementById('slSisa'); if(slSisa2){ slSisa2.max=Math.max(100000, sisaBersih); slSisa2.value=Math.max(0, sisaTotal); }
+  const slSisa2=document.getElementById('slSisa'); if(slSisa2){ slSisa2.max=Math.max(100000, sisaBersih); slSisa2.value=Math.max(0, belumDialokasi); }
   const badgeSisa2=document.getElementById('badgeSisaAlokasi'); if(badgeSisa2){
-    badgeSisa2.textContent = sisaTotal < 0 ? 'OVER '+rp(Math.abs(sisaTotal)) : rp(sisaTotal);
-    badgeSisa2.style.background = sisaTotal < 0 ? '#E11D48' : '#065F46';
+    // OVER muncul kalau: (a) alokasi melebihi sisa bersih, ATAU (b) pengeluaran melebihi sisa bersih.
+    // Dua-duanya harus terlihat — jangan sampai salah satunya ke-clamp jadi 0.
+    const over2 = belumDialokasi < 0 || sisaTotal < 0;
+    const overAmt = Math.min(belumDialokasi, sisaTotal);
+    badgeSisa2.textContent = over2 ? 'OVER '+rp(Math.abs(overAmt)) : rp(belumDialokasi);
+    badgeSisa2.style.background = over2 ? '#E11D48' : '#065F46';
   }
-  const pctSisa2=document.getElementById('pctSisaAlokasi'); if(pctSisa2) pctSisa2.textContent=sisaBersih? Math.round(sisaTotal/sisaBersih*100)+'% sisa' : '0%';
-  const barSisa2=document.getElementById('bar_sisaAlokasi'); if(barSisa2){ const f=barSisa2.querySelector('.fill-sisa'); if(f) f.style.width=(sisaBersih? Math.max(0, Math.min(100, Math.round(sisaTotal/sisaBersih*100))):0)+'%'; }
-  const infoSisa2=document.getElementById('info_sisaAlokasi'); if(infoSisa2) infoSisa2.textContent = sisaTotal < 0
-    ? `OVER ${rp(Math.abs(sisaTotal))} — pengeluaran melebihi sisa bersih, kurangi pengeluaran`
-    : `Sisa ${rp(sisaTotal)} = ${rp(belumDialokasi)} belum dialokasi + ${rp(sisaPerAlokasi)} sisa alokasi`;
+  const pctSisa2=document.getElementById('pctSisaAlokasi'); if(pctSisa2) pctSisa2.textContent=sisaBersih? Math.round(belumDialokasi/sisaBersih*100)+'% belum' : '0%';
+  const barSisa2=document.getElementById('bar_sisaAlokasi'); if(barSisa2){ const f=barSisa2.querySelector('.fill-sisa'); if(f) f.style.width=(sisaBersih? Math.max(0, Math.min(100, Math.round(belumDialokasi/sisaBersih*100))):0)+'%'; }
+  const infoSisa2=document.getElementById('info_sisaAlokasi'); if(infoSisa2) infoSisa2.textContent =
+    (belumDialokasi < 0 ? `OVER alokasi ${rp(Math.abs(belumDialokasi))} — total 8 alokasi melebihi sisa bersih, kurangi salah satu. ` : '')
+    + (sisaTotal < 0 ? `OVER pengeluaran ${rp(Math.abs(sisaTotal))} — pengeluaran melebihi sisa bersih. ` : '')
+    + (belumDialokasi < 0 || sisaTotal < 0 ? '' : `Sisa bersih ${rp(sisaBersih)} − 8 alokasi ${rp(sum8)} = ${rp(belumDialokasi)} belum dibagi • terpakai ${rp(totalTerpakai)}, sisa di alokasi ${rp(sisaPerAlokasi)}`);
 
     const totalAlokasiForPagar = num("alDapur")+num("alCemilan")+num("alTabungan")+num("alCadangan")+num("alWill")+num("alIstri")+num("alLaundry")+num("alART");
 const isOverAll = totalAlokasiForPagar > sisaBersih;
@@ -1778,38 +1898,78 @@ const isOverAll = totalAlokasiForPagar > sisaBersih;
     const subT=document.getElementById('dashRekapTerpakaiSub'); if(subT) subT.textContent=pct(terpakai)+'% dari pemasukan';
     const subS=document.getElementById('dashRekapSisaSub'); if(subS) subS.textContent='per hari '+rp(Math.round(sisaAkhir/30))+' • '+pct(sisaAkhir)+'%'+(overBudget? ' • ⚠️ over budget':'');
     const bdg=document.getElementById('badgeRekap'); if(bdg) bdg.textContent='live ●';
-    // breakdown = hanya pos yang benar2 mengurangi pemasukan
-    const items=[
-      {k:'Tetap (Bensin+Cicilan+Rumah)', v:fixed, c:'#7C3AED'},
-      {k:'Anak (Popok+Susu)', v:anak, c:'#F59E0B'},
-      {k:'Mutasi ke Tabungan', v:mut, c:'#E11D48'},
-      {k:'Variabel', v:varTot, c:'#0284C7'},
-      {k:'Rencana (tabung/bln)', v:renTot, c:'#EA580C'},
+    const rpKecil=(v)=>{ const a=Math.abs(v); if(a>=1e9) return (v/1e9).toFixed(1).replace('.0','')+'M'; if(a>=1e6) return Math.round(v/1e6)+'jt'; if(a>=1e3) return Math.round(v/1e3)+'rb'; return rp(v); };
+    // ===== BREAKDOWN BARU =====
+    // kelompok 1: NAMA pos tetap (bukan "Tetap"/"Variabel")
+    const popok=num('popokQty')*num('popokHarga'), susu=num('susuQty')*num('susuHarga');
+    const posTetap=[
+      {k:'Rumah',        v:num('fixRumah'),  c:'#7C3AED'},
+      {k:'Cicilan Mobil',v:num('fixCicilan'),c:'#6D28D9'},
+      {k:'Bensin',       v:num('fixBensin'), c:'#8B5CF6'},
+      {k:'Popok',        v:popok,            c:'#F59E0B'},
+      {k:'Susu',         v:susu,             c:'#FBBF24'},
     ];
-    // breakdown efisien
+    // kelompok 2: rekap tiap pos alokasi → terpakai & sisa.
+    // alVals/terpakaiByAlokasi ada di buildSnapshot, BUKAN di scope calc() → hitung ulang di sini.
+    const alIds = ALOKASI_IDS;
+    const alVals = alIds.map(id=> num(id));
+    const terpakaiByAlokasi = {};
+    alIds.forEach(id=>{
+      const kat = ALOKASI_MAP[id];
+      terpakaiByAlokasi[id] = variabel.reduce((a,v)=> a + (v.kategori===kat ? monthlyOf(v) : 0), 0);
+    });
+    const posAlok=alIds.map((id,i)=>({
+      k:ALOKASI_MAP[id],
+      terpakai:terpakaiByAlokasi[id]||0,
+      alok:alVals[id]||0,
+      sisa:(alVals[id]||0)-(terpakaiByAlokasi[id]||0),
+      c:['#059669','#0D9488','#0891B2','#0284C7','#2563EB','#4F46E5','#7C3AED','#DB2777'][i]||'#059669'
+    }));
+    // kelompok 3: lainnya
+    const lainnya=[];
+    if(mut>0) lainnya.push({k:'Mutasi ke Tabungan', v:mut, c:'#E11D48'});
+    if(renTot>0) lainnya.push({k:'Rencana (nabung/bln)', v:renTot, c:'#EA580C'});
+    const keluarTab=getPengeluaranTabungan();
+    if(keluarTab>0) lainnya.push({k:'Tarik Tabungan', v:keluarTab, c:'#BE185D'});
+
     const bd=document.getElementById('dashBreakdown');
     if(bd){
-      const rows=items.map(it=>{
-        const p=pct(it.v);
-        // label pendek biar muat HP
-        const short=it.k.replace(/\s*\(.*\)$/,'');
-        return `<div class="dash-breakdown-item" style="display:flex; align-items:center; gap:6px"><span style="width:8px; height:8px; border-radius:3px; background:${it.c}; flex-shrink:0"></span><span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">${short}</span><b style="white-space:nowrap">${rp(it.v)}</b><span class="muted" style="white-space:nowrap">${p}%</span><div style="width:56px; height:5px; background:rgba(255,255,255,.25); border-radius:999px; overflow:hidden; flex-shrink:0"><div style="width:${Math.min(100,p)}%; height:100%; background:${it.c}"></div></div></div>`;
-      });
-      // ALOKASI = pembagian sisa, BUKAN pengeluaran → ditampilkan terpisah
-      const sisaAlok = alok - terpakaiAlok;
-      rows.push(`<div class="dash-breakdown-item" style="display:flex; align-items:center; gap:6px; border-top:1px dashed rgba(255,255,255,.3); padding-top:5px; margin-top:3px"><span style="width:8px; height:8px; border-radius:3px; background:#059669; flex-shrink:0"></span><span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis" title="Pembagian sisa — bukan pengeluaran">Alokasi <span style="opacity:.7">(pembagian sisa)</span></span><b style="white-space:nowrap">${rp(alok)}</b><span class="muted" style="white-space:nowrap">${pct(alok)}%</span><div style="width:56px; height:5px; background:rgba(255,255,255,.25); border-radius:999px; overflow:hidden; flex-shrink:0"><div style="width:${Math.min(100, terpakaiAlok? Math.round(terpakaiAlok/alok*100):0)}%; height:100%; background:#059669"></div></div></div>`);
-      rows.push(`<div style="font-size:.70rem; opacity:.85; padding-left:14px">↳ terpakai ${rp(terpakaiAlok)} • sisa ${rp(sisaAlok)}${sisaAlok<0?' ⚠️':''}</div>`);
+      const bar=(p,c)=>`<div style="width:56px; height:5px; background:rgba(255,255,255,.25); border-radius:999px; overflow:hidden; flex-shrink:0"><div style="width:${Math.min(100,Math.max(0,p))}%; height:100%; background:${c}"></div></div>`;
+      const line=(label,main,pctTxt,p,c)=>`<div class="dash-breakdown-item" style="display:flex; align-items:center; gap:6px"><span style="width:8px; height:8px; border-radius:3px; background:${c}; flex-shrink:0"></span><span style="flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">${label}</span><b style="white-space:nowrap">${main}</b><span class="muted" style="white-space:nowrap">${pctTxt}</span>${bar(p,c)}</div>`;
+      const sec=(t)=>`<div style="font-size:.66rem; font-weight:800; letter-spacing:.6px; text-transform:uppercase; opacity:.7; margin-top:7px; margin-bottom:2px">${t}</div>`;
+      const rows=[];
+      rows.push(sec('Pengeluaran Tetap'));
+      posTetap.forEach(it=> rows.push(line(it.k, rp(it.v), pct(it.v)+'%', pct(it.v), it.c)));
+      rows.push(sec('Alokasi — terpakai / sisa tiap pos'));
+      posAlok.forEach(a=> rows.push(line(
+        a.k,
+        `${rp(a.terpakai)} <span style="opacity:.72; font-weight:600">/ sisa ${rpKecil(a.sisa)}</span>`,
+        a.alok? pct(a.terpakai)+'%' : '—',
+        a.alok? Math.min(100, Math.round(a.terpakai/a.alok*100)) : 0, a.c
+      )));
+      if(lainnya.length){
+        rows.push(sec('Lainnya'));
+        lainnya.forEach(it=> rows.push(line(it.k, rp(it.v), pct(it.v)+'%', pct(it.v), it.c)));
+      }
+      const belumDial=getSisaBelumAlokasi();
+      rows.push(`<div style="font-size:.70rem; opacity:.88; border-top:1px dashed rgba(255,255,255,.3); padding-top:5px; margin-top:6px">${belumDial<0? '⚠️ over alokasi '+rp(Math.abs(belumDial)) : 'Belum dibagi ke alokasi <b>'+rp(belumDial)+'</b>'} • sisa alokasi <b>${rp(alok-terpakaiAlok)}</b>${keluarTab>0? ' • ⛏ tarik tabungan '+rp(keluarTab)+' (dari saldo, bukan dari pemasukan)' : ''}</div>`);
       bd.innerHTML=rows.join('');
     }
-    // Top 3 terbesar
-    const sorted=[...items].sort((a,b)=>b.v-a.v).slice(0,3);
+    // Top 3 terbesar — antar pos tetap & pos alokasi (nilai = uang yang keluar)
+    let kandidat=[
+      ...posTetap.map(o=>({k:o.k, v:o.v, c:o.c})),
+      ...posAlok.map(a=>({k:a.k, v:a.terpakai, c:a.c}))
+    ].sort((x,y)=>y.v-x.v);
+    // kalau belum ada pengeluaran sama sekali → pakai nilai alokasi biar kartu tetap berguna
+    const semuaNol = kandidat.every(o=>o.v<=0);
+    if(semuaNol) kandidat = posAlok.map(a=>({k:a.k, v:a.alok, c:a.c})).sort((x,y)=>y.v-x.v);
+    const sorted=kandidat.slice(0,3);
     const top3El=document.getElementById('top3Grid');
     if(top3El){
       const medals=['🥇','🥈','🥉'];
       top3El.innerHTML=sorted.map((it,i)=>{
-        const p=pct(it.v);
-        const short=it.k.split(' ')[0]; // Tetap, Anak, Mutasi, Variabel, Rencana, Alokasi
-        return `<div style="background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.22); border-radius:10px; padding:8px; text-align:center"><div style="font-size:14px">${medals[i]}</div><div style="font-weight:800; color:#fff; font-size:.78rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">${it.k.split('(')[0].trim()}</div><div style="font-weight:800; color:#fff; font-size:.82rem">${rp(it.v)}</div><div style="font-size:.70rem; color:#fff; opacity:.85">${p}%</div></div>`;
+        const p=base? Math.round(it.v/base*100):0;
+        return `<div style="background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.22); border-radius:10px; padding:8px; text-align:center"><div style="font-size:14px">${medals[i]}</div><div style="font-weight:800; color:#fff; font-size:.78rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">${it.k}</div><div style="font-weight:800; color:#fff; font-size:.82rem">${rp(it.v)}</div><div style="font-size:.70rem; color:#fff; opacity:.85">${p}%</div></div>`;
       }).join('');
     }
     // keep compat single ids
@@ -1826,6 +1986,7 @@ const isOverAll = totalAlokasiForPagar > sisaBersih;
   const add=(c,m)=> lines.push(`<span class="${c}">${m}</span>`);
   add('info',`[BRUTO] ${rp(income)} − ${rp(fixed)} − ${rp(anak)} = ${rp(sisaBruto)}`);
   add('mut',`[MUTASI] −${rp(mutasi)} | [PENGELUARAN] ${variabel.length} pos = ${rp(getTotalTerpakai())}/bln (mengurangi alokasi) | [RENCANA] ${rencana.length} target = ${rp(totalRencana)}/bln`);
+  if(getPengeluaranTabungan()>0) add('warn',`[TABUNGAN] tarik ${rp(getPengeluaranTabungan())}/bln dari saldo tabungan • saldo ${rp(getSaldoTabungan())}`);
   add('info',`[BERSIH] ${rp(sisaBruto)} − ${rp(mutasi)} − ${rp(totalRencana)} = ${rp(sisaBersih)} → ${rp(Math.round(sisaBersih/30))}/hari`);
   add('info',`[ALOKASI] ${rp(getSumAlokasi())} dari ${rp(sisaBersih)} → sisa belum teralokasi ${rp(getSisaBelumAlokasi())}`);
   add('info',`[SISA TOTAL] ${rp(sisaBersih)} − pengeluaran ${rp(getTotalTerpakai())} = ${rp(getSisaTotal())}`);
@@ -2019,6 +2180,8 @@ document.getElementById('btnSaveTmb')?.addEventListener('click', addTmb);
 document.getElementById('btnCancelTmb')?.addEventListener('click', cancelTmb);
 document.getElementById('tmbNominal')?.addEventListener('input', e=>{ const r=rawDigits(e.target.value); e.target.value=r? fmtRibuan(Number(r)):""; });
 document.getElementById('btnAddVar').addEventListener('click', addVar);
+document.getElementById('varKategori').addEventListener('change', toggleVarTujuan);
+toggleVarTujuan();
 document.getElementById('btnSaveVar').addEventListener('click', saveEditVar);
 document.getElementById('btnCancelVar').addEventListener('click', cancelEditVar);
 document.getElementById('varNominal').addEventListener('input', e=>{
@@ -2138,6 +2301,7 @@ renderCustomModes();
 renderTetapSessions();
 initCicilanMobil();
 initPeriode();
+initJam();
 calc();
 
 </script>
@@ -2767,8 +2931,8 @@ function buildSnapshot(){
   const terpakaiAll=fixed+anak+mut+renTot+varTot;
   const sisa=base - terpakaiAll;
   const danaTerkumpul=rencana.reduce((a,r)=>a+(Number(r.terkumpul)||0),0);
-  const cm=Object.assign({mulai:'', sisaAwal:0}, (typeof cicilanMobil==='object'&&cicilanMobil)? cicilanMobil : {});
-  const cicilanSisa=hitungCicilanMobil();
+  const ch=hitungCicilanMobil();                 // OBJECT — ambil .sisa, jangan pakai objeknya
+  const cicilanSisa=ch.sisa;
   const kunci=getSessionKey();
   return {
     _meta:{ bulan:kunci, periode:labelPeriode(kunci), dibuat:new Date().toISOString() },
@@ -2776,8 +2940,9 @@ function buildSnapshot(){
     terpakaiAll, sisa,
     // REKAP SESI — ringkasan angka utama yang dibutuhkan saat sesi ditutup
     rekap:{ pengeluaran:fixed+anak+varTot+renTot, tabungan:mut, danaTerkumpul,
-            cicilanSisa, cicilanLunas:cicilanSisa<=0,
-            cicilanMulai:cm.mulai||'', cicilanSisaAwal:cm.sisaAwal||0 },
+            pengeluaranTabungan:getPengeluaranTabungan(), saldoTabungan:getSaldoTabungan(),
+            cicilanSisa, cicilanLunas:!!ch.lunas,
+            cicilanMulai:ch.mulai||'', cicilanSisaAwal:ch.awal||0 },
     pemasukan:{ will:num('incWill'), istri:num('incWife'), tambahan:[...pemasukanTambahan] },
     tetap:{ bensin:num('fixBensin'), cicilan:num('fixCicilan'), rumah:num('fixRumah') },
     anakInfo:{ qtyPopok:num('popokQty'), hargaPopok:num('popokHarga'), qtySusu:num('susuQty'), hargaSusu:num('susuHarga') },
@@ -2948,11 +3113,17 @@ function renderRekapSesi(snap, arsip){
   const tabungan    = (r.tabungan!==undefined)    ? r.tabungan    : (snap.mut||0);
   const dana        = (r.danaTerkumpul!==undefined)? r.danaTerkumpul
                         : (snap.rencana||[]).reduce((a,x)=>a+(Number(x.terkumpul)||0),0);
-  const cicilanSisa = (r.cicilanSisa!==undefined) ? r.cicilanSisa : null;
+  const cicilanSisa = (typeof r.cicilanSisa==='number') ? r.cicilanSisa : null;
+  // Tarik & saldo tabungan — fallback utk snapshot lama (sebelum field ini ada)
+  const tarik = (r.pengeluaranTabungan!==undefined) ? r.pengeluaranTabungan
+    : (snap.variabel||[]).filter(v=>v.kategori===KATEGORI_TABUNGAN).reduce((a,v)=>a+monthlyOf(v),0);
+  const saldoTab = (r.saldoTabungan!==undefined) ? r.saldoTabungan : null;
   const set=(id,v)=>{ const e=document.getElementById(id); if(e) e.textContent=v; };
   set('rkPemasukan', rp(pemasukan));
   set('rkPengeluaran', rp(pengeluaran));
   set('rkTabungan', rp(tabungan));
+  set('rkTarikTab', rp(tarik));
+  set('rkSaldoTab', saldoTab===null ? '— (arsip lama)' : rp(saldoTab));
   set('rkDana', rp(dana));
   set('rkCicilan', cicilanSisa===null ? '—' : (r.cicilanLunas||cicilanSisa<=0 ? '✅ Lunas' : cicilanSisa+' bulan lagi'+(r.cicilanSisaAwal? ' (awal '+r.cicilanSisaAwal+')':'')));
   set('rkSisa', rp(snap.sisa||0));
@@ -2962,7 +3133,8 @@ function renderArsipMode(arsip, semua){
   if(badge) badge.style.display = arsip ? 'block' : 'none';
   const bBuat=document.getElementById('btnBuatLaporan');
   const bHapus=document.getElementById('btnHapusLaporan');
-  if(bBuat){ bBuat.disabled=arsip; bBuat.title = arsip? 'Sesi sudah selesai — laporan arsip tidak bisa diubah' : ''; }
+  if(bBuat) bBuat.dataset.arsip = arsip ? '1' : '0';
+  if(bBuat && typeof updateTombolSimpan==='function') updateTombolSimpan();
   if(bHapus){ bHapus.disabled=arsip; bHapus.title = arsip? 'Arsip sesi selesai — tidak bisa dihapus' : ''; }
 }
 function renderDeck(){
@@ -3020,7 +3192,8 @@ function renderDeck(){
     pList.innerHTML=rows.map(r=>`<div style="display:flex; align-items:center; gap:8px; font-size:.78rem"><span style="width:8px; height:8px; border-radius:50%; background:${r.c}"></span><span style="flex:1">${r.k}</span><b>${rp(r.v)}</b><span class="muted">${r.pct}%</span></div>`).join('') || '<span class="muted">Tidak ada tambahan</span>';
   }
   document.getElementById('deckPemasukanTotal').textContent=rp(snap.base);
-  document.getElementById('deckMutasiInfo').textContent='Mutasi ke tabungan: '+rp(snap.mut)+' • Kas tersedia: '+rp(snap.base - snap.mut);
+  const _saldoTab = (snap.rekap && typeof snap.rekap.saldoTabungan==='number') ? snap.rekap.saldoTabungan : null;
+  document.getElementById('deckMutasiInfo').textContent='Setoran mutasi: '+rp(snap.mut)+' • Kas tersedia: '+rp(snap.base - snap.mut)+' • Saldo tabungan: '+(_saldoTab===null? '—':rp(_saldoTab));
   // chart pemasukan
   try{
     const c=document.getElementById('deckPemasukanChart'); if(c){
@@ -3070,7 +3243,10 @@ function renderDeck(){
     if(!snap.variabel.length) vList.innerHTML='<span class="muted" style="font-size:.78rem">Tidak ada pengeluaran variabel bulan ini</span>';
     else vList.innerHTML=snap.variabel.map(v=>{
       const per=v.periode==="Tahunan"? Math.round(v.nominal/12): v.nominal;
-      return `<div style="display:flex; gap:6px; font-size:.76rem; border-bottom:1px solid #F1F5F9; padding:4px 0"><span style="flex:1"><b>${v.nama}</b> <span class="muted">${v.kategori} • ${v.periode}</span></span><span>${rp(per)}</span></div>`;
+      const dana = v.kategori===KATEGORI_TABUNGAN
+        ? `<span class="tag" style="background:#FCE7F3; color:#9D174D; font-size:.64rem; padding:1px 5px">🏦 dari Tabungan → ${v.tujuan||'?'}</span> `
+        : '';
+      return `<div style="display:flex; gap:6px; font-size:.76rem; border-bottom:1px solid #F1F5F9; padding:4px 0"><span style="flex:1"><b>${v.nama}</b> ${dana}<span class="muted">${v.kategori} • ${v.periode}</span></span><span>${rp(per)}</span></div>`;
     }).join('');
   }
   document.getElementById('deckKeluarTotal').textContent=rp(snap.fixed + snap.anak + snap.varTot);
@@ -3236,8 +3412,28 @@ document.getElementById('btnExportLaporan')?.addEventListener('click', async ()=
     });
     txt+=`\n`;
   }
+  txt+=`\n=== PEMASUKAN DETAIL ===\n`;
+  txt+=`Will ${rp(snap.pemasukan.will)} | Istri ${rp(snap.pemasukan.istri)}\n`;
+  (snap.pemasukan.tambahan||[]).forEach(t=> txt+=`+ ${t.sumber||'-'} [${t.kategori||'-'}] ${rp(t.nominal)}${t.ket? ' — '+t.ket : ''}\n`);
+  if(!(snap.pemasukan.tambahan||[]).length) txt+=`(tidak ada pemasukan tambahan)\n`;
+  txt+=`\n=== PENGELUARAN TETAP & ANAK ===\n`;
+  txt+=`Rumah ${rp(_t.rumah||0)} | Cicilan mobil ${rp(_t.cicilan||0)} | Bensin ${rp(_t.bensin||0)}\n`;
+  txt+=`${_ar.map(r=>`${r.k}${(r.qty&&r.hrg)?` ${r.qty} ${r.unit}×${rp(r.hrg)}`:''}=${rp(rowVal(r))}`).join(' | ')||'Anak: -'}\n`;
+  txt+=`\n=== PENGELUARAN PER ALOKASI (terpakai / sisa) ===\n`;
+  const _alId=['alDapur','alCemilan','alTabungan','alCadangan','alWill','alIstri','alLaundry','alART'];
+  const _alKat=['Belanja Dapur & Masak','Jajan / Rekreasi','Skincare / Personal Care','Kuota','Uang Pegangan Will','Uang Pegangan Istri','Laundry','ART'];
+  _alId.forEach((id,i)=>{
+    const v=((snap.alokasi||{})[ALOKASI_KUNCI[id]])||0;
+    const ter=(snap.terpakaiByAlokasi||{})[id]||0;
+    txt+=`- ${_alKat[i]}: alokasi ${rp(v)} • terpakai ${rp(ter)} • sisa ${rp(v-ter)}\n`;
+  });
+  txt+=`\n=== TABUNGAN (kumulatif antar sesi) ===\n`;
+  const _rk=snap.rekap||{};
+  const _tarik=(typeof _rk.pengeluaranTabungan==='number')? _rk.pengeluaranTabungan : (snap.variabel||[]).filter(v=>v.kategori===KATEGORI_TABUNGAN).reduce((a,v)=>a+monthlyOf(v),0);
+  txt+=`Setoran mutasi: ${rp(snap.mut)} | Tarik: ${rp(_tarik)} | Saldo: ${typeof _rk.saldoTabungan==='number'? rp(_rk.saldoTabungan):'— (arsip lama)'}\n`;
+  (snap.variabel||[]).filter(v=>v.kategori===KATEGORI_TABUNGAN).forEach(v=> txt+=`  ⛏ ${v.nama} → ${v.tujuan||'?'} ${rp(monthlyOf(v))}\n`);
   txt+=`Variabel: ${rp(snap.varTot)} (${snap.variabel.length} pengeluaran)\n`;
-  snap.variabel.forEach(v=> txt+=`- ${v.nama} [${v.kategori}] ${rp(v.periode==="Tahunan"?Math.round(v.nominal/12):v.nominal)} — ${v.ket}\n`);
+  snap.variabel.forEach(v=> txt+=`- ${v.nama} [${v.kategori}${v.tujuan? ' → '+v.tujuan : ''}] ${rp(v.periode==="Tahunan"?Math.round(v.nominal/12):v.nominal)} — ${v.ket}\n`);
   txt+=`Rencana: ${rp(snap.renTot)}/bln\n`;
   snap.rencana.forEach(r=> txt+=`- ${r.nama} Target ${rp(r.target)} Terkumpul ${rp(r.terkumpul)} Kurang ${rp(Math.max(0,r.target-r.terkumpul))}\n`);
   txt+=`Alokasi 8: Dapur ${rp(snap.alokasi.dapur)} | Jajan ${rp(snap.alokasi.rekreasi)} | Skincare ${rp(snap.alokasi.skincare)} | Kuota ${rp(snap.alokasi.cadangan)} | Will ${rp(snap.alokasi.will)} | Istri ${rp(snap.alokasi.istri)} | Laundry ${rp(snap.alokasi.laundry)} | ART ${rp(snap.alokasi.art||0)}\n`;
