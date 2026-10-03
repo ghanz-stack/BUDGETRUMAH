@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
 <meta charset="UTF-8">
@@ -922,17 +922,17 @@ html,body{overflow-x:hidden; max-width:100vw}
     <div class="grid2" style="margin-top:14px">
       <div class="card">
         <div class="card-head"><div class="icon emerald">⬇️</div><div><h2>Export</h2><p>Simpan ke file — buat backup atau pindah HP</p></div></div>
-        <button class="btn btn-accent" id="btnExportJson" style="width:100%">⬇️ Export Backup JSON (lengkap)</button>
+        <button class="btn btn-accent" id="btnExportJson" style="width:100%">⬇️ Export Backup JSON (100% Lengkap)</button>
         <button class="btn btn-soft" id="btnExportTxt2" style="width:100%; margin-top:8px">📄 Export Ringkasan TXT</button>
-        <button class="btn btn-soft" id="btnBackupNow" style="width:100%; margin-top:8px">💾 Buat Snapshot Backup Sekarang</button>
-        <div class="muted" style="margin-top:8px">JSON berisi: pemasukan, tetap, anak, variabel (kategori & periode), rencana (target & deadline), alokasi + timestamp — bisa di-restore 1 klik.</div>
+        <button class="btn btn-soft" id="btnBackupNow" style="width:100%; margin-top:8px">💾 Buat Snapshot Lengkap Sekarang</button>
+        <div class="muted" style="margin-top:8px">JSON Backup 100% Lengkap: seluruh transaksi pemasukan & tambahan, transaksi pengeluaran harian/variabel, pengeluaran tetap, tabungan/rencana, slider & preset alokasi, sesi arsip bulanan, laporan deck, cicilan mobil, dan semua pengaturan user.</div>
       </div>
       <div class="card">
         <div class="card-head"><div class="icon rose">⬆️</div><div><h2>Restore & Reset</h2><p>Kembalikan data atau mulai dari nol</p></div></div>
-        <label class="btn btn-soft" style="width:100%; cursor:pointer">📂 Import / Restore JSON<input type="file" id="importFile" accept=".json" style="display:none"></label>
+        <label class="btn btn-soft" style="width:100%; cursor:pointer">📂 Import / Restore JSON Lengkap<input type="file" id="importFile" accept=".json" style="display:none"></label>
         <button class="btn btn-soft" id="btnRestoreSnap" style="width:100%; margin-top:8px">↩️ Restore Snapshot Terakhir</button>
         <button class="btn btn-soft" id="btnResetAll" style="width:100%; margin-top:8px; background:#FEF2F2; color:#991B1B; border-color:#FECACA">🗑️ Reset Semua ke 0</button>
-        <div class="muted" style="margin-top:8px">Restore akan <b>timpa semua data</b> lalu auto-reload & re-hitung header, chip, dashboard — konfirmasi dulu.</div>
+        <div class="muted" style="margin-top:8px">Restore akan <b>memulihkan 100% transaksi, rencana, alokasi, laporan, dan pengaturan</b>, lalu auto-reload dan menghitung ulang seluruh dashboard & header.</div>
       </div>
     </div>
 
@@ -2536,39 +2536,84 @@ calc = function(){
 
 // === DATA MANAGEMENT ===
 function collectAll(){
+  const core = JSON.parse(localStorage.getItem('budget-data')||'{}');
+  const tambahan = JSON.parse(localStorage.getItem('budget-tambahan')||'[]');
+  const variabel = JSON.parse(localStorage.getItem('budget-variabel')||'[]');
+  const rencana = JSON.parse(localStorage.getItem('budget-rencana')||'[]');
+  const modes = JSON.parse(localStorage.getItem('budget-modes')||'[]');
+  const tetapSessions = JSON.parse(localStorage.getItem('budget-tetap-sessions')||'[]');
+  const cicilanMobil = JSON.parse(localStorage.getItem('budget-cicilan-mobil')||'{}');
+  const periode = JSON.parse(localStorage.getItem('budget-periode')||'{}');
+  const reports = JSON.parse(localStorage.getItem('budget-reports')||'{}');
+  const page = localStorage.getItem('budget-page')||'dashboard';
+  const alokasiLocked = localStorage.getItem('budget-alokasi-locked')||'0';
+  const autoSyncVal = localStorage.getItem('budget-auto-sync')||'0';
+  const autoSyncV2 = localStorage.getItem('budget-autosync-v2')||'1';
+  const syncCodeVal = localStorage.getItem('budget-sync-code')||'';
+  const lastModified = localStorage.getItem('budget-last-modified')||new Date().toISOString();
+
+  // Full mirror dump of all localStorage entries
+  const rawStorage = {};
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k) rawStorage[k] = localStorage.getItem(k);
+    }
+  } catch(e) {}
+
   return {
-    _meta:{ app:"Budget Keluarga", version:2, exportedAt:new Date().toISOString(), pushedAt: (function(){ try{ return localStorage.getItem('budget-sync-last')||''; }catch(e){ return ''; } })() },
-    core: JSON.parse(localStorage.getItem('budget-data')||'{}'),
-    tambahan: JSON.parse(localStorage.getItem('budget-tambahan')||'[]'),
-    variabel: JSON.parse(localStorage.getItem('budget-variabel')||'[]'),
-    rencana: JSON.parse(localStorage.getItem('budget-rencana')||'[]'),
-    modes: JSON.parse(localStorage.getItem('budget-modes')||'[]'),
-    tetapSessions: JSON.parse(localStorage.getItem('budget-tetap-sessions')||'[]'),
-    cicilanMobil: JSON.parse(localStorage.getItem('budget-cicilan-mobil')||'{}'),
-    periode: JSON.parse(localStorage.getItem('budget-periode')||'{}'),
-    reports: JSON.parse(localStorage.getItem('budget-reports')||'{}'),
-    page: localStorage.getItem('budget-page')||'dashboard'
+    _meta: {
+      app: "Budget Keluarga",
+      version: 3,
+      exportedAt: new Date().toISOString(),
+      pushedAt: (function(){ try{ return localStorage.getItem('budget-sync-last')||''; }catch(e){ return ''; } })(),
+      totalTransaksi: variabel.length + tambahan.length,
+      totalRencana: rencana.length,
+      totalSesiTetap: tetapSessions.length,
+      totalReports: Object.keys(reports).length
+    },
+    core: core,
+    tambahan: tambahan,
+    variabel: variabel,
+    rencana: rencana,
+    modes: modes,
+    tetapSessions: tetapSessions,
+    cicilanMobil: cicilanMobil,
+    periode: periode,
+    reports: reports,
+    settings: {
+      page: page,
+      alokasiLocked: alokasiLocked,
+      autoSync: autoSyncVal,
+      autoSyncV2: autoSyncV2,
+      syncCode: syncCodeVal,
+      lastModified: lastModified
+    },
+    rawStorage: rawStorage,
+    page: page
   };
 }
 function updateDataUI(){
   try{
     const all=collectAll();
     const coreCount=Object.keys(all.core||{}).length;
-    const vCount=(all.variabel||[]).length, rCount=(all.rencana||[]).length;
+    const vCount=(all.variabel||[]).length, rCount=(all.rencana||[]).length, tCount=(all.tambahan||[]).length;
+    const sCount=(all.tetapSessions||[]).length, repCount=Object.keys(all.reports||{}).length;
     const ds=document.getElementById('dataStatus');
-    if(ds) ds.innerHTML=`Core: <b>${coreCount} field</b> (${Object.keys(all.core).slice(0,3).join(', ')}…)<br>Variabel: <b>${vCount} pos</b> • Rencana: <b>${rCount} target</b><br>Halaman: <b>${all.page}</b> • Auto-save: <span style="color:#059669">ON</span>`;
+    if(ds) ds.innerHTML=`Core: <b>${coreCount} field</b> • Tambahan: <b>${tCount}</b><br>Variabel: <b>${vCount} transaksi</b> • Rencana: <b>${rCount} target</b><br>Sesi Tetap: <b>${sCount}</b> • Arsip Laporan: <b>${repCount}</b><br>Halaman: <b>${all.page}</b> • Auto-save: <span style="color:#059669">ON</span>`;
     const snapRaw=localStorage.getItem('budget-snapshot');
     const bi=document.getElementById('backupInfo');
     if(bi){
       if(snapRaw){
         const s=JSON.parse(snapRaw);
-        bi.innerHTML=`<b>${new Date(s._meta.exportedAt).toLocaleString('id-ID')}</b><br>${(s.variabel||[]).length} variabel • ${(s.rencana||[]).length} rencana<br><span class="muted">key: budget-snapshot</span>`;
+        const stCount=(s.tambahan||[]).length, svCount=(s.variabel||[]).length, srCount=(s.rencana||[]).length;
+        bi.innerHTML=`<b>${new Date(s._meta.exportedAt).toLocaleString('id-ID')}</b><br>${stCount+svCount} total transaksi • ${srCount} rencana<br><span class="muted">key: budget-snapshot</span>`;
       } else bi.textContent='Belum ada snapshot — klik "Buat Snapshot"';
     }
     const pre=document.getElementById('jsonPreview');
     if(pre) pre.textContent=JSON.stringify(all, null, 2);
     const badge=document.getElementById('badgeData');
-    if(badge) badge.textContent=(vCount+rCount+coreCount>0?'sinkron':'kosong')+' • '+new Date().toLocaleTimeString('id-ID');
+    if(badge) badge.textContent=(vCount+rCount+coreCount+tCount>0?'lengkap':'kosong')+' • '+new Date().toLocaleTimeString('id-ID');
   }catch(e){}
 }
 
@@ -2602,29 +2647,40 @@ async function saveFileCapacitorOrBrowser(filename, content, mime='text/plain'){
 async function exportJson(){
   const data=collectAll();
   const content=JSON.stringify(data,null,2);
-  const filename=`backup-budget-${new Date().toISOString().slice(0,10)}.json`;
+  const filename=`backup-budget-lengkap-${new Date().toISOString().slice(0,10)}.json`;
   await saveFileCapacitorOrBrowser(filename, content, 'application/json');
 }
 function backupNow(){
   const data=collectAll();
   localStorage.setItem('budget-snapshot', JSON.stringify(data));
   updateDataUI();
-  alert('✅ Snapshot disimpan! (key: budget-snapshot)');
+  alert('✅ Snapshot lengkap berhasil disimpan! (Termasuk semua transaksi, rencana, alokasi, sesi & pengaturan)');
 }
 function restoreSnapshot(){
   const raw=localStorage.getItem('budget-snapshot');
   if(!raw) return alert('Belum ada snapshot!');
-  if(!confirm('Restore snapshot terakhir? Data sekarang akan tertimpa.')) return;
+  if(!confirm('Restore snapshot terakhir? Seluruh transaksi, rencana, alokasi, dan pengaturan sekarang akan ditimpa dengan data snapshot.')) return;
   applyData(JSON.parse(raw));
 }
 function applyData(obj){
   try{
+    if(!obj || typeof obj !== 'object') throw new Error('Data backup kosong atau tidak valid.');
+    
+    // 1. Core numbers & inputs
     if(obj.core) localStorage.setItem('budget-data', JSON.stringify(obj.core));
+    
+    // 2. Transaksi Pemasukan Tambahan
     if(obj.tambahan) localStorage.setItem('budget-tambahan', JSON.stringify(obj.tambahan));
+    else if(obj.core && obj.core.tambahan) localStorage.setItem('budget-tambahan', JSON.stringify(obj.core.tambahan));
+    
+    // 3. Transaksi Pengeluaran Variabel / Harian
     if(obj.variabel) localStorage.setItem('budget-variabel', JSON.stringify(obj.variabel));
+    
+    // 4. Rencana Target & Tabungan
     if(obj.rencana) localStorage.setItem('budget-rencana', JSON.stringify(obj.rencana));
+    
+    // 5. Preset Mode Alokasi
     if(obj.modes){
-      // migrasi modes lama 6 vals → 7 vals
       const migrated=obj.modes.map(m=>{
         if(m.vals && m.vals.length===6) return {...m, vals:[...m.vals,350000,300000]};
         if(m.vals && m.vals.length===7) return {...m, vals:[...m.vals,300000]};
@@ -2632,13 +2688,48 @@ function applyData(obj){
       });
       localStorage.setItem('budget-modes', JSON.stringify(migrated));
     }
+    
+    // 6. Sesi Arsip Pengeluaran Tetap Bulanan
     if(obj.tetapSessions) localStorage.setItem('budget-tetap-sessions', JSON.stringify(obj.tetapSessions));
+    
+    // 7. Pengaturan & Tracker Cicilan Mobil
     if(obj.cicilanMobil) localStorage.setItem('budget-cicilan-mobil', JSON.stringify(obj.cicilanMobil));
+    
+    // 8. Pengaturan Periode (anchor tanggal 25)
     if(obj.periode) localStorage.setItem('budget-periode', JSON.stringify(obj.periode));
+    
+    // 9. Arsip Laporan & Rekap Bulanan
     if(obj.reports) localStorage.setItem('budget-reports', JSON.stringify(obj.reports));
-    if(obj.page) localStorage.setItem('budget-page', obj.page);
-    // support old export where tambahan was missing
-    if(obj.core && obj.core.tambahan) localStorage.setItem('budget-tambahan', JSON.stringify(obj.core.tambahan));
+    
+    // 10. Pengaturan User & Preferensi
+    if(obj.settings){
+      if(obj.settings.page) localStorage.setItem('budget-page', obj.settings.page);
+      if(obj.settings.alokasiLocked !== undefined) localStorage.setItem('budget-alokasi-locked', String(obj.settings.alokasiLocked));
+      if(obj.settings.autoSync !== undefined) localStorage.setItem('budget-auto-sync', String(obj.settings.autoSync));
+      if(obj.settings.autoSyncV2 !== undefined) localStorage.setItem('budget-autosync-v2', String(obj.settings.autoSyncV2));
+      if(obj.settings.syncCode !== undefined) localStorage.setItem('budget-sync-code', String(obj.settings.syncCode));
+    } else {
+      if(obj.page) localStorage.setItem('budget-page', obj.page);
+      if(obj.alokasiLocked !== undefined) localStorage.setItem('budget-alokasi-locked', String(obj.alokasiLocked));
+      if(obj.syncCode) localStorage.setItem('budget-sync-code', String(obj.syncCode));
+      if(obj.autoSync !== undefined) localStorage.setItem('budget-auto-sync', String(obj.autoSync));
+    }
+
+    // 11. Raw dump fallback: pulihkan semua key berawalan budget-
+    if(obj.rawStorage && typeof obj.rawStorage === 'object'){
+      Object.keys(obj.rawStorage).forEach(k=>{
+        if(k.startsWith('budget-') && !['budget-snapshot'].includes(k)){
+          try{
+            const v = obj.rawStorage[k];
+            if(v !== null && v !== undefined){
+              localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v));
+            }
+          }catch(e){}
+        }
+      });
+    }
+
+    localStorage.setItem('budget-last-modified', new Date().toISOString());
     location.reload();
   }catch(e){ alert('Gagal restore: '+e.message); }
 }
@@ -2702,7 +2793,13 @@ document.getElementById('importFile')?.addEventListener('change', (e)=>{
         if(obj.core.alIstri===undefined) obj.core.alIstri=0;
         if(typeof obj.core.mutasiKet==='number') obj.core.mutasiKet=String(obj.core.mutasiKet);
       }
-      if(!confirm(`Import ${f.name}?\n\nIsi: core ${obj.core?Object.keys(obj.core).length:0} field, tambahan ${(obj.tambahan||[]).length} , variabel ${(obj.variabel||[]).length}, rencana ${(obj.rencana||[]).length}\nData sekarang akan tertimpa.`)) return;
+      const coreF = obj.core ? Object.keys(obj.core).length : 0;
+      const tLen = (obj.tambahan||[]).length;
+      const vLen = (obj.variabel||[]).length;
+      const rLen = (obj.rencana||[]).length;
+      const sLen = (obj.tetapSessions||[]).length;
+      const repLen = Object.keys(obj.reports||{}).length;
+      if(!confirm(`Import & Restore ${f.name}?\n\nIsi Backup Lengkap:\n• Core Fields: ${coreF}\n• Pemasukan Tambahan: ${tLen} transaksi\n• Transaksi Variabel: ${vLen} transaksi\n• Rencana & Target: ${rLen} target\n• Sesi Arsip Tetap: ${sLen} bulan\n• Arsip Laporan: ${repLen} bulan\n• Pengaturan & Mode: Lengkap\n\nSemua data dan pengaturan sekarang akan ditimpa dengan data backup ini.`)) return;
       applyData(obj);
     }catch(err){ 
       console.error('Import error', err);
@@ -2945,6 +3042,20 @@ function applyDataSilent(obj){
     if(obj.periode) localStorage.setItem('budget-periode', JSON.stringify(obj.periode));
     if(obj.reports) localStorage.setItem('budget-reports', JSON.stringify(obj.reports));
     if(obj.page) localStorage.setItem('budget-page', obj.page);
+    if(obj.settings){
+      if(obj.settings.page) localStorage.setItem('budget-page', obj.settings.page);
+      if(obj.settings.alokasiLocked !== undefined) localStorage.setItem('budget-alokasi-locked', String(obj.settings.alokasiLocked));
+    }
+    if(obj.rawStorage && typeof obj.rawStorage === 'object'){
+      Object.keys(obj.rawStorage).forEach(k=>{
+        if(k.startsWith('budget-') && !['budget-snapshot','budget-sync-code','budget-auto-sync'].includes(k)){
+          try{
+            const v = obj.rawStorage[k];
+            if(v !== null && v !== undefined) localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v));
+          }catch(e){}
+        }
+      });
+    }
     // reload data ke memory tanpa reload halaman
     try{ 
       const d=JSON.parse(localStorage.getItem('budget-data')||'{}');

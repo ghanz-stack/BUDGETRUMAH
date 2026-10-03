@@ -1,4 +1,4 @@
-const CACHE='budget-keluarga-v4';
+const CACHE='budget-keluarga-v5';
 const ASSETS=['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png','./firebase-config.js'];
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));
