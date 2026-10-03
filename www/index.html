@@ -1754,8 +1754,8 @@ function getSisaBersihNow(){
   const mut=num('mutasiTabungan')||0;
   const fixed=num('fixBensin')+num('fixCicilan')+num('fixRumah');
   const anak=num('popokQty')*num('popokHarga')+num('susuQty')*num('susuHarga');
-  // pengeluaran TIDAK mengurangi Sisa Bersih — ia mengurangi alokasi (lihat getTotalTerpakai)
-  return Math.max(0, base - mut - fixed - anak - getTotalRencana());
+  // Sisa Bersih = Pemasukan - Tetap - Anak - Mutasi (TANPA rencana, rencana dinamis dari sisa)
+  return Math.max(0, base - mut - fixed - anak);
 }
 function getSumAlokasi(){ return ALOKASI_IDS.reduce((a,id)=>a+num(id),0); }
 function getSisaBelumAlokasi(){ return getSisaBersihNow() - getSumAlokasi(); } // bisa negatif = over budget
