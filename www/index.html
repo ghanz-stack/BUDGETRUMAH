@@ -711,6 +711,20 @@ html,body{overflow-x:hidden; max-width:100vw}
               <div class="kbox" style="background:#0E7490; color:#fff; border-color:#0E7490"><b id="deckCoverSisa" style="color:#fff">Rp0</b><span style="color:rgba(255,255,255,.85)">Sisa Akhir</span></div>
             </div>
             <div id="deckCoverStatus" style="background:#ECFDF5; border:1px solid #A7F3D0; border-radius:12px; padding:10px; font-size:.82rem; font-weight:700; color:#065F46; text-align:center">Sehat</div>
+            <!-- REKAP SESI — pemasukan, pengeluaran, tabungan, dana rencana, sisa cicilan -->
+            <div id="deckRekapSesi" style="display:none; margin-top:10px; background:#F8FAFC; border:1px solid var(--border); border-radius:12px; padding:8px 10px">
+              <div style="font-size:.66rem; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:6px">📋 Rekap Sesi</div>
+              <div style="display:grid; grid-template-columns:1fr auto; gap:4px 8px; font-size:.76rem">
+                <span>💰 Pemasukan</span><b id="rkPemasukan" style="text-align:right">Rp0</b>
+                <span>🛒 Pengeluaran</span><b id="rkPengeluaran" style="text-align:right">Rp0</b>
+                <span>🏦 Tabungan (mutasi)</span><b id="rkTabungan" style="text-align:right">Rp0</b>
+                <span>🎯 Dana terkumpul (rencana)</span><b id="rkDana" style="text-align:right">Rp0</b>
+                <span>🚗 Sisa cicilan mobil</span><b id="rkCicilan" style="text-align:right">—</b>
+                <span style="border-top:1px dashed var(--border); padding-top:4px; font-weight:800">Sisa akhir sesi</span>
+                <b id="rkSisa" style="text-align:right; border-top:1px dashed var(--border); padding-top:4px">Rp0</b>
+              </div>
+            </div>
+            <div id="deckArsipBadge" style="display:none; margin-top:10px; background:#EFF6FF; border:1px solid #BFDBFE; border-radius:12px; padding:8px; font-size:.78rem; font-weight:700; color:#1E40AF; text-align:center">🔒 Arsip — sesi sudah selesai, hanya bisa dilihat</div>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; font-size:.76rem">
               <div style="background:#F8FAFC; border:1px solid var(--border); border-radius:10px; padding:8px"><b>Per hari</b><br><span id="deckCoverHari">Rp0</span></div>
               <div style="background:#F8FAFC; border:1px solid var(--border); border-radius:10px; padding:8px"><b>Per minggu</b><br><span id="deckCoverMinggu">Rp0</span></div>
@@ -1133,9 +1147,13 @@ function tampilkanBannerPeriode(lama, baru){
   if(info) info.textContent='Periode '+labelPeriode(lama)+' selesai → '+labelPeriode(baru)+'. Belum diarsip & belum direset.';
   b.style.display='block';
 }
+// KUNCI SESI = periode tempat data live saat ini berasal (dari budget-periode).
+// Bukan getPeriodeKey() — karena saat pergantian hari-25 data LAMA belum direset,
+// sehingga getPeriodeKey() sudah menunjuk sesi BARU sementara isinya masih sesi lama.
+function getSessionKey(){ const k=muatPeriode().kunci; return k || getPeriodeKey(); }
 function mulaiPeriodeBaru(){
   const p=muatPeriode();
-  const lama=p.kunci||getPeriodeKey();
+  const lama=getSessionKey();
   const baru=getPeriodeKey();
   if(lama===baru){ alert('Masih di periode yang sama — '+labelPeriode(baru)); return; }
   if(!confirm('Tutup periode '+labelPeriode(lama)+' ?\n\n✓ Diarsipkan jadi laporan bulan itu\n✓ TETAP: Pengeluaran Tetap, tracker cicilan, RENCANA (lanjut)\n✓ Di-reset: Pemasukan, Anak, Alokasi, Variabel, Pemasukan Tambahan')) return;
@@ -1145,6 +1163,8 @@ function mulaiPeriodeBaru(){
     snap=buildSnapshot();
     snap._meta.bulan=lama;
     snap._meta.periode=labelPeriode(lama);
+    snap._meta.selesai=true;           // ARSIP — sesi selesai, tidak bisa diedit lagi
+    snap._meta.ditutup=new Date().toISOString();
     const reports=loadReports();
     reports[lama]=snap;
     saveReports(reports);
@@ -2734,10 +2754,18 @@ function buildSnapshot(){
   const terpakaiAlokasi=Object.values(terpakaiByAlokasi).reduce((a,b)=>a+b,0);
   const terpakaiAll=fixed+anak+mut+renTot+varTot;
   const sisa=base - terpakaiAll;
+  const danaTerkumpul=rencana.reduce((a,r)=>a+(Number(r.terkumpul)||0),0);
+  const cm=Object.assign({mulai:'', sisaAwal:0}, (typeof cicilanMobil==='object'&&cicilanMobil)? cicilanMobil : {});
+  const cicilanSisa=hitungCicilanMobil();
+  const kunci=getSessionKey();
   return {
-    _meta:{ bulan:getBulanKey(), dibuat:new Date().toISOString() },
+    _meta:{ bulan:kunci, periode:labelPeriode(kunci), dibuat:new Date().toISOString() },
     base, mut, fixed, anak, varTot, renTot, alVals, alTot, terpakaiByAlokasi, terpakaiAlokasi,
     terpakaiAll, sisa,
+    // REKAP SESI — ringkasan angka utama yang dibutuhkan saat sesi ditutup
+    rekap:{ pengeluaran:fixed+anak+varTot+renTot, tabungan:mut, danaTerkumpul,
+            cicilanSisa, cicilanLunas:cicilanSisa<=0,
+            cicilanMulai:cm.mulai||'', cicilanSisaAwal:cm.sisaAwal||0 },
     pemasukan:{ will:num('incWill'), istri:num('incWife'), tambahan:[...pemasukanTambahan] },
     tetap:{ bensin:num('fixBensin'), cicilan:num('fixCicilan'), rumah:num('fixRumah') },
     anakInfo:{ qtyPopok:num('popokQty'), hargaPopok:num('popokHarga'), qtySusu:num('susuQty'), hargaSusu:num('susuHarga') },
@@ -2749,23 +2777,31 @@ function buildSnapshot(){
 function refreshLaporanBulanSelect(){
   const sel=document.getElementById('laporanBulan');
   if(!sel) return;
+  const prev=sel.value;
   const reports=loadReports();
   const keys=Object.keys(reports).sort().reverse();
-  const cur=getBulanKey();
+  const cur=getSessionKey();                 // sesi berjalan (anchor hari ke-25)
+  const live=!reports[cur];
   sel.innerHTML='';
   if(keys.length){
     const all=document.createElement('option'); all.value='__ALL__';
     all.textContent='📊 SEMUA PERIODE — Rekap Antar Bulan ('+keys.length+')';
     sel.appendChild(all);
   }
-  if(!keys.includes(cur)){
-    const opt=document.createElement('option'); opt.value=cur; opt.textContent=cur+' (bulan ini — belum disimpan)'; sel.appendChild(opt);
+  if(live){
+    const opt=document.createElement('option'); opt.value=cur;
+    opt.textContent='▶ '+labelPeriode(cur)+' — berjalan (belum ditutup)';
+    sel.appendChild(opt);
   }
   keys.forEach(k=>{
-    const opt=document.createElement('option'); opt.value=k; opt.textContent=k + (k===cur?' • tersimpan':'');
+    const done=!!(reports[k] && reports[k]._meta && reports[k]._meta.selesai);
+    const opt=document.createElement('option'); opt.value=k;
+    opt.textContent=(done?'🔒 ':'• ')+labelPeriode(k)+(done?' — arsip':'');
     sel.appendChild(opt);
   });
-  if(!sel.value) sel.value=keys.includes(cur)?cur:(keys[0]||cur);
+  const okv=[...sel.options].map(o=>o.value);
+  const want = okv.includes(prev) ? prev : (okv.includes(cur) ? cur : (okv[okv.length-1]||''));
+  if(want) sel.value=want;
 }
 const ALOKASI_KUNCI={alDapur:'dapur',alCemilan:'rekreasi',alTabungan:'skincare',alCadangan:'cadangan',alWill:'will',alIstri:'istri',alLaundry:'laundry',alART:'art'};
 function getAnakRows(snap){
@@ -2790,9 +2826,13 @@ function buildRekapSemua(){
   const anakRows=[{icon:'🧷',k:'Popok',v:0},{icon:'🥛',k:'Susu',v:0}];
   const perPeriode=[];
   let variabel=[], rencana=null, anakInfo=null;
+  let danaTerkumpul=0, cicilanSisa=0, cicilanSisaAwal=0;
   keys.forEach(k=>{
     const r=reports[k]||{};
     FL.forEach(f=>acc[f]+= (r[f]||0));
+    const rk=r.rekap||{};
+    if(rk.danaTerkumpul!==undefined) danaTerkumpul+=rk.danaTerkumpul;
+    if(rk.cicilanSisa!==undefined){ cicilanSisa=rk.cicilanSisa; cicilanSisaAwal=rk.cicilanSisaAwal||0; }
     const al=r.alokasi||{};
     Object.keys(alokasi).forEach(kk=>alokasi[kk]+= (al[kk]||0));
     Object.entries(r.terpakaiByAlokasi||{}).forEach(([id,v])=>{ terpakaiByAlokasi[id]=(terpakaiByAlokasi[id]||0)+(v||0); });
@@ -2822,6 +2862,9 @@ function buildRekapSemua(){
     alVals:ALOKASI_IDS.map(id=>alokasi[ALOKASI_KUNCI[id]]||0),
     alTot, alokasi, terpakaiByAlokasi,
     pemasukan, tetap, anakRows, anakInfo:anakInfo||{},
+    rekap:{ pengeluaran:acc.fixed+acc.anak+acc.varTot+acc.renTot, tabungan:acc.mut,
+            danaTerkumpul:danaTerkumpul, cicilanSisa:cicilanSisa, cicilanLunas:cicilanSisa<=0,
+            cicilanSisaAwal:cicilanSisaAwal },
     variabel, rencana:rencana||[], perPeriode
   };
 }
@@ -2883,9 +2926,36 @@ function renderPeriodeChart(snap){
     ctx.fillStyle='#475569'; ctx.fillText('maks '+rp(max), pad+112, 11);
   }catch(e){}
 }
+function renderRekapSesi(snap, arsip){
+  const box=document.getElementById('deckRekapSesi');
+  if(!box) return;
+  box.style.display='block';
+  const r=snap.rekap||{};
+  const pemasukan   = snap.base||0;
+  const pengeluaran = (r.pengeluaran!==undefined) ? r.pengeluaran : ((snap.fixed||0)+(snap.anak||0)+(snap.varTot||0)+(snap.renTot||0));
+  const tabungan    = (r.tabungan!==undefined)    ? r.tabungan    : (snap.mut||0);
+  const dana        = (r.danaTerkumpul!==undefined)? r.danaTerkumpul
+                        : (snap.rencana||[]).reduce((a,x)=>a+(Number(x.terkumpul)||0),0);
+  const cicilanSisa = (r.cicilanSisa!==undefined) ? r.cicilanSisa : null;
+  const set=(id,v)=>{ const e=document.getElementById(id); if(e) e.textContent=v; };
+  set('rkPemasukan', rp(pemasukan));
+  set('rkPengeluaran', rp(pengeluaran));
+  set('rkTabungan', rp(tabungan));
+  set('rkDana', rp(dana));
+  set('rkCicilan', cicilanSisa===null ? '—' : (r.cicilanLunas||cicilanSisa<=0 ? '✅ Lunas' : cicilanSisa+' bulan lagi'+(r.cicilanSisaAwal? ' (awal '+r.cicilanSisaAwal+')':'')));
+  set('rkSisa', rp(snap.sisa||0));
+}
+function renderArsipMode(arsip, semua){
+  const badge=document.getElementById('deckArsipBadge');
+  if(badge) badge.style.display = arsip ? 'block' : 'none';
+  const bBuat=document.getElementById('btnBuatLaporan');
+  const bHapus=document.getElementById('btnHapusLaporan');
+  if(bBuat){ bBuat.disabled=arsip; bBuat.title = arsip? 'Sesi sudah selesai — laporan arsip tidak bisa diubah' : ''; }
+  if(bHapus){ bHapus.disabled=arsip; bHapus.title = arsip? 'Arsip sesi selesai — tidak bisa dihapus' : ''; }
+}
 function renderDeck(){
   const sel=document.getElementById('laporanBulan');
-  const key=sel? sel.value : getBulanKey();
+  const key=sel? sel.value : getSessionKey();
   const reports=loadReports();
   let snap;
   if(key==='__ALL__'){
@@ -2900,15 +2970,23 @@ function renderDeck(){
   renderPeriodeTable(document.getElementById('deckPeriodePemasukan'), snap, 'pemasukan');
   renderPeriodeTable(document.getElementById('deckPeriodePengeluaran'), snap, 'pengeluaran');
   renderPeriodeChart(snap);
+  const ARSIP=!!(snap._meta && snap._meta.selesai) && !SEMUA;
   // Cover
   if(SEMUA){
-    document.getElementById('deckCoverTitle').textContent='Rekap — Semua Periode';
-    document.getElementById('deckCoverSub').textContent=snap._meta.jumlah+' periode • '+labelPeriode(snap._meta.periodeAwal)+' → '+labelPeriode(snap._meta.periodeAkhir);
+    const aw=(snap._meta.periodeAwal? labelPeriode(snap._meta.periodeAwal):'').split(' → ')[0];
+    const ak=(snap._meta.periodeAkhir? labelPeriode(snap._meta.periodeAkhir):'').split(' → ');
+    document.getElementById('deckCoverTitle').textContent='📊 Rekap — Semua Periode';
+    document.getElementById('deckCoverSub').textContent=snap._meta.jumlah+' sesi • '+(aw||'—')+' — '+(ak[1]||ak[0]||'—');
+  } else if(ARSIP){
+    document.getElementById('deckCoverTitle').textContent='🔒 Laporan Sesi';
+    document.getElementById('deckCoverSub').textContent=(snap._meta.periode||labelPeriode(snap._meta.bulan))+' • ditutup '+new Date(snap._meta.ditutup||snap._meta.dibuat).toLocaleString('id-ID');
   } else {
-    const bulanLabel=new Date(snap._meta.bulan+'-01').toLocaleDateString('id-ID',{month:'long', year:'numeric'});
-    document.getElementById('deckCoverTitle').textContent='Laporan — '+bulanLabel;
-    document.getElementById('deckCoverSub').textContent= snap._meta.live ? 'Live — belum disimpan • '+new Date().toLocaleDateString('id-ID') : 'Snapshot '+new Date(snap._meta.dibuat).toLocaleString('id-ID');
+    const kunci=snap._meta.bulan||getPeriodeKey();
+    document.getElementById('deckCoverTitle').textContent= snap._meta.live ? '▶ Sesi Berjalan' : 'Laporan Sesi';
+    document.getElementById('deckCoverSub').textContent=(snap._meta.periode||labelPeriode(kunci))+(snap._meta.live? ' • live — belum ditutup' : ' • dibuat '+new Date(snap._meta.dibuat).toLocaleString('id-ID'));
   }
+  renderRekapSesi(snap, ARSIP);
+  renderArsipMode(ARSIP, SEMUA);
   document.getElementById('deckCoverPemasukan').textContent=rp(snap.base);
   document.getElementById('deckCoverTerpakai').textContent=rp(snap.terpakaiAll);
   document.getElementById('deckCoverSisa').textContent=rp(snap.sisa);
@@ -3067,8 +3145,8 @@ function renderDeck(){
     if(snap.varTot > snap.base*0.3) txt+=' Variabel tinggi — cek kategori terbesar.';
     rekom.textContent=txt;
   }
-  document.getElementById('deckMeta').textContent=(snap._meta.live?'Live':'Snapshot')+' • '+snap._meta.bulan+' • '+(snap._meta.dibuat? new Date(snap._meta.dibuat).toLocaleString('id-ID'):'');
-  document.getElementById('badgeLaporan').textContent=snap._meta.live?'live':'tersimpan';
+  document.getElementById('deckMeta').textContent=(snap._meta.selesai?'Arsip 🔒':(snap._meta.live?'Live':'Snapshot'))+' • '+(snap._meta.periode||labelPeriode(snap._meta.bulan))+' • '+(snap._meta.dibuat? new Date(snap._meta.dibuat).toLocaleString('id-ID'):'');
+  document.getElementById('badgeLaporan').textContent= snap._meta.selesai? 'arsip 🔒' : (snap._meta.live?'live':'tersimpan');
 }
 
 function initLaporan(){
@@ -3100,21 +3178,32 @@ document.getElementById('btnDeckPrev')?.addEventListener('click', ()=>{ laporanI
 document.getElementById('btnDeckNext')?.addEventListener('click', ()=>{ const n=document.getElementById('deckTrack').children.length; laporanIdx=Math.min(n-1,laporanIdx+1); goDeck(laporanIdx); });
 document.getElementById('laporanBulan')?.addEventListener('change', renderDeck);
 document.getElementById('btnBuatLaporan')?.addEventListener('click', ()=>{
-  const key=getBulanKey();
+  const key=getSessionKey();                 // kunci SESI (anchor 25), bukan bulan kalender
   const reports=loadReports();
+  if(reports[key] && reports[key]._meta && reports[key]._meta.selesai){
+    alert('🔒 Laporan '+labelPeriode(key)+' adalah ARSIP (sesi sudah selesai) dan tidak bisa diubah.');
+    return;
+  }
   reports[key]=buildSnapshot();
   reports[key]._meta.live=false;
+  reports[key]._meta.ditutup=new Date().toISOString();
   saveReports(reports);
   refreshLaporanBulanSelect();
   document.getElementById('laporanBulan').value=key;
   renderDeck();
-  alert('✅ Laporan '+key+' disimpan!');
+  alert('✅ Laporan '+labelPeriode(key)+' disimpan!');
 });
 document.getElementById('btnHapusLaporan')?.addEventListener('click', ()=>{
   const key=document.getElementById('laporanBulan').value;
   if(!key) return;
-  if(!confirm('Hapus laporan '+key+'?')) return;
-  const reports=loadReports(); delete reports[key]; saveReports(reports);
+  if(key==='__ALL__'){ alert('Pilih satu sesi dulu sebelum hapus.'); return; }
+  const reports=loadReports();
+  if(reports[key] && reports[key]._meta && reports[key]._meta.selesai){
+    alert('🔒 '+labelPeriode(key)+' adalah ARSIP sesi selesai — tidak bisa dihapus.');
+    return;
+  }
+  if(!confirm('Hapus laporan '+labelPeriode(key)+'?')) return;
+  delete reports[key]; saveReports(reports);
   refreshLaporanBulanSelect(); renderDeck();
 });
 document.getElementById('btnExportLaporan')?.addEventListener('click', async ()=>{
