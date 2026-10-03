@@ -121,12 +121,22 @@ body{font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif; backgroun
 .btn-icon.danger:hover{background:#FEF2F2; border-color:#FECACA}
 
 /* RENCANA */
-.rencana-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:10px}
+.rencana-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:12px}
 @media(max-width:860px){ .rencana-grid{grid-template-columns:1fr} }
-.rencana-card{border:1px solid var(--border); border-radius:14px; padding:12px; background:#F8FAFC}
-.rencana-card h4{margin:0 0 4px; font-size:.88rem}
-.rencana-form{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:10px}
+.rencana-card{border:1px solid var(--border); border-radius:14px; padding:14px; background:#F8FAFC; display:flex; flex-direction:column; gap:8px}
+.rencana-card h4{margin:0; font-size:.85rem; font-weight:800; color:#1E293B}
+.rencana-card .meta{display:flex; justify-content:space-between; font-size:.7rem; color:var(--muted)}
+.rencana-card .progress{height:8px; background:#E2E8F0; border-radius:999px; overflow:hidden}
+.rencana-card .progress>div{height:100%; border-radius:999px; transition:width .3s}
+.rencana-card .actions{display:flex; gap:6px; margin-top:4px}
+.rencana-card .btn{flex:1; font-size:.7rem; padding:8px 10px}
+.rencana-form{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:10px; align-items:end}
 @media(max-width:700px){ .rencana-form{grid-template-columns:1fr 1fr} }
+@media(max-width:480px){ .rencana-form{grid-template-columns:1fr} }
+.rencana-form > div{display:flex; flex-direction:column; gap:4px}
+.rencana-form label{font-size:.65rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.3px}
+.rencana-form input,.rencana-form select{width:100%; padding:10px 12px; border:1.5px solid var(--border); border-radius:10px; font-size:.9rem; font-weight:600; box-sizing:border-box}
+.rencana-form .btn-row{display:flex; gap:6px; align-items:end; grid-column:1 / -1; margin-top:4px}
 .rencana-bar{height:8px; background:#E2E8F0; border-radius:999px; overflow:hidden; margin:8px 0}
 .rencana-bar>div{height:100%; border-radius:999px; transition:width .2s}
 
