@@ -660,7 +660,7 @@ html,body{overflow-x:hidden; max-width:100vw}
         <button class="btn btn-soft" id="btnPrevDeck" style="margin-left:auto">‹ Prev</button>
         <button class="btn btn-soft" id="btnNextDeck">Next ›</button>
       </div>
-      <div class="muted" style="font-size:.72rem; margin-top:6px">Snapshot disimpan di <code>budget-reports</code> per <code>YYYY-MM</code> — include: pemasukan (Will/Istri/tambahan), tetap, anak, mutasi, pengeluaran per kategori, rencana, alokasi 7 poin (terpakai/sisa), top 3. PWA live auto-sync.</div>
+      <div class="muted" style="font-size:.72rem; margin-top:6px">Snapshot disimpan di <code>budget-reports</code> per <code>YYYY-MM</code> — include: pemasukan (Will/Istri/tambahan), tetap, anak, mutasi, pengeluaran per kategori, rencana, alokasi 8 poin (terpakai/sisa), top 3. PWA live auto-sync.</div>
     </div>
 
     <div class="deck" id="deck">
@@ -701,8 +701,14 @@ html,body{overflow-x:hidden; max-width:100vw}
           <div class="deck-header" style="background:linear-gradient(135deg,#0284C7,#22D3EE)"><h3 class="deck-title">Pengeluaran — Tetap, Anak & Variabel</h3><p class="deck-sub">Per kategori, hemat & terbesar</p></div>
           <div class="deck-body">
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px">
-              <div style="background:#F8FAFC; border:1px solid var(--border); border-radius:10px; padding:8px"><b>Tetap</b><br><span id="deckTetap">Rp0</span> <span class="muted" id="deckTetapPct">0%</span></div>
-              <div style="background:#F8FAFC; border:1px solid var(--border); border-radius:10px; padding:8px"><b>Anak</b><br><span id="deckAnak">Rp0</span> <span class="muted" id="deckAnakPct">0%</span></div>
+              <div style="background:#F8FAFC; border:1px solid var(--border); border-radius:10px; padding:8px">
+                <b>Tetap</b> <span id="deckTetap" style="font-weight:800">Rp0</span> <span class="muted" id="deckTetapPct">0%</span>
+                <div id="deckTetapDetail" style="margin-top:6px; display:grid; gap:3px; font-size:.72rem"></div>
+              </div>
+              <div style="background:#F8FAFC; border:1px solid var(--border); border-radius:10px; padding:8px">
+                <b>Anak</b> <span id="deckAnak" style="font-weight:800">Rp0</span> <span class="muted" id="deckAnakPct">0%</span>
+                <div id="deckAnakDetail" style="margin-top:6px; display:grid; gap:3px; font-size:.72rem"></div>
+              </div>
             </div>
             <div id="deckVariabelList" style="display:grid; gap:5px; max-height:220px; overflow:auto; border:1px solid var(--border); border-radius:10px; padding:8px"></div>
             <div class="total-row"><span>Total Pengeluaran (Tetap+Anak+Variabel)</span><span id="deckKeluarTotal">Rp0</span></div>
@@ -710,7 +716,7 @@ html,body{overflow-x:hidden; max-width:100vw}
         </div></div>
         <!-- Slide 4: Alokasi -->
         <div class="deck-slide"><div class="deck-card">
-          <div class="deck-header" style="background:linear-gradient(135deg,#059669,#10B981)"><h3 class="deck-title">Alokasi 7 Poin — Terpakai & Sisa</h3><p class="deck-sub">Dapur, Jajan, Skincare, Cadangan, Will, Istri, Laundry</p></div>
+          <div class="deck-header" style="background:linear-gradient(135deg,#059669,#10B981)"><h3 class="deck-title">Alokasi 8 Poin — Terpakai & Sisa</h3><p class="deck-sub">Dapur, Jajan, Skincare, Kuota, Will, Istri, Laundry, ART</p></div>
           <div class="deck-body">
             <canvas id="deckAlokasiChart" width="320" height="180" style="max-width:100%"></canvas>
             <div id="deckAlokasiList" style="display:grid; gap:6px; margin-top:10px"></div>
@@ -2627,6 +2633,33 @@ function renderDeck(){
   document.getElementById('deckTetapPct').textContent=snap.base? Math.round(snap.fixed/snap.base*100)+'%':'';
   document.getElementById('deckAnak').textContent=rp(snap.anak);
   document.getElementById('deckAnakPct').textContent=snap.base? Math.round(snap.anak/snap.base*100)+'%':'';
+  // DETAIL Pengeluaran Tetap — spread per pos (bensin, cicilan, rumah)
+  const tetapEl=document.getElementById('deckTetapDetail');
+  if(tetapEl){
+    const t=snap.tetap||{};
+    const rows=[
+      {k:'Rumah', icon:'🏠', v:t.rumah||0},
+      {k:'Cicilan', icon:'💳', v:t.cicilan||0},
+      {k:'Bensin', icon:'⛽', v:t.bensin||0},
+    ].filter(r=>r.v>0);
+    tetapEl.innerHTML = rows.length
+      ? rows.map(r=>`<div style="display:flex; align-items:center; gap:6px"><span>${r.icon}</span><span style="flex:1">${r.k}</span><b>${rp(r.v)}</b></div>`).join('')
+        + `<div style="display:flex; border-top:1px dashed var(--border); padding-top:3px; margin-top:2px"><span style="flex:1" class="muted">Jumlah</span><b>${rp(rows.reduce((a,r)=>a+r.v,0))}</b></div>`
+      : '<span class="muted">Tidak ada pengeluaran tetap</span>';
+  }
+  // DETAIL Pengeluaran sub-Anak — popok & susu (qty × harga)
+  const anakEl=document.getElementById('deckAnakDetail');
+  if(anakEl){
+    const a=snap.anakInfo||{};
+    const rows=[
+      {k:'Popok', icon:'🧷', qty:a.qtyPopok||0, hrg:a.hargaPopok||0, unit:'pack'},
+      {k:'Susu', icon:'🥛', qty:a.qtySusu||0, hrg:a.hargaSusu||0, unit:'karton'},
+    ].filter(r=>r.qty*r.hrg>0);
+    anakEl.innerHTML = rows.length
+      ? rows.map(r=>`<div style="display:flex; align-items:center; gap:6px"><span>${r.icon}</span><span style="flex:1">${r.k} <span class="muted">${r.qty} ${r.unit}×${rp(r.hrg)}</span></span><b>${rp(r.qty*r.hrg)}</b></div>`).join('')
+        + `<div style="display:flex; border-top:1px dashed var(--border); padding-top:3px; margin-top:2px"><span style="flex:1" class="muted">Jumlah</span><b>${rp(rows.reduce((x,r)=>x+r.qty*r.hrg,0))}</b></div>`
+      : '<span class="muted">Tidak ada pengeluaran anak</span>';
+  }
   const vList=document.getElementById('deckVariabelList');
   if(vList){
     if(!snap.variabel.length) vList.innerHTML='<span class="muted" style="font-size:.78rem">Tidak ada pengeluaran variabel bulan ini</span>';
@@ -2638,16 +2671,18 @@ function renderDeck(){
   document.getElementById('deckKeluarTotal').textContent=rp(snap.fixed + snap.anak + snap.varTot);
 
   // Alokasi
-  const alMap=['Dapur & Masak','Jajan/Rekreasi','Skincare','Cadangan','Will','Istri','Laundry'];
-  const alVals=[snap.alokasi.dapur, snap.alokasi.rekreasi, snap.alokasi.skincare, snap.alokasi.cadangan, snap.alokasi.will, snap.alokasi.istri, snap.alokasi.laundry];
+  const alMap=['Dapur & Masak','Jajan/Rekreasi','Skincare','Kuota','Will','Istri','Laundry','ART'];
+  const alKat=['Belanja Dapur & Masak','Jajan / Rekreasi','Skincare / Personal Care','Kuota','Uang Pegangan Will','Uang Pegangan Istri','Laundry','ART'];
+  const alId=['alDapur','alCemilan','alTabungan','alCadangan','alWill','alIstri','alLaundry','alART'];
+  const alVals=alId.map(id=> (snap.alokasi||{})[({alDapur:'dapur',alCemilan:'rekreasi',alTabungan:'skincare',alCadangan:'cadangan',alWill:'will',alIstri:'istri',alLaundry:'laundry',alART:'art'})[id]] || 0);
   document.getElementById('deckAlokasiTotal').textContent=rp(snap.alTot);
   document.getElementById('deckAlokasiTerpakai').textContent=rp(snap.terpakaiAlokasi);
   document.getElementById('deckAlokasiSisa').textContent=rp(snap.alTot - snap.terpakaiAlokasi);
   const alList=document.getElementById('deckAlokasiList');
   if(alList){
     alList.innerHTML=alVals.map((v,i)=>{
-      const kat=['Belanja Dapur & Masak','Jajan / Rekreasi','Skincare / Personal Care','Kuota','Uang Pegangan Will','Uang Pegangan Istri','Laundry'][i];
-      const ter=snap.terpakaiByAlokasi[['alDapur','alCemilan','alTabungan','alCadangan','alWill','alIstri','alLaundry'][i]]||0;
+      const kat=alKat[i];
+      const ter=snap.terpakaiByAlokasi[alId[i]]||0;
       const sisa=v - ter;
       const pct=v? Math.round(ter/v*100):0;
       return `<div style="border:1px solid var(--border); border-radius:10px; padding:8px; background:#fff"><div style="display:flex; justify-content:space-between; font-size:.78rem"><b>${alMap[i]}</b><span>${rp(v)}</span></div><div style="height:6px; background:#E2E8F0; border-radius:999px; overflow:hidden; display:flex; margin-top:4px"><div style="width:${Math.min(100,pct)}%; background:#E11D48"></div><div style="width:${Math.max(0,100-pct)}%; background:#059669"></div></div><div style="display:flex; justify-content:space-between; font-size:.70rem; color:var(--muted); margin-top:4px"><span>Terpakai ${rp(ter)} (${pct}%)</span><span style="color:${sisa<0?'#E11D48':'#059669'}">Sisa ${rp(sisa)}</span></div></div>`;
@@ -2657,7 +2692,7 @@ function renderDeck(){
     const c=document.getElementById('deckAlokasiChart'); if(c){
       const ctx=c.getContext('2d'); ctx.clearRect(0,0,c.width,c.height);
       const total=alVals.reduce((a,b)=>a+b,0)||1; let a0=-Math.PI/2; const cx=90, cy=90, r=65;
-      const cols=['#0E7490','#8B5CF6','#059669','#E11D48','#0EA5E9','#EC4899','#F59E0B'];
+      const cols=['#0E7490','#8B5CF6','#059669','#0EA5E9','#EC4899','#F59E0B','#F97316','#E11D48'];
       alVals.forEach((v,i)=>{ const ang=v/total*Math.PI*2; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,a0,a0+ang); ctx.closePath(); ctx.fillStyle=cols[i]; ctx.fill(); a0+=ang; });
     }
   }catch(e){}
@@ -2753,11 +2788,15 @@ document.getElementById('btnExportLaporan')?.addEventListener('click', async ()=
   let txt=`LAPORAN BUDGET — ${key}\nDibuat: ${new Date().toLocaleString('id-ID')}\n\n`;
   txt+=`Pemasukan: ${rp(snap.base)} (Will ${rp(snap.pemasukan.will)} + Istri ${rp(snap.pemasukan.istri)} + Tambahan ${rp(snap.pemasukan.tambahan.reduce((a,t)=>a+t.nominal,0))})\n`;
   txt+=`Tetap: ${rp(snap.fixed)} | Anak: ${rp(snap.anak)} | Mutasi: ${rp(snap.mut)}\n`;
+  const _t=snap.tetap||{};
+  txt+=`  - Tetap: Rumah ${rp(_t.rumah||0)} | Cicilan ${rp(_t.cicilan||0)} | Bensin ${rp(_t.bensin||0)}\n`;
+  const _a=snap.anakInfo||{};
+  txt+=`  - Anak: Popok ${_a.qtyPopok||0} pack×${rp(_a.hargaPopok||0)}=${rp((_a.qtyPopok||0)*(_a.hargaPopok||0))} | Susu ${_a.qtySusu||0} karton×${rp(_a.hargaSusu||0)}=${rp((_a.qtySusu||0)*(_a.hargaSusu||0))}\n`;
   txt+=`Variabel: ${rp(snap.varTot)} (${snap.variabel.length} pengeluaran)\n`;
   snap.variabel.forEach(v=> txt+=`- ${v.nama} [${v.kategori}] ${rp(v.periode==="Tahunan"?Math.round(v.nominal/12):v.nominal)} — ${v.ket}\n`);
   txt+=`Rencana: ${rp(snap.renTot)}/bln\n`;
   snap.rencana.forEach(r=> txt+=`- ${r.nama} Target ${rp(r.target)} Terkumpul ${rp(r.terkumpul)} Kurang ${rp(Math.max(0,r.target-r.terkumpul))}\n`);
-  txt+=`Alokasi 7: Dapur ${rp(snap.alokasi.dapur)} | Jajan ${rp(snap.alokasi.rekreasi)} | Skincare ${rp(snap.alokasi.skincare)} | Cadangan ${rp(snap.alokasi.cadangan)} | Will ${rp(snap.alokasi.will)} | Istri ${rp(snap.alokasi.istri)} | Laundry ${rp(snap.alokasi.laundry)}\n`;
+  txt+=`Alokasi 8: Dapur ${rp(snap.alokasi.dapur)} | Jajan ${rp(snap.alokasi.rekreasi)} | Skincare ${rp(snap.alokasi.skincare)} | Kuota ${rp(snap.alokasi.cadangan)} | Will ${rp(snap.alokasi.will)} | Istri ${rp(snap.alokasi.istri)} | Laundry ${rp(snap.alokasi.laundry)} | ART ${rp(snap.alokasi.art||0)}\n`;
   txt+=`Terpakai: ${rp(snap.terpakaiAll)} | Sisa: ${rp(snap.sisa)}\n`;
   await saveFileCapacitorOrBrowser('laporan-'+key+'.txt', txt, 'text/plain');
 });
