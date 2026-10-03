@@ -6,7 +6,7 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0E7490">
 <link rel="icon" href="icon-192.png">
-<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.min.js"></script>
+<!-- pdf.js removed - not used, caused MIME error -->
 <script src="firebase-config.js"></script>
 <script type="importmap">{"imports":{"firebase-app":"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js","firebase-firestore":"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"}}</script>
 <script>if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.js";</script>
@@ -1273,11 +1273,7 @@ function mulaiPeriodeBaru(){
     const lama=getSessionKey();
     const baru=getPeriodeKey();
     if(lama===baru){ alert('Masih di periode yang sama - '+labelPeriode(baru)); return; }
-    if(!confirm(`Tutup periode ${labelPeriode(lama)} ?
-
-Diarsipkan jadi laporan bulan itu
-TETAP: Pengeluaran Tetap, tracker cicilan, RENCANA (lanjut)
-Di-reset: Pemasukan, Anak, Alokasi, Variabel, Pemasukan`) return;
+    if(!confirm('Tutup periode ' + labelPeriode(lama) + ' ?\n\nDiarsipkan jadi laporan bulan itu\nTETAP: Pengeluaran Tetap, tracker cicilan, RENCANA (lanjut)\nDi-reset: Pemasukan, Anak, Alokasi, Variabel, Pemasukan')) return;
     jalankanGantiPeriode(baru, getPeriodeAnchor());
     return;
   }
@@ -1302,13 +1298,7 @@ function konfirmasiPeriodeBaru(){
   const kunci=y+'-'+String(m+1).padStart(2,'0');
   const lama=getSessionKey();
   if(kunci===lama){ _tampilkanErrPeriode('Periode baru sama dengan sesi sekarang ('+labelPeriode(lama)+'). Pilih tanggal lain.'); return; }
-  if(!confirm(`Tutup periode ${labelPeriode(lama)}?
-
-Periode baru: ${labelPeriode(kunci)}
-
-Diarsipkan jadi laporan
-TETAP: Pengeluaran Tetap, tracker cicilan, RENCANA
-Di-reset: Pemasukan, Anak, Alokasi, Variabel, Pemasukan`) return;
+  if(!confirm('Tutup periode ' + labelPeriode(lama) + '?\n\nPeriode baru: ' + labelPeriode(kunci) + '\n\nDiarsipkan jadi laporan\nTETAP: Pengeluaran Tetap, tracker cicilan, RENCANA\nDi-reset: Pemasukan, Anak, Alokasi, Variabel, Pemasukan')) return;
   jalankanGantiPeriode(kunci, anchor);
 }
 function jalankanGantiPeriode(baru, anchorBaru){
