@@ -1762,32 +1762,44 @@ const isOverAll = totalAlokasiForPagar > sisaBersih;
     const varTot=getTotalTerpakai(); // pengeluaran yang mengurangi alokasi (8 kategori)
     const renTot=getTotalRencana();
     const alok=getSumAlokasi();
-    const terpakai = fixed + anak + mut + varTot + renTot + alok;
-    const sisaAkhir = getSisaTotal();
+    // === KARTU REKAP ===
+    // "Terpakai" = uang yang KELUAR/terikat. Alokasi TIDAK ikut — alokasi adalah
+    // pembagian Sisa Bersih, bukan pengeluaran (lihat getSisaBersihNow/getSumAlokasi).
+    // Dengan begitu: Pemasukan − Terpakai = Sisa (konsisten).
+    const terpakai = fixed + anak + mut + varTot + renTot;
+    const sisaAkhir = getSisaTotal();              // kanonik, sama dengan seluruh app
     const pct = (v)=> base? Math.round(v/base*100):0;
+    const terpakaiAlok = getTotalTerpakai();        // yang benar2 keluar dari alokasi
+    const overBudget = sisaAkhir < 0 || terpakai > base;
     const elP=document.getElementById('dashRekapPemasukan'); if(elP) elP.textContent=rp(base);
+    const subP=document.getElementById('dashRekapPemasukanSub'); if(subP) subP.textContent='Will+Istri'+(pemasukanTambahan.length? ' + '+pemasukanTambahan.length+' tambahan':'');
     const elT=document.getElementById('dashRekapTerpakai'); if(elT) elT.textContent=rp(terpakai);
     const elS=document.getElementById('dashRekapSisa'); if(elS) elS.textContent=rp(sisaAkhir);
     const subT=document.getElementById('dashRekapTerpakaiSub'); if(subT) subT.textContent=pct(terpakai)+'% dari pemasukan';
-    const subS=document.getElementById('dashRekapSisaSub'); if(subS) subS.textContent='per hari '+rp(Math.round(sisaAkhir/30))+' • '+pct(sisaAkhir)+'%';
-    // breakdown list
+    const subS=document.getElementById('dashRekapSisaSub'); if(subS) subS.textContent='per hari '+rp(Math.round(sisaAkhir/30))+' • '+pct(sisaAkhir)+'%'+(overBudget? ' • ⚠️ over budget':'');
+    const bdg=document.getElementById('badgeRekap'); if(bdg) bdg.textContent='live ●';
+    // breakdown = hanya pos yang benar2 mengurangi pemasukan
     const items=[
       {k:'Tetap (Bensin+Cicilan+Rumah)', v:fixed, c:'#7C3AED'},
       {k:'Anak (Popok+Susu)', v:anak, c:'#F59E0B'},
       {k:'Mutasi ke Tabungan', v:mut, c:'#E11D48'},
       {k:'Variabel', v:varTot, c:'#0284C7'},
       {k:'Rencana (tabung/bln)', v:renTot, c:'#EA580C'},
-      {k:'Alokasi (Dapur+Jajan+Skincare+Cadangan+Will+Istri)', v:alok, c:'#059669'},
     ];
     // breakdown efisien
     const bd=document.getElementById('dashBreakdown');
     if(bd){
-      bd.innerHTML=items.map(it=>{
+      const rows=items.map(it=>{
         const p=pct(it.v);
         // label pendek biar muat HP
-        const short=it.k.replace(' (Bensin+Cicilan+Rumah)','').replace(' (Popok+Susu)','').replace(' (tabung/bln)','').replace(' (Dapur+Rekreasi+Skincare+Cadangan)','');
-        return `<div class="dash-breakdown-item" style="display:flex; align-items:center; gap:6px"><span style="width:8px; height:8px; border-radius:3px; background:${it.c}; flex-shrink:0"></span><span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">${short}</span><b style="white-space:nowrap">${rp(it.v)}</b><span class="muted" style="white-space:nowrap">${p}%</span><div style="width:56px; height:5px; background:rgba(255,255,255,.25); border-radius:999px; overflow:hidden; flex-shrink:0"><div style="width:${p}%; height:100%; background:${it.c}"></div></div></div>`;
-      }).join('');
+        const short=it.k.replace(/\s*\(.*\)$/,'');
+        return `<div class="dash-breakdown-item" style="display:flex; align-items:center; gap:6px"><span style="width:8px; height:8px; border-radius:3px; background:${it.c}; flex-shrink:0"></span><span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">${short}</span><b style="white-space:nowrap">${rp(it.v)}</b><span class="muted" style="white-space:nowrap">${p}%</span><div style="width:56px; height:5px; background:rgba(255,255,255,.25); border-radius:999px; overflow:hidden; flex-shrink:0"><div style="width:${Math.min(100,p)}%; height:100%; background:${it.c}"></div></div></div>`;
+      });
+      // ALOKASI = pembagian sisa, BUKAN pengeluaran → ditampilkan terpisah
+      const sisaAlok = alok - terpakaiAlok;
+      rows.push(`<div class="dash-breakdown-item" style="display:flex; align-items:center; gap:6px; border-top:1px dashed rgba(255,255,255,.3); padding-top:5px; margin-top:3px"><span style="width:8px; height:8px; border-radius:3px; background:#059669; flex-shrink:0"></span><span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis" title="Pembagian sisa — bukan pengeluaran">Alokasi <span style="opacity:.7">(pembagian sisa)</span></span><b style="white-space:nowrap">${rp(alok)}</b><span class="muted" style="white-space:nowrap">${pct(alok)}%</span><div style="width:56px; height:5px; background:rgba(255,255,255,.25); border-radius:999px; overflow:hidden; flex-shrink:0"><div style="width:${Math.min(100, terpakaiAlok? Math.round(terpakaiAlok/alok*100):0)}%; height:100%; background:#059669"></div></div></div>`);
+      rows.push(`<div style="font-size:.70rem; opacity:.85; padding-left:14px">↳ terpakai ${rp(terpakaiAlok)} • sisa ${rp(sisaAlok)}${sisaAlok<0?' ⚠️':''}</div>`);
+      bd.innerHTML=rows.join('');
     }
     // Top 3 terbesar
     const sorted=[...items].sort((a,b)=>b.v-a.v).slice(0,3);
