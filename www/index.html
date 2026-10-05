@@ -751,11 +751,11 @@ body.hide-nominal input.qty:focus {
       </div>
       <div style="overflow:auto; border:1px solid var(--border); border-radius:12px">
         <table class="var-table" id="varTable">
-          <thead><tr><th>Nama</th><th>Kategori</th><th>Harga per Item</th><th>Periode</th><th>&#247; 12 (Tahunan)</th><th>Keterangan</th><th style="width:70px">Aksi</th></tr></thead>
+          <thead><tr><th>Nama</th><th>Kategori</th><th>Harga per Item</th><th>Periode</th><th>Keterangan</th><th style="width:70px">Aksi</th></tr></thead>
           <tbody id="varBody"></tbody>
         </table>
       </div>
-      <div class="muted" style="margin-top:6px"><b>Harga per Item</b> = nominal yang dicatat untuk 1 item (mis. 1 baris struk atau 1 Hb). Kolom <b>÷ 12</b> hanya terisi untuk periode <b>Tahunan</b> — jadi tidak ada kolom kembar.</div>
+      <div class="muted" style="margin-top:6px"><b>Harga per Item</b> = nominal yang dicatat untuk 1 item (mis. 1 baris struk atau 1 Hb). Untuk periode <b>Tahunan</b>, nominal yang dicatat adalah nilai setahun dan otomatis dibagi 12 saat dijumlahkan ke total bulanan.</div>
       <div style="margin-top:10px; display:flex; flex-wrap:wrap; gap:6px" id="catRekap"></div>
       <div class="total-row"><span>Total Variabel per bulan</span><span id="totalVariabel">Rp0</span></div>
       <hr class="sep">
@@ -1583,7 +1583,6 @@ function renderVariabel(){
   const body=document.getElementById('varBody');
   body.innerHTML='';
   variabel.forEach(v=>{
-    const per=monthlyOf(v);
     const tr=document.createElement('tr');
     let tagClass='tidak';
     if(v.periode==='Bulanan') tagClass='bulanan';
@@ -1592,7 +1591,7 @@ function renderVariabel(){
     const ketTxt = v.kategori===KATEGORI_TABUNGAN
       ? `🏦 Tabungan → ${v.tujuan||'?'}${v.ket? ' • '+v.ket : ''}`
       : (v.ket||'-');
-    tr.innerHTML=`<td><b>${v.nama}</b></td><td><span class="tag" ${v.kategori===KATEGORI_TABUNGAN?'style="background:#FCE7F3; color:#9D174D; border-color:#FBCFE8"':''}>${v.kategori}</span></td><td>${rp(v.nominal)}</td><td><span class="tag ${tagClass}">${v.periode}</span></td><td>${v.periode==='Tahunan' ? `<b>${rp(per)}</b>` : '<span class="muted">—</span>'}</td><td class="muted">${ketTxt}</td><td><div class="actions"><button class="btn-icon" onclick="editVar(${v.id})" title="Edit">✏️</button><button class="btn-icon danger" onclick="delVar(${v.id})" title="Hapus">🗑️</button></div></td>`;
+    tr.innerHTML=`<td><b>${v.nama}</b></td><td><span class="tag" ${v.kategori===KATEGORI_TABUNGAN?'style="background:#FCE7F3; color:#9D174D; border-color:#FBCFE8"':''}>${v.kategori}</span></td><td>${rp(v.nominal)}</td><td><span class="tag ${tagClass}">${v.periode}</span></td><td class="muted">${ketTxt}</td><td><div class="actions"><button class="btn-icon" onclick="editVar(${v.id})" title="Edit">✏️</button><button class="btn-icon danger" onclick="delVar(${v.id})" title="Hapus">🗑️</button></div></td>`;
     body.appendChild(tr);
   });
   // cat rekap
