@@ -164,8 +164,10 @@ hr.sep{border:none; border-top:1px solid var(--border); margin:14px 0}
 
 /* NAV */
 .nav-wrap{position:sticky; top:0; z-index:20; background:rgba(238,242,251,.92); backdrop-filter:blur(10px); border-bottom:1px solid var(--border)}
-.nav{max-width:1040px; margin:0 auto; padding:10px 16px; display:flex; gap:8px; overflow-x:auto; scrollbar-width:none}
-.nav::-webkit-scrollbar{display:none}
+/* 8 menu: JANGAN pakai overflow-x auto + scrollbar disembunyikan, karena
+   item ke-8 jadi kepotong tanpa petunjuk. Pakai wrap supaya semua terlihat. */
+.nav{max-width:1040px; margin:0 auto; padding:10px 16px; display:flex; flex-wrap:wrap;
+     justify-content:center; align-items:center; gap:8px}
 .nav-btn{flex-shrink:0; display:inline-flex; align-items:center; gap:7px; padding:10px 15px; border-radius:999px; border:1px solid var(--border); background:#fff; font-weight:800; font-size:.82rem; cursor:pointer; white-space:nowrap; transition:.15s}
 .nav-btn.active{background:var(--accent); color:#fff; border-color:var(--accent); box-shadow:0 4px 14px rgba(14,116,144,.22)}
 .nav-btn .ico{font-size:15px}
@@ -180,7 +182,12 @@ hr.sep{border:none; border-top:1px solid var(--border); margin:14px 0}
   .nav{padding:10px 12px}
   .nav-btn{padding:9px 12px; font-size:.79rem}
   .bottom-nav{position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1px solid var(--border); display:flex; justify-content:space-around; padding:6px 0 calc(6px + env(safe-area-inset-bottom)); z-index:30; box-shadow:0 -4px 18px rgba(15,23,42,.06)}
-  .bnav-btn{flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; font-size:.66rem; font-weight:800; color:var(--muted); background:none; border:none; cursor:pointer; padding:4px}
+  /* 8 item: min-width:0 biar boleh menyusut, padding horizontal 0 biar
+     label panjang kayak "Pemasukan" tetep muat tanpa meluber. */
+  .bnav-btn{flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center;
+            gap:2px; font-size:.62rem; font-weight:800; letter-spacing:-.02em;
+            color:var(--muted); background:none; border:none; cursor:pointer;
+            padding:4px 0; overflow:hidden}
   .bnav-btn.active{color:var(--accent)}
   .bnav-btn span.i{font-size:18px; line-height:1}
   .wrap{padding-bottom:84px}
@@ -1119,13 +1126,13 @@ body.hide-nominal input.qty:focus {
 </div>
 
 <nav class="bottom-nav" id="bottomNav">
-  <button class="bnav-btn active" data-page="dashboard"><span class="i">📊</span>Dashboard</button>
+  <button class="bnav-btn active" data-page="dashboard"><span class="i">📊</span>Beranda</button>
   <button class="bnav-btn" data-page="pemasukan"><span class="i">💰</span>Pemasukan</button>
-  <button class="bnav-btn" data-page="pengeluaran"><span class="i">💸</span>Pengeluaran</button>
+  <button class="bnav-btn" data-page="pengeluaran"><span class="i">💸</span>Belanja</button>
   <button class="bnav-btn" data-page="rencana"><span class="i">🎯</span>Rencana</button>
-  <button class="bnav-btn" data-page="alokasi"><span class="i">🍳</span>Alokasi</button>
-  <button class="bnav-btn" data-page="laporan-alokasi"><span class="i">📊</span>Alokasi</button>
-  <button class="bnav-btn" data-page="laporan"><span class="i">📑</span>Laporan</button>
+  <button class="bnav-btn" data-page="alokasi"><span class="i">🍳</span>Anggaran</button>
+  <button class="bnav-btn" data-page="laporan-alokasi"><span class="i">📊</span>Laporan</button>
+  <button class="bnav-btn" data-page="laporan"><span class="i">📑</span>Rekap</button>
   <button class="bnav-btn" data-page="data"><span class="i">💾</span>Data</button>
 </nav>
 
@@ -4643,33 +4650,11 @@ function renderLaporanAlokasi(){
   h+='</tbody></table></div>';
   if(!L.urutItem.length) h+='<div class="muted">Belum ada item pengeluaran.</div>';
 
-  h+='<div style="font-size:.70rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#7C3AED;margin:16px 0 6px">\u{1F9E0} Temuan Otomatis</div>';
-  h+='<div style="display:grid;gap:6px;font-size:.80rem;line-height:1.5">';
-  const f=[];
-  if(L.totalTerpakai>0 && L.alAda.length){
-    const t1=L.alAda[0];
-    f.push(['\u{1F3E0}','<b>'+t1.m.ico+' '+lapAlokEsc(t1.m.nama)+'</b> adalah pos terbesar: <b>'+rp(t1.terpakai)
-      +'</b> ('+Math.round(t1.terpakai/L.totalTerpakai*100)+'% dari total spending).']);
-    f.push(['\u{1F4A1}','<b>'+Math.round(L.top3.pct*100)+'%</b> dari spending habis di <b>3 alokasi teratas</b> ('
-      +rp(L.top3.jumlah)+'). Sisa '+Math.round((1-L.top3.pct)*100)+'% tersebar ke '
-      +Math.max(0,L.alAda.length-3)+' alokasi lain.']);
-    if(L.paretoIdx>0) f.push(['\u{1F4C9}','<b>'+L.paretoIdx+' item teratas</b> sudah menyerap 80% total spending. Fokus ke item ini paling cepat hemat.']);
-  }
-  L.over.forEach(t=> f.push(['\u{1F534}','<b>'+t.m.ico+' '+lapAlokEsc(t.m.nama)+'</b> MELEBIHI alokasi '
-    +rp(Math.abs(t.sisa))+' (budget '+rp(t.budget)+', terpakai '+rp(t.terpakai)+').']));
-  L.wapas.forEach(t=> f.push(['\u{1F7E1}','<b>'+t.m.ico+' '+lapAlokEsc(t.m.nama)+'</b> sudah '
-    +lapAlokPct(t.pct)+' terpakai — tinggal sisa '+rp(t.sisa)+'.']));
-  L.besar.forEach(x=> f.push(['\u{1F525}','<b>'+lapAlokEsc(x.nama)+'</b> sendirian '
-    +Math.round(x.alPct*100)+'% dari alokasi '+lapAlokEsc(x.al)+' ('+rp(x.perBulan)+').']));
-  L.kosong.forEach(t=> f.push(['\u26AA','<b>'+t.m.ico+' '+lapAlokEsc(t.m.nama)+'</b> punya budget '
-    +rp(t.budget)+' tapi belum ada pengeluaran sama sekali.']));
-  L.belumDialok.forEach(t=> f.push(['\u2753','<b>'+t.m.ico+' '+lapAlokEsc(t.m.nama)+'</b> sudah spending '
-    +rp(t.terpakai)+' tapi alokasi masih '+rp(t.budget)+' — belum dialokasikan.']));
-  L.luar.forEach(x=> f.push(['\u26A0','Kategori di luar 8 alokasi: <b>'+lapAlokEsc(x.kategori)
-    +'</b> — '+lapAlokEsc(x.nama)+' '+rp(x.perBulan)+'. Tidak ikut dihitung alokasi.']));
-  if(!f.length) f.push(['\u2705','Semua under control: tidak ada alokasi lebih, tidak ada item yang eating &gt;30% satu alokasi.']);
-  f.forEach(x=> h+='<div style="background:#F8FAFC;border:1px solid var(--border);border-radius:10px;padding:8px 10px">'+x[0]+' '+x[1]+'</div>');
-  h+='</div></div>';
+  /* Catatan: blok "Temuan Otomatis" (pos terbesar, konsentrasi 3 alokasi,
+     pareto 80%, alokasi lebih/wapas/kosong, item eating >=30%, kategori luar)
+     sengaja DIHAPUS sesuai permintaan user. Data analitiknya tetap dihitung
+     di hitungLaporanAlokasi -- L.over, L.wapas, L.kosong, L.besar,
+     L.paretoIdx, L.top3 -- jadi gampang dinyalakan lagi tanpa hitung ulang. */
 
   root.innerHTML=h;
 }
@@ -4766,13 +4751,7 @@ function exportLaporanAlokasi(){
     });
     ln('');
   });
-  ln('='.repeat(66));
-  ln('ANALISIS');
-  if(L.alAda.length) ln('  Pos terbesar: '+L.alAda[0].m.nama+' '+rp(L.alAda[0].terpakai));
-  ln('  3 alokasi teratas menyerap '+Math.round(L.top3.pct*100)+'% spending.');
-  if(L.paretoIdx) ln('  '+L.paretoIdx+' item teratas menyerap 80% spending.');
-  L.over.forEach(x=> ln('  PERINGATAN: '+x.m.nama+' lebih '+rp(Math.abs(x.sisa))));
-  L.besar.forEach(x=> ln('  item besar: '+x.nama+' = '+Math.round(x.alPct*100)+'% dari '+x.al));
+  // Blok "ANALISIS" di file TXT juga dihapus sesuai permintaan user.
 
   const blob=new Blob([t],{type:'text/plain;charset=utf-8'});
   const a=document.createElement('a');
