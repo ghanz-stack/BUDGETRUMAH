@@ -751,11 +751,11 @@ body.hide-nominal input.qty:focus {
       </div>
       <div style="overflow:auto; border:1px solid var(--border); border-radius:12px">
         <table class="var-table" id="varTable">
-          <thead><tr><th>Nama</th><th>Kategori</th><th>Harga per Item</th><th>Periode</th><th>Harga per Item*</th><th>Keterangan</th><th style="width:70px">Aksi</th></tr></thead>
+          <thead><tr><th>Nama</th><th>Kategori</th><th>Harga per Item</th><th>Periode</th><th>&#247; 12 (Tahunan)</th><th>Keterangan</th><th style="width:70px">Aksi</th></tr></thead>
           <tbody id="varBody"></tbody>
         </table>
       </div>
-      <div class="muted" style="margin-top:6px">* Tahunan otomatis ÷12. Tidak Tentu & Variabel dihitung penuh sebagai estimasi.</div>
+      <div class="muted" style="margin-top:6px"><b>Harga per Item</b> = nominal yang dicatat untuk 1 item (mis. 1 baris struk atau 1 Hb). Kolom <b>÷ 12</b> hanya terisi untuk periode <b>Tahunan</b> — jadi tidak ada kolom kembar.</div>
       <div style="margin-top:10px; display:flex; flex-wrap:wrap; gap:6px" id="catRekap"></div>
       <div class="total-row"><span>Total Variabel per bulan</span><span id="totalVariabel">Rp0</span></div>
       <hr class="sep">
@@ -1592,7 +1592,7 @@ function renderVariabel(){
     const ketTxt = v.kategori===KATEGORI_TABUNGAN
       ? `🏦 Tabungan → ${v.tujuan||'?'}${v.ket? ' • '+v.ket : ''}`
       : (v.ket||'-');
-    tr.innerHTML=`<td><b>${v.nama}</b></td><td><span class="tag" ${v.kategori===KATEGORI_TABUNGAN?'style="background:#FCE7F3; color:#9D174D; border-color:#FBCFE8"':''}>${v.kategori}</span></td><td>${rp(v.nominal)}</td><td><span class="tag ${tagClass}">${v.periode}</span></td><td><b>${rp(per)}</b></td><td class="muted">${ketTxt}</td><td><div class="actions"><button class="btn-icon" onclick="editVar(${v.id})" title="Edit">✏️</button><button class="btn-icon danger" onclick="delVar(${v.id})" title="Hapus">🗑️</button></div></td>`;
+    tr.innerHTML=`<td><b>${v.nama}</b></td><td><span class="tag" ${v.kategori===KATEGORI_TABUNGAN?'style="background:#FCE7F3; color:#9D174D; border-color:#FBCFE8"':''}>${v.kategori}</span></td><td>${rp(v.nominal)}</td><td><span class="tag ${tagClass}">${v.periode}</span></td><td>${v.periode==='Tahunan' ? `<b>${rp(per)}</b>` : '<span class="muted">—</span>'}</td><td class="muted">${ketTxt}</td><td><div class="actions"><button class="btn-icon" onclick="editVar(${v.id})" title="Edit">✏️</button><button class="btn-icon danger" onclick="delVar(${v.id})" title="Hapus">🗑️</button></div></td>`;
     body.appendChild(tr);
   });
   // cat rekap
@@ -3107,72 +3107,82 @@ function cariTotalPolos(flat){
 // supaya jumlah semua item == TOTAL struk. Kalau memang mau per satuan,
 // pilih mode "satuan" di preview (otomatis dikali QTY).
 let strukCalcMode='baris'; // 'baris' (default) | 'satuan'
-const STRUK_ITEM_STOP=/^(sub\s*-?\s*total|grand\s*total|total\s*(?:item|hemat|bayar|pembayaran|akhir|diskon)|kembalian|change|cash|tunai|kartu|npwp|swipe|debit|kredit)/i;
+const STRUK_ITEM_STOP=/^(sub\s*-?\s*total|grand\s*total|total\s*(?:item|hemat|bayar|pembayaran|akhir|diskon)|kembalian|change|cash|tunai|kartu|npwp|swipe|debit|kredit|pembulatan)/i;
 const STRUK_ITEM_SKIP=/^(rp|hemat|diskon|total|sub\s*-?\s*total|subtotal|item|qty|harga|jumlah|per|no\.?|nomor|kasir|cashier|member|transaksi|tanggal|alamat|address|telp|telepon|npwp|nota|struk|kode|poin|point|store|toko|faktur|pajak|tax|service|servis)/i;
 
 function parseStrukItems(flat){
   const items=[];
-  const lines=String(flat||'').split('\n').map(s=>s.trim()).filter(Boolean);
-  // "5KG", "0,220 KG", "2L", "1L", "250GR" -> token satuan, BUKAN qty pos
-  const unitRe=/(\d+(?:[.,]\d+)?)\s*(KG|KGS|GR|G|ML|LTR|L|LITER|PCS|PC|PACK|SACH|BTL|BOTLE|BOX|DOS|PKG)\b\.?/i;
-  for(const line of lines){
-    // berhenti di blok total, TAPI hanya kalau item sudah mulai terkumpul
-    // (kalau belum, "TOTAL PAJAK" di header tidak boleh memutus)
-    if(items.length && STRUK_ITEM_STOP.test(line)) break;
+  const lines=String(flat||'').split('\n').map(s=>s.replace(/\s+/g,' ').trim()).filter(Boolean);
+
+  // baris pemisah receipt: ------- ======== *****  (selalu SETELAH item)
+  const isSeparator=line=>/^[-=_*]{4,}$/.test(line);
+
+  for(const line0 of lines){
+    const line=line0.trim();
+
+    // 1) HEMAT / DISKON milik item SEBELUMNYA
+    const mh=line.match(/^(?:HEMAT|DISKON|DISC)\b\s*:?\s*-?\s*([\d.,]+)/i);
+    if(mh){
+      if(items.length){
+        const v=Math.abs(strukAngkaKeNumber(mh[1]));
+        if(v>0) items[items.length-1].hemat+=v;
+      }
+      continue;
+    }
+
+    // 2) berhenti setelah blok item berakhir
+    if(items.length){
+      if(isSeparator(line)) break;
+      if(STRUK_ITEM_STOP.test(line)) break;
+      // label non-item setelah item terakhir -> juga berhenti
+      if(/^(?:Pembulatan|Pembayaran\s+Tunai|Pembayaran|KEMBALI|Sub\s*-?\s*Total)/i.test(line)) break;
+    } else if(isSeparator(line)){
+      continue;
+    }
+
     if(line.length<4) continue;
     if(!/[A-Za-z]{3,}/.test(line)) continue;   // harus ada nama (huruf)
     if(!/\d/.test(line)) continue;              // harus ada angka
 
-    // 1) BUANG token satuan (mis. "5KG", "0,220 KG", "2L") SEKALIAN angkanya.
-    //    Angka di dalamnya biasanya bagian SPESIFIKASI NAMA (cth "BERAS PREMIUM 5KG"),
-    //    bukan qty. QTY diambil dari angka biasa yang tersisa setelah ini.
-    let work=line.replace(unitRe,' ');
-    const qtyUnit=null;
-
-    // 2) kumpulkan angka sisa
-    const nums=[]; const re=/\d[\d.,]*\d|\d/g; let m;
-    while((m=re.exec(work))!==null){
+    // 3) kumpulkan angka BESERA posisinya di baris
+    const hits=[]; const re=/\d[\d.,]*\d|\d/g; let m;
+    while((m=re.exec(line))!==null){
       const v=strukAngkaKeNumber(m[0]);
-      if(isFinite(v)) nums.push(v);
+      if(isFinite(v)) hits.push({v, idx:m.index});
+    }
+    if(hits.length<2) continue;                 // butuh minimal HARGA + TOTAL
+
+    // 4) QTY / HARGA / TOTAL = tiga angka terakhir
+    const n=hits.length;
+    let total=hits[n-1].v, harga=hits[n-2].v, qty=(n>=3 ? hits[n-3].v : null);
+    let inlineHemat=0;
+    // Format B (HEMAT inline): QTY|HARGA|HEMAT|NET. Berlaku HANYA kalau kolom
+    // ke-3 == kolom ke-2 + kolom ke-1 (NET = HARGA - HEMAT).
+    const isInline=n>=4 && Math.abs(hits[n-3].v-(hits[n-2].v+hits[n-1].v))<1;
+    if(isInline){
+      // kolom: QTY | HARGA | HEMAT | NET. Supaya rumus seragam dengan Format A,
+      // simpan "net" = HARGA SEBELUM hemat, jadi net - hemat = kolom NET.
+      qty=hits[n-4].v; harga=hits[n-3].v; inlineHemat=hits[n-2].v; total=hits[n-3].v;
     }
 
-    // 3) nama = teks sebelum angka pertama
-    const firstIdx=work.search(/\d[\d.,]*\d|\d/);
-    let nama=firstIdx<0 ? work : work.slice(0,firstIdx);
-    nama=nama.replace(/[\s.,:;|]+$/,'').trim();
-    nama=nama.replace(/\s*\d+\s*[xX]\s*$/,'').trim();   // buang "2 x" di ekor
-    nama=nama.replace(/^[\d.,]+\s*/,'').trim();        // buang angka di depan
+    // 5) nama = teks sebelum angka pertama dari 3 angka terakhir
+    const nameEnd=hits[Math.max(0, isInline ? n-4 : n-3)].idx;
+    let nama=line.slice(0,nameEnd).replace(/[\s,.:;|]+$/,'').trim();
+    nama=nama.replace(/\s*\d+(?:[.,]\d+)?\s*[A-Z]\b\.?$/,'').trim();  // buang "1 K"
     if(!nama || !/[A-Za-z]{3,}/.test(nama)) continue;
     if(STRUK_ITEM_SKIP.test(nama)) continue;
+    if(!(total>0)) continue;
 
-    // 4) petakan angka -> qty / harga / hemat
-    //    Aturan: QTY = token satuan bila ada, else angka pertama.
-    //            ANGKA TERAKHIR = harga per item (net, sudah setelah hemat).
-    //            Harga = angka pertama setelah qty; hemat = harga - net.
-    let qty = qtyUnit;
-    let rest = nums;
-    if(qty==null){
-      if(nums.length>=2){ qty=nums[0]; rest=nums.slice(1); }
-      else { rest=nums; }
-    }
-    if(!rest.length) continue;
-    const net=rest[rest.length-1];
-    const harga=rest.length>=2 ? rest[0] : net;
-    if(!(harga>=50)) continue;               // buang angka sisa yang bukan harga
-    let hemat=Math.round(harga-net);
-    if(!(hemat>0)) hemat=0;
-    // hemat jangan lebih besar dari harga (parsing acak)
-    if(hemat>harga) hemat=0;
-
-    items.push({nama, qty, harga, hemat, net, pick:true, src:line.slice(0,90)});
+    items.push({nama, qty, harga, net:total, hemat:inlineHemat, pick:true, src:line.slice(0,90)});
   }
   return items;
 }
 function strukItemPerItem(it){
-  // pakai "net" hasil parsing kalau ada (harga per item setelah hemat),
-  // else hitung dari harga - hemat. Mode "satuan" mengalikan QTY.
+  // Kolom TOTAL pada baris struk = nominal yang dicatat untuk item itu.
+  // Baris "HEMAT -1,760" tepat di bawahnya HARUS dikurangkan.
+  // Jadi: Harga per Item = TOTAL - HEMAT. Jumlah semua item = Sub Total struk.
   const h=Number(it.harga)||0, hm=Math.abs(Number(it.hemat)||0);
-  let base=(it.net!=null && Number(it.net)>0) ? Number(it.net) : (h-hm);
+  let base=(it.net!=null && Number(it.net)>0) ? (Number(it.net)-hm) : (h-hm);
   if(!(base>0)) base=h;
   const q=Number(it.qty)||0;
   return strukCalcMode==='satuan' && q>0 ? Math.round(base*q) : Math.round(base);
@@ -3209,8 +3219,22 @@ function parseSuperIndoText(txt, fileName){
 
   // --- Tanggal: "25-08-26 (11:26:12)" / "25/08/2026" / "25 Aug 2026"
   let dateRaw='';
-  let dm = flat.match(/(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})\s*(\(\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM)?\))?/i);
-  if(dm) dateRaw = dm[1];
+  // Buang baris "Tanggal Pengukuhan" (tanggal faktur pajak NPWP), BUKAN tanggal transaksi.
+  const flatTrx = flat.replace(/Tanggal\s*Pengukuhan[^\n]*/gi,' ');
+  let dm = flatTrx.match(/(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})\s*[\(\[]\s*\d{1,2}[:.]\d{2}/i);
+  if(dm) dateRaw = dm[1];                                   // "04-10-26 (12:18:29)"
+  if(!dateRaw){
+    dm = flatTrx.match(/(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})\s*\d{1,2}[:.]\d{2}/i);
+    if(dm) dateRaw = dm[1];                                 // tanggal + jam tanpa kurung
+  }
+  if(!dateRaw){
+    dm = flatTrx.match(/(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})/i);
+    if(dm) dateRaw = dm[1];                                 // tanggal biasa
+  }
+  if(!dateRaw){
+    dm = raw.match(/(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})\s*\(\s*\d{1,2}[:.]\d{2}/i);
+    if(dm) dateRaw = dm[1];
+  }
 
   // --- Total
   let total=0, totalFound=false;
