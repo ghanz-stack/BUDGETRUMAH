@@ -730,7 +730,7 @@ body.hide-nominal input.qty:focus {
         <div id="varTujuanWrap" style="display:none"><label>🏦 Alokasi tujuan <span>— dari 8 pos alokasi mana dananya diambil</span></label><select id="varTujuan">
           <option>Belanja Dapur & Masak</option><option>Jajan / Rekreasi</option><option>Skincare / Personal Care</option><option>Kuota</option><option>Uang Pegangan Will</option><option>Uang Pegangan Istri</option><option>Laundry</option><option>ART</option>
         </select></div>
-        <div><label>Nominal (Rp)</label><input class="txt" id="varNominal" inputmode="numeric" placeholder="200000"></div>
+        <div><label>Harga per Item (Rp) <span title="Yang dicatat untuk 1 item pembelian. Kalau struk di-import per item, isi ini = harga item SETELAH dikurangi hemat/diskon. Example: AYAM SAYAP UJUNG, QTY 220, 14.940 - 1.760 hemat = 13.180" style="cursor:help; border:1px solid var(--border); border-radius:50%; width:16px; height:16px; display:inline-grid; place-items:center; font-size:10px; background:#F1F5F9">?</span></label><input class="txt" id="varNominal" inputmode="numeric" placeholder="13180"></div>
         <div><label>Periode <span title="Bulanan=tap bulan nominal tetap | Bulanan Variabel=tap bulan nominal beda (isi estimasi) | Tidak Tentu=insidental, isi estimasi/bulan atau 0 | Tahunan=1x/tahun auto ÷12" style="cursor:help; border:1px solid var(--border); border-radius:50%; width:16px; height:16px; display:inline-grid; place-items:center; font-size:10px; background:#F1F5F9">?</span></label><select id="varPeriode">
           <option value="Bulanan">Bulanan</option><option value="Bulanan Variabel">Bulanan Variabel</option><option value="Tidak Tentu">Tidak Tentu</option><option value="Tahunan">Tahunan (÷12)</option>
         </select></div>
@@ -751,7 +751,7 @@ body.hide-nominal input.qty:focus {
       </div>
       <div style="overflow:auto; border:1px solid var(--border); border-radius:12px">
         <table class="var-table" id="varTable">
-          <thead><tr><th>Nama</th><th>Kategori</th><th>Nominal</th><th>Periode</th><th>Per bulan*</th><th>Keterangan</th><th style="width:70px">Aksi</th></tr></thead>
+          <thead><tr><th>Nama</th><th>Kategori</th><th>Harga per Item</th><th>Periode</th><th>Harga per Item*</th><th>Keterangan</th><th style="width:70px">Aksi</th></tr></thead>
           <tbody id="varBody"></tbody>
         </table>
       </div>
@@ -761,15 +761,17 @@ body.hide-nominal input.qty:focus {
       <hr class="sep">
       <div style="background:#F0F9FF; border:1px solid #BAE6FD; border-radius:12px; padding:12px">
         <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px"><span style="font-size:18px">🧾</span><b style="font-size:.9rem">Import Struk Belanja (Super Indo E-Receipt)</b><span class="badge" style="margin-left:auto">PDF → Variabel</span></div>
-        <div class="muted" style="margin-bottom:8px">Format: <code>E-Receipt_*.pdf</code> Super Indo — otomatis baca <b>Tanggal, Total, Hemat, Item</b> → import sebagai <b>Variabel Belanja Bulanan</b>. Bisa pilih per struk atau gabung per bulan. File diproses lokal (tidak upload).</div>
+        <div class="muted" style="margin-bottom:8px">Format: <code>E-Receipt_*.pdf</code> Super Indo — baca <b>Tanggal, Total, Hemat</b> dan <b>item per baris</b> (nama, qty, harga, hemat). Pilih <b>Import per Item</b> untuk catat tiap baris sebagai 1 pengeluaran. File diproses lokal (tidak upload).</div>
         <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center">
           <label class="btn btn-accent" style="cursor:pointer">📂 Pilih PDF Struk (multi)<input type="file" id="strukFiles" accept=".pdf" multiple style="display:none"></label>
+          <button class="btn btn-accent" id="btnImportStrukItem">⬇️ Import per Item</button>
           <button class="btn btn-soft" id="btnImportStrukPer">⬇️ Import per Struk</button>
           <button class="btn btn-soft" id="btnImportStrukBulan">📆 Gabung per Bulan</button>
           <button class="btn btn-soft" id="btnClearStruk" style="margin-left:auto">🗑️ Clear Preview</button>
         </div>
-        <div id="strukPreview" style="margin-top:10px; overflow:auto; max-height:220px; border:1px solid #E0F2FE; border-radius:10px; background:#fff; display:none"></div>
-        <div class="muted" style="margin-top:6px">JSON format yang disimpan: <code>{nama, kategori:"Belanja Bulanan", nominal: total, periode:"Bulanan Variabel", ket:"Super Indo DD-MM-YY • X item • Hemat Rp..."}</code> — langsung masuk tabel di atas & kehitung Sisa Bersih.</div>
+        <div id="strukRekap" style="margin-top:8px"></div>
+<div id="strukPreview" style="margin-top:10px; overflow:auto; max-height:320px; border:1px solid #E0F2FE; border-radius:10px; background:#fff; display:none"></div>
+        <div class="muted" style="margin-top:6px">Format tiap item yang disimpan: <code>{nama:"AYAM SAYAP UJUNG", kategori:"Belanja Dapur &amp; Masak", nominal:13180, periode:"Bulanan Variabel", ket:"QTY 220"}</code> — <b>nominal = harga per item setelah dikurangi hemat/diskon</b>. Langsung masuk tabel di atas &amp; ikut hitung Sisa Alokasi.</div>
       </div>
     </div>
   </section>
@@ -3096,6 +3098,110 @@ function cariTotalPolos(flat){
   }
   return found;
 }
+// === ITEM PER BARIS STRUK ===
+// Skema target yang diminta:
+//   NAMA  : AYAM SAYAP UJUNG
+//   QTY   : 220
+//   HARGA : 14.940   DIKURANGI HEMAT/DISKON 1.760  ->  13.180
+// "Harga per Item" dicatat = harga item SETELAH hemat (bukan dikali qty),
+// supaya jumlah semua item == TOTAL struk. Kalau memang mau per satuan,
+// pilih mode "satuan" di preview (otomatis dikali QTY).
+let strukCalcMode='baris'; // 'baris' (default) | 'satuan'
+const STRUK_ITEM_STOP=/^(sub\s*-?\s*total|grand\s*total|total\s*(?:item|hemat|bayar|pembayaran|akhir|diskon)|kembalian|change|cash|tunai|kartu|npwp|swipe|debit|kredit)/i;
+const STRUK_ITEM_SKIP=/^(rp|hemat|diskon|total|sub\s*-?\s*total|subtotal|item|qty|harga|jumlah|per|no\.?|nomor|kasir|cashier|member|transaksi|tanggal|alamat|address|telp|telepon|npwp|nota|struk|kode|poin|point|store|toko|faktur|pajak|tax|service|servis)/i;
+
+function parseStrukItems(flat){
+  const items=[];
+  const lines=String(flat||'').split('\n').map(s=>s.trim()).filter(Boolean);
+  // "5KG", "0,220 KG", "2L", "1L", "250GR" -> token satuan, BUKAN qty pos
+  const unitRe=/(\d+(?:[.,]\d+)?)\s*(KG|KGS|GR|G|ML|LTR|L|LITER|PCS|PC|PACK|SACH|BTL|BOTLE|BOX|DOS|PKG)\b\.?/i;
+  for(const line of lines){
+    // berhenti di blok total, TAPI hanya kalau item sudah mulai terkumpul
+    // (kalau belum, "TOTAL PAJAK" di header tidak boleh memutus)
+    if(items.length && STRUK_ITEM_STOP.test(line)) break;
+    if(line.length<4) continue;
+    if(!/[A-Za-z]{3,}/.test(line)) continue;   // harus ada nama (huruf)
+    if(!/\d/.test(line)) continue;              // harus ada angka
+
+    // 1) BUANG token satuan (mis. "5KG", "0,220 KG", "2L") SEKALIAN angkanya.
+    //    Angka di dalamnya biasanya bagian SPESIFIKASI NAMA (cth "BERAS PREMIUM 5KG"),
+    //    bukan qty. QTY diambil dari angka biasa yang tersisa setelah ini.
+    let work=line.replace(unitRe,' ');
+    const qtyUnit=null;
+
+    // 2) kumpulkan angka sisa
+    const nums=[]; const re=/\d[\d.,]*\d|\d/g; let m;
+    while((m=re.exec(work))!==null){
+      const v=strukAngkaKeNumber(m[0]);
+      if(isFinite(v)) nums.push(v);
+    }
+
+    // 3) nama = teks sebelum angka pertama
+    const firstIdx=work.search(/\d[\d.,]*\d|\d/);
+    let nama=firstIdx<0 ? work : work.slice(0,firstIdx);
+    nama=nama.replace(/[\s.,:;|]+$/,'').trim();
+    nama=nama.replace(/\s*\d+\s*[xX]\s*$/,'').trim();   // buang "2 x" di ekor
+    nama=nama.replace(/^[\d.,]+\s*/,'').trim();        // buang angka di depan
+    if(!nama || !/[A-Za-z]{3,}/.test(nama)) continue;
+    if(STRUK_ITEM_SKIP.test(nama)) continue;
+
+    // 4) petakan angka -> qty / harga / hemat
+    //    Aturan: QTY = token satuan bila ada, else angka pertama.
+    //            ANGKA TERAKHIR = harga per item (net, sudah setelah hemat).
+    //            Harga = angka pertama setelah qty; hemat = harga - net.
+    let qty = qtyUnit;
+    let rest = nums;
+    if(qty==null){
+      if(nums.length>=2){ qty=nums[0]; rest=nums.slice(1); }
+      else { rest=nums; }
+    }
+    if(!rest.length) continue;
+    const net=rest[rest.length-1];
+    const harga=rest.length>=2 ? rest[0] : net;
+    if(!(harga>=50)) continue;               // buang angka sisa yang bukan harga
+    let hemat=Math.round(harga-net);
+    if(!(hemat>0)) hemat=0;
+    // hemat jangan lebih besar dari harga (parsing acak)
+    if(hemat>harga) hemat=0;
+
+    items.push({nama, qty, harga, hemat, net, pick:true, src:line.slice(0,90)});
+  }
+  return items;
+}
+function strukItemPerItem(it){
+  // pakai "net" hasil parsing kalau ada (harga per item setelah hemat),
+  // else hitung dari harga - hemat. Mode "satuan" mengalikan QTY.
+  const h=Number(it.harga)||0, hm=Math.abs(Number(it.hemat)||0);
+  let base=(it.net!=null && Number(it.net)>0) ? Number(it.net) : (h-hm);
+  if(!(base>0)) base=h;
+  const q=Number(it.qty)||0;
+  return strukCalcMode==='satuan' && q>0 ? Math.round(base*q) : Math.round(base);
+}
+function strukEsc(s){
+  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function strukItemEdit(fi,ii,field,val){
+  const s=strukParsed[fi]; if(!s||!s.items||!s.items[ii]) return;
+  const it=s.items[ii];
+  if(field==='pick') it.pick=!!val;
+  else if(field==='qty') it.qty = (val===''||val===null) ? null : (strukAngkaKeNumber(val)||null);
+  else if(field==='harga') it.harga = strukAngkaKeNumber(val);
+  else if(field==='hemat') it.hemat = Math.abs(strukAngkaKeNumber(val));
+  else if(field==='nama') it.nama = val;
+  renderStrukPreview();
+}
+function renderStrukCalcMode(){
+  return '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 10px;'
+    + 'background:#F8FAFC;border:1px solid var(--border);border-radius:10px;font-size:.78rem">'
+    + '<b>Cara hitung &ldquo;Harga per Item&rdquo;:</b>'
+    + '<select class="txt" style="padding:4px 8px" onchange="strukCalcMode=this.value;renderStrukPreview()">'
+    + '<option value="baris"'+(strukCalcMode==='baris'?' selected':'')+'>Harga item = Harga &minus; Hemat (default)</option>'
+    + '<option value="satuan"'+(strukCalcMode==='satuan'?' selected':'')+'>Harga item = (Harga &minus; Hemat) &times; QTY</option>'
+    + '</select>'
+    + '<span class="muted">Default: jumlah semua item akan sama dengan TOTAL struk.</span>'
+    + '</div>';
+}
+
 function parseSuperIndoText(txt, fileName){
   const raw = String(txt||'');
   // normalisasi whitespace tapi JAGA newline agar label tidak menyatu
@@ -3154,6 +3260,7 @@ function parseSuperIndoText(txt, fileName){
 
   return {
     fileName,
+    items: parseStrukItems(flat),
     tanggalRaw: dateRaw,
     tanggalIndo: dateRaw? fmtTanggalIndo(dateRaw) : (fileName||''),
     total, hemat,
@@ -3186,29 +3293,66 @@ async function readPdfFile(file){
 }
 function renderStrukPreview(){
   const div=document.getElementById('strukPreview');
+  const rec=document.getElementById('strukRekap');
   if(!div) return;
-  if(!strukParsed.length){ div.style.display='none'; div.innerHTML=''; return; }
+  if(!strukParsed.length){
+    div.style.display='none'; div.innerHTML='';
+    if(rec) rec.innerHTML='';
+    return;
+  }
   div.style.display='block';
-  let h = '<table class="var-table"><thead><tr><th>File</th><th>Tanggal</th><th>Total</th><th>Hemat</th><th>Item</th></tr></thead><tbody>';
-  strukParsed.forEach((s,i)=>{
+  let h='';
+  strukParsed.forEach((s,fi)=>{
     if(s.error){
-      h+= `<tr><td class="muted" style="font-size:.75rem">${s.fileName}</td><td colspan="4" style="color:#E11D48;font-size:.8rem">⚠ Gagal baca: ${s.error}</td></tr>`;
+      h+='<div style="padding:8px 10px;border-radius:8px;background:#FEF2F2;border:1px solid #FECACA;'
+        +'color:#B91C1C;font-size:.78rem;margin-bottom:8px"><b>'+strukEsc(s.fileName)+'</b><br>'
+        +'&#9888; Gagal baca: '+strukEsc(s.error)+'</div>';
       return;
     }
-    h+= `<tr><td class="muted" style="font-size:.75rem">${s.fileName}</td><td>${s.tanggalIndo}</td><td><b>${rp(s.total)}</b></td><td>${rp(s.hemat)}</td><td>${s.itemCount}</td></tr>`;
+    h+='<div style="margin-bottom:10px;border:1px solid #E0F2FE;border-radius:8px;overflow:hidden">'
+      +'<div style="background:#F0F9FF;padding:6px 10px;font-size:.78rem;display:flex;gap:8px;'
+      +'flex-wrap:wrap;align-items:center"><b>'+strukEsc(s.fileName)+'</b>'
+      +'<span class="muted">'+strukEsc(s.tanggalIndo)+'</span>'
+      +'<span style="margin-left:auto">Total struk <b>'+rp(s.total)+'</b></span>'
+      +'<span class="muted">Hemat '+rp(s.hemat)+'</span></div>';
+    if(s.items && s.items.length){
+      h+='<table class="var-table" style="font-size:.75rem"><thead><tr>'
+        +'<th style="width:30px">&#10003;</th><th>Nama Item</th>'
+        +'<th style="width:74px">QTY</th><th style="width:104px">Harga</th>'
+        +'<th style="width:94px">Hemat</th><th style="width:112px">Harga/Item</th>'
+        +'</tr></thead><tbody>';
+      s.items.forEach((it,ii)=>{
+        const inp='style="padding:3px 6px;font-size:.75rem;width:100%"';
+        h+='<tr>'
+          +'<td><input type="checkbox"'+(it.pick?' checked':'')+' onchange="strukItemEdit('+fi+','+ii+',\'pick\',this.checked)"></td>'
+          +'<td><input class="txt" '+inp+' value="'+strukEsc(it.nama)+'" onchange="strukItemEdit('+fi+','+ii+',\'nama\',this.value)"></td>'
+          +'<td><input class="txt" '+inp+' value="'+strukEsc(it.qty==null?'':it.qty)+'" onchange="strukItemEdit('+fi+','+ii+',\'qty\',this.value)"></td>'
+          +'<td><input class="txt" '+inp+' value="'+strukEsc(it.harga)+'" onchange="strukItemEdit('+fi+','+ii+',\'harga\',this.value)"></td>'
+          +'<td><input class="txt" '+inp+' value="'+strukEsc(it.hemat)+'" onchange="strukItemEdit('+fi+','+ii+',\'hemat\',this.value)"></td>'
+          +'<td><b>'+rp(strukItemPerItem(it))+'</b></td>'
+          +'</tr>';
+      });
+      h+='</tbody></table>';
+      const picked=s.items.filter(x=>x.pick);
+      const sumPicked=picked.reduce((a,x)=>a+strukItemPerItem(x),0);
+      const selisih=s.total-sumPicked;
+      const warn=Math.abs(selisih)>1;
+      h+='<div style="padding:6px 10px;font-size:.75rem;background:'+(warn?'#FFFBEB':'#F0FDF4')
+        +';border-top:1px solid #E0F2FE">'+picked.length+'/'+s.items.length+' item dipilih &bull; '
+        +'jumlah <b>'+rp(sumPicked)+'</b> vs total struk '+rp(s.total)+' &bull; selisih <b>'+rp(selisih)+'</b>'
+        +(warn?'<br><span style="color:#B45309">&#9888; Selisih &ne; 0 &mdash; cek kolom Harga / Hemat, '
+              +'atau centang item yang benar. Kolomnya bisa diedit.</span>':' &nbsp;&#10003; cocok')
+        +'</div>';
+    } else {
+      h+='<div style="padding:8px 10px;font-size:.78rem">Item per baris tidak terdeteksi. '
+        +'Klik <b>Import per Struk</b> untuk catat 1 baris = total struk.</div>';
+    }
+    h+='</div>';
   });
-  const okList = strukParsed.filter(s=>!s.error);
-  const sum = okList.reduce((a,s)=>a+s.total,0);
-  const hematSum = okList.reduce((a,s)=>a+s.hemat,0);
-  const errCount = strukParsed.length - okList.length;
-  const zeroCount = okList.filter(s=>!s.total).length;
-  h+= `</tbody></table><div class="total-row"><span>${okList.length} struk terbaca • Total ${rp(sum)} • Hemat ${rp(hematSum)}</span><span>${rp(sum)}</span></div>`;
-  const warn=[];
-  if(errCount) warn.push(`${errCount} file GAGAL dibaca`);
-  if(zeroCount) warn.push(`${zeroCount} struk totalnya 0 (tidak akan di-import)`);
-  if(warn.length) h+= `<div style="margin-top:8px;padding:8px 10px;border-radius:8px;background:#FEF2F2;border:1px solid #FECACA;color:#B91C1C;font-size:.78rem">⚠ ${warn.join(' • ')}</div>`;
   div.innerHTML=h;
+  if(rec) rec.innerHTML=renderStrukCalcMode();
 }
+
 document.getElementById('strukFiles')?.addEventListener('change', async (e)=>{
   const files=[...e.target.files];
   if(!files.length) return;
@@ -3230,6 +3374,56 @@ document.getElementById('strukFiles')?.addEventListener('change', async (e)=>{
   renderStrukPreview();
 });
 document.getElementById('btnClearStruk')?.addEventListener('click', ()=>{ strukParsed=[]; document.getElementById('strukFiles').value=''; renderStrukPreview(); });
+document.getElementById('strukCalcModeProbe')?.addEventListener('change', e=>{ strukCalcMode=e.target.value; renderStrukPreview(); });
+// === IMPORT PER ITEM: 1 baris struk = 1 baris Pengeluaran ===
+// Nama  : AYAM SAYAP UJUNG
+// Kategori : Belanja Dapur & Masak
+// Periode  : Bulanan Variabel
+// Harga per Item : 13.180   (= 14.940 - 1.760 hemat)
+// Keterangan : QTY 220
+const STRUK_ITEM_KATEGORI='Belanja Dapur & Masak';
+const STRUK_ITEM_PERIODE='Bulanan Variabel';
+function importStrukItem(){
+  const rows=[];
+  let total=0, files=0;
+  strukParsed.forEach(s=>{
+    if(s.error || !s.items || !s.items.length) return;
+    let ada=false;
+    s.items.forEach(it=>{
+      if(!it.pick) return;
+      const per=strukItemPerItem(it);
+      if(per<=0) return;
+      ada=true; total+=per;
+      const nama=(it.nama||'').trim();
+      rows.push({
+        nama: nama || 'Item Struk',
+        kategori: STRUK_ITEM_KATEGORI,
+        nominal: per,
+        periode: STRUK_ITEM_PERIODE,
+        ket: it.qty ? ('QTY '+it.qty) : (s.tanggalIndo||'')
+      });
+    });
+    if(ada) files++;
+  });
+  if(!rows.length){
+    return alert('Tidak ada item yang bisa di-import.\n\nCentang dulu item di tabel preview, dan pastikan kolom Harga/Item tidak 0.');
+  }
+  const pesan='Import '+rows.length+' item dari '+files+' struk?\n\n'
+    +'Total Harga per Item : '+rp(total)+'\n'
+    +'Kategori : '+STRUK_ITEM_KATEGORI+'\n'
+    +'Periode  : '+STRUK_ITEM_PERIODE+'\n\n'
+    +'Contoh baris pertama:\n'
+    +' Nama  : '+rows[0].nama+'\n'
+    +' Harga : '+rp(rows[0].nominal)+'\n'
+    +' Keterangan : '+(rows[0].ket||'-')+'\n\n'
+    +'Setiap item jadi 1 baris di tabel Pengeluaran.';
+  if(!confirm(pesan)) return;
+  const t0=Date.now();
+  variabel.push(...rows.map((r,i)=>({id:t0+i+Math.random(), nama:r.nama, kategori:r.kategori,
+                                    nominal:r.nominal, periode:r.periode, ket:r.ket, tujuan:''})));
+  saveVariabel(); renderVariabel(); calc();
+  alert('✅ '+rows.length+' item di-import.\n\nTotal: '+rp(total)+'\nCek tabel Pengeluaran di atas.');
+}
 function importStruk(mode){
   if(!strukParsed.length) return alert('Pilih PDF struk dulu!');
   const okList = strukParsed.filter(s=>!s.error && s.total>0);
@@ -3288,6 +3482,7 @@ function importStruk(mode){
   alert(`✅ Import ${mode==='per'? okList.length+' struk':'gabung per bulan'} berhasil — ${n} data masuk, cek Menu Variabel!` +
     (skipped ? `\n\n⚠ ${skipped} struk dilewati (gagal dibaca / total 0).` : ''));
 }
+document.getElementById('btnImportStrukItem')?.addEventListener('click', importStrukItem);
 document.getElementById('btnImportStrukPer')?.addEventListener('click', ()=> importStruk('per'));
 document.getElementById('btnImportStrukBulan')?.addEventListener('click', ()=> importStruk('bulan'));
 </script>
