@@ -4549,7 +4549,7 @@ function renderLaporanAlokasi(){
 
   const bar=(pct,warna)=>{
     const w=Math.max(0,Math.min(100,(pct>999?1:pct)*100));
-    return '<div style="background:#F1F5F9;border-radius:999px;height:9px;overflow:hidden">'
+    return '<div style="background:#F1F5F9;border-radius:999px;height:8px;overflow:hidden">'
       +'<div style="width:'+w.toFixed(1)+'%;height:100%;background:'+warna+'"></div></div>';
   };
   const badge={
@@ -4560,48 +4560,41 @@ function renderLaporanAlokasi(){
   };
   let h='';
 
-  // --- KPI
-  h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px">';
-  h+='<div class="card"><div class="muted" style="font-size:.68rem;font-weight:800;text-transform:uppercase">Budget Alokasi</div>'
-   + '<div class="big" style="font-size:1.5rem">'+rp(L.totalBudget)+'</div>'
-   + '<div class="muted" style="font-size:.72rem">8 titik alokasi</div></div>';
-  h+='<div class="card"><div class="muted" style="font-size:.68rem;font-weight:800;text-transform:uppercase">Pemakaian</div>'
-   + '<div class="big" style="font-size:1.5rem;color:#DC2626">'+rp(L.totalTerpakai)+'</div>'
-   + '<div class="muted" style="font-size:.72rem">'+lapAlokPct(L.pctTotal)+' dari budget</div></div>';
-  h+='<div class="card"><div class="muted" style="font-size:.68rem;font-weight:800;text-transform:uppercase">Sisa Alokasi</div>'
-   + '<div class="big" style="font-size:1.5rem;color:'+(L.totalSisa<0?'#DC2626':'#059669')+'">'+rp(L.totalSisa)+'</div>'
-   + '<div class="muted" style="font-size:.72rem">'+(L.totalSisa<0?'over budget':'masih aman')+'</div></div>';
-  h+='<div class="card"><div class="muted" style="font-size:.68rem;font-weight:800;text-transform:uppercase">Item Tercatat</div>'
-   + '<div class="big" style="font-size:1.5rem">'+L.totalItem+'</div>'
-   + '<div class="muted" style="font-size:.72rem">pos pengeluaran</div></div>';
+  // ---------- RINGKASAN (satu baris + bar tipis) ----------
+  h+='<div class="card" style="margin-bottom:10px;padding:11px 14px">';
+  h+='<div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:3px 14px;font-size:.86rem">'
+   + '<span class="muted">Budget</span><b style="font-size:1rem">'+rp(L.totalBudget)+'</b>'
+   + '<span class="muted">Terpakai</span><b style="font-size:1rem;color:#DC2626">'+rp(L.totalTerpakai)+'</b>'
+   + '<span class="muted">'+lapAlokPct(L.pctTotal)+'</span>'
+   + '<span class="muted">Sisa</span><b style="font-size:1rem;color:'+(L.totalSisa<0?'#DC2626':'#059669')+'">'
+   + (L.totalSisa<0?'&minus;':'')+rp(Math.abs(L.totalSisa))+'</b>'
+   + '<span class="muted">Item</span><b>'+L.totalItem+'</b></div>';
+  h+='<div style="margin-top:7px">'+bar(L.pctTotal, L.totalSisa<0?'#DC2626':'#0F766E')+'</div>';
   h+='</div>';
 
-  // --- tabel 8 alokasi + detail
+  // ---------- TABUNGAN (2 baris, di luar alokasi) ----------
   if(L.tabTotal>0){
-    h+='<div class="card" style="margin-bottom:12px;border-left:4px solid #EC4899">';
-    h+='<div class="card-head"><div class="icon" style="background:#FCE7F3;color:#9D174D">\u{1F3E6}</div>'
-     +'<div><h2>Pos Tabungan (terpisah dari 8 Alokasi)</h2><p>Dana yang ditarik dari saldo tabungan, bukan dari budget alokasi bulan ini</p></div></div>';
-    h+='<div style="display:flex;justify-content:space-between;font-size:.80rem;margin-bottom:4px">'
-     +'<b>'+L.tabItems.length+' item</b><b>'+rp(L.tabTotal)+'</b></div>';
-    h+='<div style="display:grid;gap:4px;font-size:.78rem">';
+    h+='<div class="card" style="margin-bottom:10px;padding:10px 14px;border-left:4px solid #EC4899">';
+    h+='<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.85rem">'
+     + '<b>\u{1F3E6} Tabungan <span class="muted" style="font-weight:600;font-size:.75rem">(di luar alokasi)</span></b>'
+     + '<span><b>'+rp(L.tabTotal)+'</b> <span class="muted" style="font-size:.75rem">'+L.tabItems.length+' item</span></span></div>';
     L.tabItems.forEach(x=>{
-      h+='<div style="display:flex;justify-content:space-between;gap:8px" class="muted">'
-       +'<span>'+lapAlokEsc(x.nama)+(x.ket?' <span style="font-size:.70rem">('+lapAlokEsc(x.ket)+')</span>':'')+'</span>'
-       +'<b style="color:#0F172A">'+rp(x.perBulan)+'</b></div>';
+      h+='<div class="muted" style="font-size:.78rem;display:flex;justify-content:space-between;gap:8px">'
+       + '<span>'+lapAlokEsc(x.nama)+'</span><span>'+rp(x.perBulan)+'</span></div>';
     });
-    h+='</div><div class="muted" style="font-size:.70rem;margin-top:6px">'
-     +'Tidak mengurangi sisa alokasi. Lihat menu Rencana untuk saldo tabungan.</div></div>';
+    h+='</div>';
   }
 
-  h+='<div class="card" style="margin-bottom:12px">';
-  h+='<div class="card-head"><div class="icon emerald">\u{1F4CA}</div><div><h2>Budget &amp; Pemakaian per Titik Alokasi</h2>'
-   + '<p>Klik baris untuk buka/tutup detail item di dalam alokasi itu</p></div></div>';
+  // ---------- TABEL 8 ALOKASI + DETAIL ----------
+  h+='<div class="card" style="margin-bottom:10px">';
+  h+='<div class="card-head"><div class="icon emerald">\u{1F4CA}</div><div>'
+   + '<h2>Budget &amp; Pemakaian per Alokasi</h2><p>Ketuk baris = lihat detail item</p></div></div>';
   h+='<div style="overflow:auto"><table class="var-table" style="min-width:640px"><thead><tr>'
    + '<th>Item</th><th>Alokasi</th><th>Budget</th><th>Terpakai</th><th>Sisa</th>'
    + '<th style="width:140px">% Terpakai</th><th>Status</th></tr></thead><tbody>';
   L.titik.forEach((t,i)=>{
     h+='<tr style="cursor:pointer" onclick="toggleLapAlokDetail('+i+')">'
-     + '<td class="muted" style="white-space:nowrap">'+(t.jumlahItem? t.jumlahItem+' item' : '&mdash;')+'</td>'
+     + '<td class="muted" style="white-space:nowrap">'+(t.jumlahItem||'')+'</td>'
      + '<td><b>'+t.m.ico+' '+lapAlokEsc(t.m.nama)+'</b></td>'
      + '<td>'+rp(t.budget)+'</td>'
      + '<td style="font-weight:800;color:'+(t.terpakai>t.budget?'#DC2626':'#0F172A')+'">'+rp(t.terpakai)+'</td>'
@@ -4612,85 +4605,77 @@ function renderLaporanAlokasi(){
      +lapAlokDetailHtml(t,L.totalTerpakai)+'</td></tr>';
   });
   h+='</tbody></table></div>';
-  h+='<div class="total-row"><span>Total 8 Alokasi</span><span>budget '+rp(L.totalBudget)
-   +' &rarr; terpakai '+rp(L.totalTerpakai)+' &middot; sisa '+(L.totalSisa<0?'&minus;':'')+rp(Math.abs(L.totalSisa))+'</span></div>';
+  h+='<div class="total-row"><span>Total</span><span>'+rp(L.totalBudget)+' &rarr; '+rp(L.totalTerpakai)
+   +' &middot; sisa '+(L.totalSisa<0?'&minus;':'')+rp(Math.abs(L.totalSisa))+'</span></div>';
   h+='</div>';
 
-  // --- ANALISIS
+  /* Catatan: blok "Temuan Otomatis" sengaja dihapus sesuai permintaan user.
+     Nilai analitiknya (L.over, L.wapas, L.kosong, L.besar, L.paretoIdx,
+     L.top3) tetap dihitung di hitungLaporanAlokasi, jadi gampang dinyalakan
+     lagi tanpa hitung ulang. */
+
+  // ---------- PALING BANYAK SPENDING ----------
   h+='<div class="card">';
   h+='<div class="card-head"><div class="icon" style="background:linear-gradient(135deg,#DC2626,#F97316)">\u{1F50D}</div>'
-   + '<div><h2>Analisis &mdash; Mana yang Paling Banyak Spending</h2><p>Diurut dari terbesar, plus temuan otomatis</p></div></div>';
+   + '<div><h2>Paling Banyak Spending</h2></div></div>';
 
-  h+='<div style="font-size:.70rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#DC2626;margin-bottom:6px">\u{1F4C9} Ranking Alokasi (terpakai terbesar)</div>';
-  h+='<div style="display:grid;gap:7px">';
-  L.urutSpending.forEach(t=>{
-    const p=L.totalTerpakai>0 ? t.terpakai/L.totalTerpakai : 0;
-    h+='<div><div style="display:flex;justify-content:space-between;font-size:.80rem;gap:8px">'
-     + '<span><b>'+t.m.ico+' '+lapAlokEsc(t.m.nama)+'</b>'
-     + '<span class="muted" style="font-size:.70rem"> · '+t.jumlahItem+' item'+(t.top?' · terbesar: '+lapAlokEsc(t.top.nama):'')+'</span></span>'
-     + '<b style="white-space:nowrap">'+rp(t.terpakai)+' <span class="muted" style="font-size:.70rem">('+Math.round(p*100)+'%)</span></b></div>'
-     + bar(p,t.m.warna)+'</div>';
-  });
-  if(!L.totalTerpakai) h+='<div class="muted">Belum ada pengeluaran variabel.</div>';
+  if(!L.urutSpending.length){
+    h+='<div class="muted">Belum ada pengeluaran variabel.</div>';
+  } else {
+    // jawaban langsung: 2 alokasi teratas
+    const a1=L.urutSpending[0], a2=L.urutSpending[1];
+    const p1=Math.round(a1.terpakai/L.totalTerpakai*100);
+    h+='<div style="font-size:.85rem;margin-bottom:8px">'
+     + '<b>'+a1.m.ico+' '+lapAlokEsc(a1.m.nama)+'</b> '+rp(a1.terpakai)+' ('+p1+'%)'
+     + (a2? ' &middot; #2 <b>'+a2.m.ico+' '+lapAlokEsc(a2.m.nama)+'</b> '+rp(a2.terpakai)
+             +' ('+Math.round(a2.terpakai/L.totalTerpakai*100)+'%)' : '')
+     + '</div>';
+
+    h+='<div style="overflow:auto"><table class="var-table" style="min-width:560px"><thead><tr>'
+     + '<th>#</th><th>Item</th><th>Alokasi</th><th>Per Bulan</th><th>% Total</th></tr></thead><tbody>';
+    L.urutItem.slice(0,15).forEach((x,i)=>{
+      h+='<tr><td class="muted">'+(i+1)+'</td>'
+       + '<td><b>'+lapAlokEsc(x.nama)+'</b>'+(x.ket?'<div class="muted" style="font-size:.70rem">'+lapAlokEsc(x.ket)+'</div>':'')+'</td>'
+       + '<td><span class="tag" style="background:'+x.warna+'22;color:'+x.warna+';border-color:'+x.warna+'55">'+x.alIco+' '+lapAlokEsc(x.al)+'</span></td>'
+       + '<td style="font-weight:800">'+rp(x.perBulan)+'</td>'
+       + '<td class="muted">'+(L.totalTerpakai>0?Math.round(x.perBulan/L.totalTerpakai*100):0)+'%</td></tr>';
+    });
+    h+='</tbody></table></div>';
+    if(L.urutItem.length>15){
+      h+='<div class="muted" style="font-size:.74rem;margin-top:6px">15 item teratas dari '
+       +L.urutItem.length+' item.</div>';
+    }
+  }
   h+='</div>';
-
-  h+='<div style="font-size:.70rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#B45309;margin:16px 0 6px">\u{1F3E6} Top 12 Item Terbesar</div>';
-  h+='<div style="overflow:auto"><table class="var-table" style="min-width:600px"><thead><tr>'
-   + '<th>#</th><th>Item</th><th>Alokasi</th><th>Periode</th><th>Per Bulan</th>'
-   + '<th>% Alokasi</th><th>% Total</th></tr></thead><tbody>';
-  L.urutItem.slice(0,12).forEach((x,i)=>{
-    h+='<tr><td class="muted">'+(i+1)+'</td>'
-     + '<td><b>'+lapAlokEsc(x.nama)+'</b>'+(x.ket?'<div class="muted" style="font-size:.70rem">'+lapAlokEsc(x.ket)+'</div>':'')+'</td>'
-     + '<td><span class="tag" style="background:'+x.warna+'22;color:'+x.warna+';border-color:'+x.warna+'55">'+x.alIco+' '+lapAlokEsc(x.al)+'</span></td>'
-     + '<td><span class="muted">'+lapAlokEsc(x.periode)+'</span></td>'
-     + '<td style="font-weight:800">'+rp(x.perBulan)+'</td>'
-     + '<td>'+Math.round(x.alPct*100)+'%</td>'
-     + '<td class="muted">'+(L.totalTerpakai>0?Math.round(x.perBulan/L.totalTerpakai*100):0)+'%</td></tr>';
-  });
-  h+='</tbody></table></div>';
-  if(!L.urutItem.length) h+='<div class="muted">Belum ada item pengeluaran.</div>';
-
-  /* Catatan: blok "Temuan Otomatis" (pos terbesar, konsentrasi 3 alokasi,
-     pareto 80%, alokasi lebih/wapas/kosong, item eating >=30%, kategori luar)
-     sengaja DIHAPUS sesuai permintaan user. Data analitiknya tetap dihitung
-     di hitungLaporanAlokasi -- L.over, L.wapas, L.kosong, L.besar,
-     L.paretoIdx, L.top3 -- jadi gampang dinyalakan lagi tanpa hitung ulang. */
 
   root.innerHTML=h;
 }
 
 function lapAlokDetailHtml(t,totalTerpakai){
   if(!t.items.length){
-    return '<div style="padding:16px" class="muted">Belum ada item di alokasi ini.</div>';
+    return '<div style="padding:14px" class="muted">Belum ada item.</div>';
   }
-  let h='<div style="padding:12px 14px">';
-  h+='<div style="font-size:.70rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:'
-   +t.m.warna+';margin-bottom:6px">'+t.m.ico+' '+lapAlokEsc(t.m.nama)+' · '+t.items.length+' item'
-   +' · budget '+rp(t.budget)+' · terpakai '+rp(t.terpakai)+'</div>';
-  h+='<div style="overflow:auto"><table class="var-table" style="font-size:.78rem;min-width:640px"><thead><tr>'
-   + '<th>#</th><th>Item</th><th>Periode</th><th>Keterangan</th><th>Nominal</th>'
-   + '<th>Per Bulan</th><th>% Alokasi</th><th>% Total</th></tr></thead><tbody>';
-  let cum=0;
+  let h='<div style="padding:11px 13px">';
+  h+='<div style="font-size:.72rem;font-weight:800;color:'+t.m.warna+';margin-bottom:6px">'
+   + t.m.ico+' '+lapAlokEsc(t.m.nama)+' &middot; '+t.items.length+' item</div>';
+  h+='<div style="overflow:auto"><table class="var-table" style="font-size:.78rem;min-width:460px"><thead><tr>'
+   + '<th>#</th><th>Item</th><th>Keterangan</th><th>Per Bulan</th><th>% Alokasi</th></tr></thead><tbody>';
   t.items.forEach((x,i)=>{
-    cum+=x.perBulan;
     const pa=t.terpakai>0 ? x.perBulan/t.terpakai : 0;
-    const pt=totalTerpakai>0 ? x.perBulan/totalTerpakai : 0;
+    // Periode non-bulanan ditandai sebagai tag kecil, tidak perlu kolom sendiri.
+    const tag=(x.periode && x.periode!=='Bulanan Variabel')
+      ? ' <span class="tag" style="background:#EDE9FE;color:#5B21B6;border-color:#DDD6FE">'
+        +lapAlokEsc(x.periode==='Tahunan' ? 'TAHUNAN \u00F712' : x.periode)+'</span>' : '';
     h+='<tr><td class="muted">'+(i+1)+'</td>'
-     + '<td><b>'+lapAlokEsc(x.nama)+'</b></td>'
-     + '<td><span class="muted">'+lapAlokEsc(x.periode)+'</span></td>'
-     + '<td class="muted" style="font-size:.70rem">'+(x.ket?lapAlokEsc(x.ket):'&mdash;')+'</td>'
-     + '<td>'+rp(x.nominal)+'</td>'
+     + '<td><b>'+lapAlokEsc(x.nama)+'</b>'+tag+'</td>'
+     + '<td class="muted" style="font-size:.72rem">'+(x.ket?lapAlokEsc(x.ket):'&mdash;')+'</td>'
      + '<td style="font-weight:800">'+rp(x.perBulan)+'</td>'
-     + '<td>'+Math.round(pa*100)+'%</td>'
-     + '<td class="muted">'+Math.round(pt*100)+'%</td></tr>';
+     + '<td>'+Math.round(pa*100)+'%</td></tr>';
   });
   h+='</tbody></table></div>';
-  const w=t.terpakai>0 ? Math.min(100,(cum/t.terpakai)*100) : 0;
-  h+='<div style="margin-top:8px;font-size:.72rem" class="muted">'
-   + (t.items.length>1 ? 'Kumulatif '+t.items.length+' item terbesar = '+rp(cum)+' ('+Math.round(w)+'% dari pemakaian alokasi ini)' : 'Item ini = 100% dari pemakaian alokasi ini')
-   + '</div>';
-  h+='<div style="background:#F1F5F9;border-radius:999px;height:9px;overflow:hidden;margin-top:4px">'
-   + '<div style="width:'+w.toFixed(1)+'%;height:100%;background:'+t.m.warna+'"></div></div>';
+  h+='<div style="margin-top:7px;font-size:.75rem;font-weight:800">Total '+rp(t.terpakai)+'</div>';
+  h+='<div style="background:#F1F5F9;border-radius:999px;height:8px;overflow:hidden;margin-top:4px">'
+   + '<div style="width:100%;height:100%;background:'+t.m.warna+'"></div></div>';
   h+='</div>';
   return h;
 }
