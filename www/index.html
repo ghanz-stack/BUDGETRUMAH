@@ -6,10 +6,19 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0E7490">
 <link rel="icon" href="icon-192.png">
-<!-- pdf.js removed - not used, caused MIME error -->
+<!-- pdf.js SELF-HOSTED (lokal, bukan CDN) - wajib untuk Import Struk Super Indo.
+     CDN sebelumnya bikin error MIME type sehingga pdfjsLib undefined & import struk mati. -->
+<script src="vendor/pdf.min.js"></script>
 <script src="firebase-config.js"></script>
 <script type="importmap">{"imports":{"firebase-app":"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js","firebase-firestore":"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"}}</script>
-<script>if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.js";</script>
+<script>
+// worker lokal -> offline-safe, tidak tergantung jaringan CDN
+try{
+  if(window.pdfjsLib){
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('vendor/pdf.worker.min.js', location.href).href;
+  }
+}catch(e){ console.warn('pdf.js worker setup gagal:', e); }
+</script>
 <title>Budget Keluarga Ghania — Planner per Menu</title>
 <style>
 
@@ -3023,49 +3032,156 @@ if("serviceWorker" in navigator){ navigator.serviceWorker.register("./sw.js"); }
 <script>
 // === STRUK IMPORT — PDF Super Indo → Variabel ===
 let strukParsed = [];
+const BULAN_PENDEK=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+const BULAN_PANJANG=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 function fmtTanggalIndo(d){
-  // d is DD-MM-YY or ISO
+  // d = DD-MM-YY / DD/MM/YYYY. Format manual -> konsisten di semua browser/ICU.
   try{
-    const [dd,mm,yy]=d.split('-');
-    const yyyy = (yy.length===2?'20'+yy:yy);
-    const dt=new Date(yyyy, mm-1, dd);
-    return dt.toLocaleDateString('id-ID',{day:'2-digit', month:'short', year:'numeric'});
+    const m = String(d).trim().match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})$/);
+    if(!m) return d;
+    const dd = +m[1], mm = +m[2];
+    let yyyy = +m[3]; if(String(m[3]).length===2) yyyy = 2000+yyyy;
+    if(mm<1||mm>12||dd<1||dd>31) return d;
+    return `${String(dd).padStart(2,'0')} ${BULAN_PENDEK[mm-1]} ${yyyy}`;
   }catch(e){ return d; }
 }
+function strukAngkaKeNumber(s){
+  if(s==null) return 0;
+  let t = String(s).trim();
+  // buang rp/Rp dan karakter non-digit
+  t = t.replace(/[^\d.,-]/g,'');
+  const minus = t.startsWith('-');
+  t = t.replace(/-/g,'');
+  // Format Indonesia: 1.234.567 atau 1.234,56
+  const lastComma = t.lastIndexOf(','), lastDot = t.lastIndexOf('.');
+  if(lastComma > -1 && lastDot > -1){
+    if(lastComma > lastDot) t = t.replace(/\./g,'').replace(',', '.');
+    else t = t.replace(/,/g,'');
+  } else if(lastComma > -1){
+    // koma sebagai desimal hanya jika tepat 1-2 digit di belakang & tidak ada grup ribuan
+    const parts = t.split(',');
+    if(parts.length===2 && parts[1].length!==3) t = t.replace(',', '.');
+    else t = t.replace(/,/g,'');
+  } else {
+    t = t.replace(/\./g,''); // 1.234.567 = ribuan
+  }
+  let n = Number(t);
+  if(!isFinite(n)) n = 0;
+  return minus ? -n : n;
+}
+// daftar label total, urut dari yang paling spesifik
+const STRUK_TOTAL_LABELS = [
+  /Total\s*Bayar\s*:?\s*([\d.,]+)/i,
+  /Total\s*Pembayaran\s*:?\s*([\d.,]+)/i,
+  /Grand\s*Total\s*:?\s*([\d.,]+)/i,
+  /Total\s*Akhir\s*:?\s*([\d.,]+)/i
+];
+const STRUK_HEMAT_LABELS = [
+  /Total\s*Hemat\s*:?\s*-?\s*([\d.,]+)/i,
+  /Hemat\s*Produk\s*:?\s*-?\s*([\d.,]+)/i,
+  /Total\s*Discount\s*:?\s*-?\s*([\d.,]+)/i,
+  /Diskon\s*:?\s*-?\s*([\d.,]+)/i
+];
+// Cari label "TOTAL" polos, TAPI lewati kalau didahului kata "Sub" (Sub Total).
+// Kalau tidak dikecualikan, "Sub Total : 1.245.000" ikut kena dan totalnya salah.
+// Grup 1 = kata pendahulu (boleh kosong), Grup 2 = angka.
+function cariTotalPolos(flat){
+  const re = /(?:^|[\s)])(?:([A-Za-z]+(?:[\s-][A-Za-z]+)*)\s*)?TOTAL\s*:?\s*([\d.,]+)/gi;
+  let m,found=null;
+  while((m=re.exec(flat))!==null){
+    const prefix=(m[1]||'').toLowerCase().replace(/[\s-]/g,'');
+    if(prefix.includes('sub')) continue;      // ini subtotal, bukan total akhir
+    if(prefix.includes('item')) continue;
+    found=m[2];
+  }
+  return found;
+}
 function parseSuperIndoText(txt, fileName){
-  // extract date like 25-08-26 (11:26:12)
-  const dateMatch = txt.match(/(\d{2}-\d{2}-\d{2})\s*\(/);
-  const totalMatch = txt.match(/TOTAL\s*:\s*([\d\.\,]+)/i) || txt.match(/Sub Total.*?([\d\.]+)/i);
-  const subMatch = txt.match(/Sub Total.*?([\d\.]+)/i);
-  const hematMatch = txt.match(/Total Hemat\s*\-?([\d\.]+)/i) || txt.match(/Hemat Produk\s*\-?([\d\.]+)/i);
-  const itemMatch = txt.match(/Total Item\s*:\s*(\d+)/i);
-  const memberMatch = txt.match(/Member Name\s*:\s*(.+)/i);
-  let total=0;
-  if(totalMatch) total = Number(totalMatch[1].replace(/\./g,'').replace(/,/g,''))||0;
-  else if(subMatch) total = Number(subMatch[1].replace(/\./g,''))||0;
+  const raw = String(txt||'');
+  // normalisasi whitespace tapi JAGA newline agar label tidak menyatu
+  const flat = raw.replace(/[ \t]+/g,' ');
+
+  // --- Tanggal: "25-08-26 (11:26:12)" / "25/08/2026" / "25 Aug 2026"
+  let dateRaw='';
+  let dm = flat.match(/(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})\s*(\(\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM)?\))?/i);
+  if(dm) dateRaw = dm[1];
+
+  // --- Total
+  let total=0, totalFound=false;
+  for(const re of STRUK_TOTAL_LABELS){
+    const m = flat.match(re);
+    if(m){ const n = strukAngkaKeNumber(m[1]); if(n>=1000){ total=n; totalFound=true; break; } }
+  }
+  if(!totalFound){
+    const polos = cariTotalPolos(flat);
+    if(polos){ const n = strukAngkaKeNumber(polos); if(n>=1000){ total=n; totalFound=true; } }
+  }
+  if(!totalFound){
+    // fallback: "Sub Total" / "Subtotal"
+    const m = flat.match(/Sub\s*-?\s*Total\s*:?\s*([\d.,]+)/i);
+    if(m){ total = strukAngkaKeNumber(m[1]); totalFound = total>=1000; }
+  }
+
+  // --- Hemat
   let hemat=0;
-  if(hematMatch) hemat = Number(hematMatch[1].replace(/\./g,''))||0;
-  const dateRaw = dateMatch? dateMatch[1] : '';
+  for(const re of STRUK_HEMAT_LABELS){
+    const m = flat.match(re);
+    if(m){ const n = Math.abs(strukAngkaKeNumber(m[1])); if(n>0){ hemat=n; break; } }
+  }
+
+  // --- Jumlah item: "Total Item : 12" atau "12 Item"
+  let itemCount=0;
+  const im = flat.match(/Total\s*Item\s*:?\s*(\d+)/i) || flat.match(/(\d+)\s*Item\b/i);
+  if(im) itemCount = Number(im[1])||0;
+
+  // --- Nama member (batasi 2 kata & buang token berisi angka agar tidak
+  //     menelan baris item berikutnya kalau pdf.js gabung baris)
+  let member='';
+  const memberMatch = flat.match(/Member\s*(?:Name|ID|No)?\s*:?\s*([^\n]{0,40})/i);
+  if(memberMatch){
+    member = memberMatch[1].trim()
+      .split(/\s{2,}/)[0]                                  // potong kolom rata
+      .split(' ')                                            // ambil max 2 kata
+      .filter(w=>/[A-Za-z]/.test(w) && !/\d/.test(w))
+      .slice(0,2).join(' ');
+  }
+
+  // --- Fallback terakhir: angka terbesar di struk = biasanya total
+  if(!totalFound){
+    const nums = (flat.match(/[\d][\d.,]{2,}/g)||[]).map(strukAngkaKeNumber).filter(n=>n>1000);
+    if(nums.length) total = Math.max(...nums);
+  }
+
   return {
     fileName,
     tanggalRaw: dateRaw,
-    tanggalIndo: dateRaw? fmtTanggalIndo(dateRaw) : fileName,
+    tanggalIndo: dateRaw? fmtTanggalIndo(dateRaw) : (fileName||''),
     total, hemat,
-    itemCount: itemMatch? Number(itemMatch[1]): 0,
-    member: memberMatch? memberMatch[1].trim() : '',
+    itemCount,
+    member: member,
     toko: 'Super Indo Pagar Alam',
-    raw: txt.slice(0,500)
+    raw: flat.slice(0,500)
   };
 }
 async function readPdfFile(file){
+  if(typeof window.pdfjsLib === 'undefined' || !window.pdfjsLib.getDocument){
+    throw new Error('pdf.js gagal dimuat. Hard refresh (Ctrl+Shift+R) lalu coba lagi.');
+  }
   const buf = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({data: buf}).promise;
+  const pdf = await window.pdfjsLib.getDocument({data: buf}).promise;
   let full='';
   for(let i=1;i<=pdf.numPages;i++){
     const page = await pdf.getPage(i);
     const tc = await page.getTextContent();
-    full += tc.items.map(it=>it.str).join(' ') + '\n';
+    // Hormati hasEOL -> baris label tetap terpisah (bikin "Member Name" rapi)
+    // instead of nyambung semua item jadi 1 baris panjang.
+    for(const it of tc.items){
+      full += it.str;
+      if(it.hasEOL) full += '\n';
+    }
+    full += '\n';
   }
+  if(!full.trim()) throw new Error('PDF tidak punya layer teks (kemungkinan hasil scan/foto).');
   return parseSuperIndoText(full, file.name);
 }
 function renderStrukPreview(){
@@ -3075,30 +3191,55 @@ function renderStrukPreview(){
   div.style.display='block';
   let h = '<table class="var-table"><thead><tr><th>File</th><th>Tanggal</th><th>Total</th><th>Hemat</th><th>Item</th></tr></thead><tbody>';
   strukParsed.forEach((s,i)=>{
+    if(s.error){
+      h+= `<tr><td class="muted" style="font-size:.75rem">${s.fileName}</td><td colspan="4" style="color:#E11D48;font-size:.8rem">⚠ Gagal baca: ${s.error}</td></tr>`;
+      return;
+    }
     h+= `<tr><td class="muted" style="font-size:.75rem">${s.fileName}</td><td>${s.tanggalIndo}</td><td><b>${rp(s.total)}</b></td><td>${rp(s.hemat)}</td><td>${s.itemCount}</td></tr>`;
   });
-  const sum = strukParsed.reduce((a,s)=>a+s.total,0);
-  const hematSum = strukParsed.reduce((a,s)=>a+s.hemat,0);
-  h+= `</tbody></table><div class="total-row"><span>${strukParsed.length} struk • Total ${rp(sum)} • Hemat ${rp(hematSum)}</span><span>${rp(sum)}</span></div>`;
+  const okList = strukParsed.filter(s=>!s.error);
+  const sum = okList.reduce((a,s)=>a+s.total,0);
+  const hematSum = okList.reduce((a,s)=>a+s.hemat,0);
+  const errCount = strukParsed.length - okList.length;
+  const zeroCount = okList.filter(s=>!s.total).length;
+  h+= `</tbody></table><div class="total-row"><span>${okList.length} struk terbaca • Total ${rp(sum)} • Hemat ${rp(hematSum)}</span><span>${rp(sum)}</span></div>`;
+  const warn=[];
+  if(errCount) warn.push(`${errCount} file GAGAL dibaca`);
+  if(zeroCount) warn.push(`${zeroCount} struk totalnya 0 (tidak akan di-import)`);
+  if(warn.length) h+= `<div style="margin-top:8px;padding:8px 10px;border-radius:8px;background:#FEF2F2;border:1px solid #FECACA;color:#B91C1C;font-size:.78rem">⚠ ${warn.join(' • ')}</div>`;
   div.innerHTML=h;
 }
 document.getElementById('strukFiles')?.addEventListener('change', async (e)=>{
   const files=[...e.target.files];
   if(!files.length) return;
+  if(typeof window.pdfjsLib === 'undefined' || !window.pdfjsLib.getDocument){
+    alert('❌ pdf.js belum termuat.\n\nHard refresh dulu: Ctrl+Shift+R\nKalau masih gagal, buka Settings → Clear site data, lalu reload.');
+    e.target.value='';
+    return;
+  }
   strukParsed=[];
   for(const f of files){
     try{
       const rec=await readPdfFile(f);
       strukParsed.push(rec);
     }catch(err){
-      strukParsed.push({fileName:f.name, tanggalIndo:f.name, total:0, hemat:0, itemCount:0, error: err.message});
+      strukParsed.push({fileName:f.name, tanggalRaw:'', tanggalIndo:f.name, total:0, hemat:0, itemCount:0, error: (err&&err.message)||String(err)});
     }
+    renderStrukPreview();
   }
   renderStrukPreview();
 });
 document.getElementById('btnClearStruk')?.addEventListener('click', ()=>{ strukParsed=[]; document.getElementById('strukFiles').value=''; renderStrukPreview(); });
 function importStruk(mode){
   if(!strukParsed.length) return alert('Pilih PDF struk dulu!');
+  const okList = strukParsed.filter(s=>!s.error && s.total>0);
+  if(!okList.length){
+    return alert('❌ Tidak ada struk yang bisa di-import.\n\n' +
+      (strukParsed.some(s=>s.error)
+        ? 'Semua file gagal dibaca. Lihat Preview untuk alasannya.'
+        : 'Total semua struk 0 — format struk tidak dikenali.'));
+  }
+  const before = variabel.length;
   if(mode==='per'){
     strukParsed.forEach(s=>{
       if(!s.total) return;
@@ -3127,7 +3268,10 @@ function importStruk(mode){
     });
     Object.entries(byMonth).forEach(([k,v])=>{
       let label=k;
-      try{ const [y,m]=k.split('-'); const dt=new Date(y, m-1, 1); label=dt.toLocaleDateString('id-ID',{month:'long', year:'numeric'}); }catch(e){}
+      try{
+        const [y,m2]=k.split('-');
+        if(BULAN_PANJANG[+m2-1]) label = `${BULAN_PANJANG[+m2-1]} ${y}`;
+      }catch(e){}
       variabel.push({
         id: Date.now()+Math.random(),
         nama: `Belanja Bulanan ${label}`,
@@ -3139,7 +3283,10 @@ function importStruk(mode){
     });
   }
   saveVariabel(); renderVariabel(); calc();
-  alert(`✅ Import ${mode==='per'? strukParsed.length+' struk':'gabung per bulan'} berhasil — cek Menu Variabel!`);
+  const n = variabel.length - before;
+  const skipped = strukParsed.length - okList.length;
+  alert(`✅ Import ${mode==='per'? okList.length+' struk':'gabung per bulan'} berhasil — ${n} data masuk, cek Menu Variabel!` +
+    (skipped ? `\n\n⚠ ${skipped} struk dilewati (gagal dibaca / total 0).` : ''));
 }
 document.getElementById('btnImportStrukPer')?.addEventListener('click', ()=> importStruk('per'));
 document.getElementById('btnImportStrukBulan')?.addEventListener('click', ()=> importStruk('bulan'));

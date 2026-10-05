@@ -1,0 +1,8 @@
+# Library pihak ketiga: JANGAN ubah line ending (bukan teks yang kita edit).
+# pdf.js dipakai lewat <script> klasik; CRLF/LF sama-sama jalan, tapi menjaga
+# file tetap persis seperti upstream menghindari diff dan masalah tooling.
+www/vendor/*.js binary
+
+# HTML & service worker: LF saja supaya diff bersih & tidak ada baris dobel.
+www/index.html text eol=lf
+www/sw.js text eol=lf
