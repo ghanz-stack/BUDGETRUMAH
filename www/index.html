@@ -601,6 +601,15 @@ body.hide-nominal input.qty:focus {
           <button class="btn" id="btnKeLaporan" style="background:rgba(255,255,255,.18); color:#fff; border:1px solid rgba(255,255,255,.5)">📑 Laporan</button>
         </div>
       </div>
+      <!-- COUNTDOWN HARI SISA PERIODE (sampai tgl anchor, default 25) -->
+      <div style="margin-top:11px; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.30); border-radius:12px; padding:10px 13px">
+        <div style="display:flex; align-items:baseline; gap:9px; flex-wrap:wrap">
+          <span style="font-size:.70rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase; opacity:.9">⏱ Sisa Periode</span>
+          <span id="countdownAngka" style="font-size:1.55rem; font-weight:800; line-height:1; letter-spacing:.5px; font-variant-numeric:tabular-nums">--</span>
+        </div>
+        <div style="font-size:.72rem; opacity:.88" id="countdownLabel">&mdash;</div>
+        <div style="font-size:.68rem; opacity:.72; margin-top:2px" id="countdownTgl">&mdash;</div>
+      </div>
       <div id="periodeBannerInline" style="display:none; margin-top:8px; background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.35); border-radius:10px; padding:7px 9px; font-size:.76rem"></div>
     </div>
 
@@ -1535,6 +1544,56 @@ function initPeriode(){
   document.getElementById('periodeModalMulai')?.addEventListener('change', _sinkanPreviewPeriode);
   cekPeriode();
 }
+// === COUNTDOWN SAMPAI TANGGAL ANCHOR (default 25) KEMBALI ===
+// Periode berjalan: tgl anchor s/d tgl (anchor-1) bulan berikutnya.
+// Jadi "anchor berikutnya" = tgl anchor bulan ini, kalau sudah lewat maka
+// tgl anchor bulan depan. Dipakai juga buat label sesi.
+function getSisaPeriode(now=new Date()){
+  const anchor=getPeriodeAnchor();
+  const y=now.getFullYear(), m=now.getMonth(), d=now.getDate();
+  const h=now.getHours(), mi=now.getMinutes(), se=now.getSeconds();
+  // anchor bulan ini
+  let ay=y, am=m;
+  let tgl=new Date(ay,am,anchor,0,0,0,0);
+  const mulaiHariIni=(d===anchor);
+  const sudahLewat=(d>anchor)||(d===anchor && (h>0||mi>0||se>0));
+  if(sudahLewat){ am=m+1; tgl=new Date(ay,am,anchor,0,0,0,0); }
+  const sisaMs=Math.max(0, tgl.getTime()-now.getTime());
+  const totalDetik=Math.floor(sisaMs/1000);
+  const hari=Math.floor(totalDetik/86400);
+  const jam=Math.floor(totalDetik%86400/3600);
+  const menit=Math.floor(totalDetik%3600/60);
+  const detik=totalDetik%60;
+  const sesiKey=getPeriodeKey(now);
+  return {
+    anchor:anchor, sisaMs:sisaMs, total:totalDetik,
+    hari:hari, jam:jam, menit:menit, detik:detik,
+    tgl:tgl, sesiKey:sesiKey, sesiLabel:labelPeriode(sesiKey),
+    // teks siap pakai
+    tglLabel:tgl.toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'}),
+  };
+}
+function renderCountdown(){
+  const c=getSisaPeriode();
+  const set=(id,v)=>{ const e=document.getElementById(id); if(e) e.textContent=v; };
+  // countdownAngka sengaja pakai innerHTML: teksnya berisi markup kecil
+  // (mis. "\u00b7 besok"). Isinya hanya angka + label statis, tanpa input user.
+  const setHtml=(id,v)=>{ const e=document.getElementById(id); if(e) e.innerHTML=v; };
+  const p2=n=>String(n).padStart(2,'0');
+  // "12 HARI 04:31:09" / "BESOK" / "HARI INI"
+  let utama;
+  if(c.hari>0) utama=c.hari+' HARI '+p2(c.jam)+':'+p2(c.menit)+':'+p2(c.detik);
+  else if(c.sisaMs>0) utama=p2(c.jam)+':'+p2(c.menit)+':'+p2(c.detik)+' <span style="font-size:.72em">&middot; besok</span>';
+  else utama='<span style="font-size:.78em">periode bergeser hari ini</span>';
+  setHtml('countdownAngka', utama);
+  set('countdownLabel','sisa periode s/d tgl '+c.anchor+' berikutnya');
+  set('countdownTgl', c.tglLabel+' ←→ '+c.sesiLabel);
+  set('lapAlokCountdown', c.hari>0
+      ? (c.hari+' hari lagi · '+p2(c.jam)+':'+p2(c.menit)+':'+p2(c.detik)+' → tgl '+c.anchor)
+      : (c.sisaMs>0 ? p2(c.jam)+':'+p2(c.menit)+':'+p2(c.detik)+' → tgl '+c.anchor+' besok'
+                    : 'tgl '+c.anchor+' hari ini · periode bergeser'));
+}
+
 // === JAM + KALENDER LIVE (dashboard) ===
 function jamTick(){
   const now=new Date();
@@ -1575,7 +1634,7 @@ function updateTombolSimpan(){
   b.textContent = arsip ? '🔒 Terkunci (arsip)' : (boleh ? '📸 Simpan Bulan Ini' : '🔒 Simpan — buka tgl '+anchor);
 }
 function initJam(){
-  jamTick(); setInterval(jamTick, 1000);
+  jamTick(); renderCountdown(); setInterval(jamTick, 1000); setInterval(renderCountdown,1000);
   updateTombolSimpan();
   document.getElementById('btnSesiBaru')?.addEventListener('click', mulaiPeriodeBaru);
   document.getElementById('btnKeLaporan')?.addEventListener('click', ()=>goPage('laporan'));
@@ -4559,6 +4618,13 @@ function renderLaporanAlokasi(){
     kosong:'<span class="tag" style="background:#F1F5F9;color:#64748B;border-color:#E2E8F0">KOSONG</span>',
   };
   let h='';
+
+  // ---------- COUNTDOWN (di-update per detik, bukan render ulang) ----------
+  h+='<div class="card" style="margin-bottom:10px;padding:8px 13px;display:flex;align-items:center;gap:9px;flex-wrap:wrap">'
+   + '<span class="muted" style="font-weight:800;font-size:.72rem">⏱ SISA PERIODE</span>'
+   + '<b id="lapAlokCountdown" style="font-size:.86rem;font-variant-numeric:tabular-nums">&mdash;</b>'
+   + '<span class="muted" style="font-size:.70rem;margin-left:auto">sampai tgl '
+   + getPeriodeAnchor() + ' berikutnya</span></div>';
 
   // ---------- RINGKASAN (satu baris + bar tipis) ----------
   h+='<div class="card" style="margin-bottom:10px;padding:11px 14px">';
