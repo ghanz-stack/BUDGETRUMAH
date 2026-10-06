@@ -3120,7 +3120,38 @@ document.getElementById('importFile')?.addEventListener('change', (e)=>{
 });
 // init data UI after load
 setTimeout(()=>{ updateHeaderSubtitle(); updateDataUI(); }, 80);
-if("serviceWorker" in navigator){ navigator.serviceWorker.register("./sw.js"); }
+// === SELF-HEAL BUILD STAMP ===
+// Strategi cache-first di sw.js v1..v9 membuat perangkat terkunci di versi app
+// lama: index.html di-cache, sehingga sw.js juga tidak pernah ter-update, dan
+// perubahan berikutnya (termasuk perbaikan parser struk) tidak pernah sampai.
+// STAMP ini dipaksa naik setiap rilis. Kalau perangkat menemukan STAMP berbeda,
+// ia membersihkan semua cache + service worker lama lalu reload sekali.
+const APP_BUILD='2026-10-06-a';
+(function(){
+  try{
+    const prev=localStorage.getItem('budget-app-build');
+    if(prev && prev!==APP_BUILD){
+      (async()=>{
+        try{
+          if(window.caches){ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); }
+          if(navigator.serviceWorker){ const rs=await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(r=>r.unregister())); }
+        }catch(_){}
+        try{ localStorage.setItem('budget-app-build',APP_BUILD); }catch(_){}
+        location.reload();
+        return;
+      })();
+      return;
+    }
+    localStorage.setItem('budget-app-build',APP_BUILD);
+  }catch(_){}
+})();
+
+if("serviceWorker" in navigator){
+  // updateViaCache:'none' -> browser selalu cek sw.js ke jaringan (bukan HTTP cache).
+  navigator.serviceWorker.register("./sw.js",{updateViaCache:'none'}).then(reg=>{
+    if(reg) reg.update().catch(()=>{});
+  }).catch(()=>{});
+}
 
 </script>
 
