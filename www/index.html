@@ -1203,7 +1203,7 @@ const presetsPct = {
 // === SIMPAN MODE ALOKASI ===
 let customModes=[];
 try{ customModes=JSON.parse(localStorage.getItem('budget-modes')||'[]'); }catch(e){ customModes=[]; }
-function saveModes(){ try{ localStorage.setItem('budget-modes', JSON.stringify(customModes)); }catch(e){} }
+function saveModes(){ try{ localStorage.setItem('budget-modes', JSON.stringify(customModes)); localStorage.setItem('budget-last-modified', new Date().toISOString()); }catch(e){} try{ window.markDirtyAndPush && window.markDirtyAndPush(); }catch(e){} }
 function renderCustomModes(){
   const c=document.getElementById('customModes');
   if(!c) return;
@@ -1320,7 +1320,7 @@ function deleteTetapSesi(id){
 // === TRACKER CICILAN MOBIL ===
 let cicilanMobil={mulai:'', sisaAwal:28};
 try{ const _r=localStorage.getItem('budget-cicilan-mobil'); if(_r){ const o=JSON.parse(_r); if(o&&typeof o==='object') cicilanMobil={mulai:o.mulai||'', sisaAwal:isNaN(+o.sisaAwal)?28:+o.sisaAwal}; } }catch(e){}
-function saveCicilanMobil(){ try{ localStorage.setItem('budget-cicilan-mobil', JSON.stringify(cicilanMobil)); }catch(e){} }
+function saveCicilanMobil(){ try{ localStorage.setItem('budget-cicilan-mobil', JSON.stringify(cicilanMobil)); localStorage.setItem('budget-last-modified', new Date().toISOString()); }catch(e){} try{ window.markDirtyAndPush && window.markDirtyAndPush(); }catch(e){} }
 function _mkToNum(ym){ const p=String(ym||'').split('-'); return p.length===2? (+p[0])*12+(+p[1])-1 : null; }
 function _numToMk(n){ const y=Math.floor(n/12), m=n%12+1; return y+'-'+String(m).padStart(2,'0'); }
 function _fmtBulan(ym){ const p=String(ym||'').split('-'); if(p.length!==2) return '—';
@@ -1399,7 +1399,7 @@ function initCicilanMobil(){
 // === PERIODE BUDGET (anchor hari ke-25) — TIDAK auto-reset, harus klik tombol ===
 const PERIODE_ANCHOR_DEFAULT=25;
 function muatPeriode(){ try{ const o=JSON.parse(localStorage.getItem('budget-periode')||'{}'); return (o&&typeof o==='object')?o:{}; }catch(e){ return {}; } }
-function simpanPeriode(o){ try{ localStorage.setItem('budget-periode', JSON.stringify(o)); }catch(e){} }
+function simpanPeriode(o){ try{ localStorage.setItem('budget-periode', JSON.stringify(o)); localStorage.setItem('budget-last-modified', new Date().toISOString()); }catch(e){} try{ window.markDirtyAndPush && window.markDirtyAndPush(); }catch(e){} }
 function getPeriodeAnchor(){ const a=+muatPeriode().anchor; return (isNaN(a)||a<1||a>28)? PERIODE_ANCHOR_DEFAULT : a; }
 function getPeriodeKey(d=new Date()){
   const anchor=getPeriodeAnchor();
@@ -2071,9 +2071,10 @@ function applyLockState(){
   if(overlay){ overlay.style.display=locked?'block':'none'; overlay.hidden=!locked; }
 }
 function setAlokasiLock(locked){
-  try{ localStorage.setItem('budget-alokasi-locked', locked?'1':'0'); }catch(e){}
+  try{ localStorage.setItem('budget-alokasi-locked', locked?'1':'0'); localStorage.setItem('budget-last-modified', new Date().toISOString()); }catch(e){}
   applyLockState();                 // langsung, tanpa nunggu hitungan lain
   calc();
+  try{ window.markDirtyAndPush && window.markDirtyAndPush(); }catch(e){}
   setTimeout(applyLockState, 60);   // amankan bila ada render/sync yang telat
 }
 function calc(){
@@ -3039,6 +3040,7 @@ function applyData(obj){
     }
 
     localStorage.setItem('budget-last-modified', new Date().toISOString());
+    try{ if(obj && obj._meta && obj._meta.pushedAt) localStorage.setItem('budget-sync-last', obj._meta.pushedAt); }catch(e){}
     location.reload();
   }catch(e){ alert('Gagal restore: '+e.message); }
 }
@@ -3126,7 +3128,7 @@ setTimeout(()=>{ updateHeaderSubtitle(); updateDataUI(); }, 80);
 // perubahan berikutnya (termasuk perbaikan parser struk) tidak pernah sampai.
 // STAMP ini dipaksa naik setiap rilis. Kalau perangkat menemukan STAMP berbeda,
 // ia membersihkan semua cache + service worker lama lalu reload sekali.
-const APP_BUILD='2026-10-06-a';
+const APP_BUILD='2026-10-06-b';
 (function(){
   try{
     const prev=localStorage.getItem('budget-app-build');
@@ -3643,6 +3645,7 @@ import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstat
 let db=null, unsub=null;
 let autoSync=false;
 let _applyingRemote=false;
+let _pushInFlight=false;
 // waktu push terakhir yang SUDAH tersinkron ke cloud (lokal)
 function localPushedAt(){ try{ return localStorage.getItem('budget-sync-last')||''; }catch(e){ return ''; } }
 // apakah ada edit lokal yang belum ikut ter-push?
@@ -3686,9 +3689,11 @@ async function ensureDb(){
 }
 
 async function pushToCloud(silent){
+  if(_pushInFlight) return;     // jangan tumpuk push
+  _pushInFlight=true;
   try{
     const code=getSyncCode();
-    if(!code || code.length<4) return alert('Kode Sync minimal 4 huruf/angka (contoh KELUARGA123)');
+    if(!code || code.length<4){ if(!silent) alert('Kode Sync minimal 4 huruf/angka (contoh KELUARGA123)'); return; }
     localStorage.setItem('budget-sync-code', code);
     await ensureDb();
     const data=collectAll();
@@ -3696,11 +3701,14 @@ async function pushToCloud(silent){
     data._meta.pushedFrom=navigator.userAgent.slice(0,60);
     await setDoc(doc(db,'budgets',code), data);
     localStorage.setItem('budget-sync-last', data._meta.pushedAt);
+    localStorage.setItem('budget-last-modified', data._meta.pushedAt);
     if(silent) setStatus(`✅ Auto-sync — tersimpan ke cloud @ ${new Date().toLocaleTimeString('id-ID')}`, true);
     else setStatus(`⬆️ Push OK — <b>${code}</b> @ ${new Date().toLocaleTimeString('id-ID')}`, true);
   }catch(e){
-    if(silent){ setStatus('⚠️ Auto-sync gagal push: '+e.message, false); console.error(e); return; }
-    alert('Push gagal: '+e.message); setStatus('❌ Push gagal: '+e.message, false); console.error(e);
+    if(silent){ setStatus('⚠️ Auto-sync gagal push: '+e.message, false); console.error(e); }
+    else { alert('Push gagal: '+e.message); setStatus('❌ Push gagal: '+e.message, false); console.error(e); }
+  } finally {
+    _pushInFlight=false;
   }
 }
 async function pullFromCloud(){
@@ -3742,8 +3750,12 @@ function applyDataSilent(obj){
       if(obj.settings.alokasiLocked !== undefined) localStorage.setItem('budget-alokasi-locked', String(obj.settings.alokasiLocked));
     }
     if(obj.rawStorage && typeof obj.rawStorage === 'object'){
+      // Jangan timpa key meta/build/sync — nanti bisa downgrade versi app atau
+      // memutar balik flag migrasi.
+      const _skip=['budget-snapshot','budget-sync-code','budget-auto-sync','budget-autosync-v2',
+                   'budget-app-build','budget-last-modified','budget-sync-last','budget-sync-code'];
       Object.keys(obj.rawStorage).forEach(k=>{
-        if(k.startsWith('budget-') && !['budget-snapshot','budget-sync-code','budget-auto-sync'].includes(k)){
+        if(k.startsWith('budget-') && _skip.indexOf(k)<0){
           try{
             const v = obj.rawStorage[k];
             if(v !== null && v !== undefined) localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v));
@@ -3751,6 +3763,8 @@ function applyDataSilent(obj){
         }
       });
     }
+    // tandai sudah tersinkron supaya hasLocalUnsynced() false setelah apply
+    try{ localStorage.setItem('budget-sync-last', (obj._meta && obj._meta.pushedAt) || localStorage.getItem('budget-sync-last') || ''); }catch(e){}
     // reload data ke memory tanpa reload halaman
     try{ 
       const d=JSON.parse(localStorage.getItem('budget-data')||'{}');
@@ -3761,6 +3775,7 @@ function applyDataSilent(obj){
     try{ rencana=JSON.parse(localStorage.getItem('budget-rencana')||'[]'); renderRencana(); }catch(e){}
     try{ customModes=JSON.parse(localStorage.getItem('budget-modes')||'[]'); renderCustomModes(); }catch(e){}
     try{ tetapSessions=JSON.parse(localStorage.getItem('budget-tetap-sessions')||'[]'); renderTetapSessions(); }catch(e){}
+    try{ cicilanMobil=JSON.parse(localStorage.getItem('budget-cicilan-mobil')||'{}'); }catch(e){}
     syncSliders(); calc(); updateDataUI();
     setStatus(`✅ Auto-sync: data cloud diterapkan @ ${new Date().toLocaleTimeString('id-ID')}`, true);
   }catch(e){ console.error('apply silent fail', e); }
@@ -3799,7 +3814,7 @@ async function connectSync(){
       if(autoSync){
         if(unsub) unsub();
         unsub=onSnapshot(doc(db,'budgets',code), (s)=>{
-          if(!s.exists() || _applyingRemote) return;
+          if(!s.exists() || _applyingRemote || _pushInFlight) return;
           const r=s.data();
           const lp=localPushedAt();
           const rp=r._meta?.pushedAt||'';
@@ -3808,7 +3823,7 @@ async function connectSync(){
           if(rp < lp) return;                            // cloud lebih lama → abaikan
           if(hasLocalUnsynced()){
             pushToCloud(true);                           // ada edit lokal → lokal menang
-            setStatus('⬆️ Auto-sync — edit di device ini lebih baru,/cloud diperbarui', true);
+            setStatus('⬆️ Auto-sync — edit di device ini lebih baru, cloud diperbarui', true);
             return;
           }
           // cloud menang & lokal bersih → terapkan diam-diam, kursor tetap aman
@@ -3817,6 +3832,9 @@ async function connectSync(){
           _applyingRemote=false;
           localStorage.setItem('budget-sync-last', rp);
           setStatus(`✅ Auto-sync — data dari device lain terpasang otomatis @ ${new Date(rp).toLocaleTimeString('id-ID')}`, true);
+        }, (err)=>{
+          console.warn('[onSnapshot] error:', err);
+          setStatus('⚠️ Auto-sync listener error: '+err.message, false);
         });
       }
     } else {
@@ -3861,11 +3879,8 @@ if(!isFirebaseReady()){
 // Auto push on calc if enabled (debounced) — Techno ↔ iPhone auto
 let _pushTimer=null;
 let _lastPushedAt=null;
-const _origCalcForSync = window.calc || calc;
-window.calc = function(){
-  _origCalcForSync();
-  // also keep header/data UI fresh
-  try{ updateHeaderSubtitle(); updateDataUI(); }catch(e){}
+function markDirtyAndPush(){
+  try{ localStorage.setItem('budget-last-modified', new Date().toISOString()); }catch(e){}
   if(autoSync && !_applyingRemote && isFirebaseReady() && getSyncCode()){
     clearTimeout(_pushTimer);
     _pushTimer=setTimeout(async ()=>{
@@ -3874,9 +3889,33 @@ window.calc = function(){
         await pushToCloud(true);
         _lastPushedAt=localPushedAt();
       }catch(e){}
-    }, 1800);
+    }, 900);
   }
+}
+window.markDirtyAndPush = markDirtyAndPush;
+const _origCalcForSync = window.calc || calc;
+window.calc = function(){
+  _origCalcForSync();
+  // also keep header/data UI fresh
+  try{ updateHeaderSubtitle(); updateDataUI(); }catch(e){}
+  markDirtyAndPush();
 };
+// Flush push tertunda saat tab disembunyikan / ditutup — biar edit terakhir tidak hilang
+try{
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState==='hidden' && _pushTimer){ clearTimeout(_pushTimer); _pushTimer=null;
+      if(autoSync && !_applyingRemote && isFirebaseReady() && getSyncCode() && hasLocalUnsynced()){
+        pushToCloud(true).catch(()=>{});
+      }
+    }
+  });
+  window.addEventListener('pagehide', ()=>{
+    if(_pushTimer){ clearTimeout(_pushTimer); _pushTimer=null; }
+    if(autoSync && !_applyingRemote && isFirebaseReady() && getSyncCode() && hasLocalUnsynced()){
+      try{ pushToCloud(true); }catch(e){}
+    }
+  });
+}catch(e){}
 window.pushToCloud=pushToCloud;
 window.pullFromCloud=pullFromCloud;
 </script>
@@ -3888,7 +3927,7 @@ let laporanIdx=0;
 function loadReports(){
   try{ return JSON.parse(localStorage.getItem('budget-reports')||'{}'); }catch(e){ return {}; }
 }
-function saveReports(obj){ try{ localStorage.setItem('budget-reports', JSON.stringify(obj)); }catch(e){} }
+function saveReports(obj){ try{ localStorage.setItem('budget-reports', JSON.stringify(obj)); localStorage.setItem('budget-last-modified', new Date().toISOString()); }catch(e){} try{ window.markDirtyAndPush && window.markDirtyAndPush(); }catch(e){} }
 function buildSnapshot(){
   const base=num('incWill')+num('incWife')+pemasukanTambahan.reduce((a,t)=>a+t.nominal,0);
   const mut=num('mutasiTabungan')||0;
