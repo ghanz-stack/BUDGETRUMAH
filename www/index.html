@@ -1253,7 +1253,14 @@ function num(id){
 }
 function saveCore(){
   const data={}; ids.forEach(id=> data[id]=num(id));
-  try{ localStorage.setItem('budget-data', JSON.stringify(data)); localStorage.setItem('budget-last-modified', new Date().toISOString()); }catch(e){}
+  try{ 
+    localStorage.setItem('budget-data', JSON.stringify(data)); 
+    // JANGAN bump last-modified saat init atau saat apply remote —
+    // kalau tidak, setiap buka app dianggap "edit baru" dan menimpa cloud.
+    if(!window._initialLoad && !window._applyingRemote){
+      localStorage.setItem('budget-last-modified', new Date().toISOString()); 
+    }
+  }catch(e){}
 }
 function loadCore(){
   let saved=null; try{ const raw=localStorage.getItem('budget-data'); if(raw) saved=JSON.parse(raw); }catch(e){ saved=null; }
@@ -2757,6 +2764,8 @@ function initActiveMode(){
 }
 
 // init
+window._initialLoad = true;
+window._applyingRemote = false;
 loadCore();
 renderTambahan();
 renderVariabel();
@@ -2769,6 +2778,8 @@ initJam();
 initPrivacyMode();
 initActiveMode();
 calc();
+// init selesai — mulai sekarang edit user dianggap perubahan nyata
+setTimeout(function(){ window._initialLoad = false; }, 0);
 
 </script>
 <script>
@@ -3128,7 +3139,7 @@ setTimeout(()=>{ updateHeaderSubtitle(); updateDataUI(); }, 80);
 // perubahan berikutnya (termasuk perbaikan parser struk) tidak pernah sampai.
 // STAMP ini dipaksa naik setiap rilis. Kalau perangkat menemukan STAMP berbeda,
 // ia membersihkan semua cache + service worker lama lalu reload sekali.
-const APP_BUILD='2026-10-06-c';
+const APP_BUILD='2026-10-06-d';
 (function(){
   try{
     const prev=localStorage.getItem('budget-app-build');
@@ -3644,7 +3655,7 @@ import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstat
 
 let db=null, unsub=null;
 let autoSync=false;
-let _applyingRemote=false;
+let _applyingRemote=false; window._applyingRemote=false;
 let _pushInFlight=false;
 let _pendingRemote=null, _pendingTimer=null;
 function _isEditing(){
@@ -3664,9 +3675,9 @@ function scheduleRemoteApply(r){
     // re-check: kalau lokal ternyata lebih baru → push lokal, jangan timpa
     if(rp && lp && rp < lp){ pushToCloud(true); return; }
     if(rp && rp===lp) return;
-    _applyingRemote=true;
+    _applyingRemote=true; window._applyingRemote=true;
     applyDataSilent(r2);
-    _applyingRemote=false;
+    _applyingRemote=false; window._applyingRemote=false;
     if(rp) localStorage.setItem('budget-sync-last', rp);
   }, 1200);
 }
@@ -3691,6 +3702,15 @@ function hasLocalUnsynced(){
   if(!lp) return true;               // belum pernah push
   if(!lm) return false;
   return new Date(lm).getTime() > new Date(lp).getTime();
+}
+function isRemoteEmpty(remote){
+  try{
+    const core=remote.core||{};
+    const hasCore=Object.keys(core).some(k=>{ const n=Number(core[k]); return isFinite(n) && n!==0; });
+    const v=remote.variabel||[]; const t=remote.tambahan||[]; const r=remote.rencana||[];
+    const rep=remote.reports||{};
+    return !hasCore && !v.length && !t.length && !r.length && !Object.keys(rep).length;
+  }catch(e){ return false; }
 }
 
 function isFirebaseReady(){
@@ -3828,23 +3848,34 @@ async function connectSync(){
       const remote=snap.data();
       const localPushed=localPushedAt();
       const remotePushed=remote._meta?.pushedAt||'';
-      // cloud lebih baru & lokal tidak ada edit yang belum ter-push → langsung terapkan
-      if(remotePushed && remotePushed !== localPushed){
-        if(remotePushed > localPushed){
-          if(autoSync && !hasLocalUnsynced()){
-            _applyingRemote=true;
-            applyDataSilent(remote);
-            _applyingRemote=false;
-            localStorage.setItem('budget-sync-last', remotePushed);
-            setStatus(`✅ Auto-sync — data cloud terpasang otomatis @ ${new Date(remotePushed).toLocaleTimeString('id-ID')}`, true);
-          } else if(autoSync){
-            await pushToCloud(true); // lokal lebih baru → menang, dorong ke cloud
-            setStatus(`⬆️ Auto-sync — edit lokal lebih baru, sudah dorong ke cloud`, true);
-          } else {
-            setStatus(`🔗 Cloud lebih baru @ ${new Date(remotePushed).toLocaleString('id-ID')} — centang Auto-sync atau klik Pull`, true);
-          }
+      const localLastMod=localStorage.getItem('budget-last-modified')||'';
+      const localEditTime=Math.max(
+        localLastMod ? new Date(localLastMod).getTime() : 0,
+        localPushed ? new Date(localPushed).getTime() : 0
+      );
+      const remoteTime=remotePushed ? new Date(remotePushed).getTime() : 0;
+      const remoteEmpty=isRemoteEmpty(remote);
+      // Perangkat kosong tidak boleh menimpa cloud yang berisi data
+      if(remoteEmpty && !isLocalEmpty()){
+        if(autoSync) await pushToCloud(true);
+        setStatus(`⬆️ Auto-sync — data HP ini lebih baru, cloud diperbarui`, true);
+      } else if(remoteTime > localEditTime + 1000){
+        // cloud lebih baru → terapkan
+        if(autoSync){
+          _applyingRemote=true; window._applyingRemote=true;
+          applyDataSilent(remote);
+          _applyingRemote=false; window._applyingRemote=false;
+          localStorage.setItem('budget-sync-last', remotePushed);
+          setStatus(`✅ Auto-sync — data cloud terpasang otomatis @ ${new Date(remotePushed).toLocaleTimeString('id-ID')}`, true);
+        } else {
+          setStatus(`🔗 Cloud lebih baru @ ${new Date(remotePushed).toLocaleString('id-ID')} — centang Auto-sync atau klik Pull`, true);
         }
+      } else if(localEditTime > remoteTime + 1000){
+        // lokal lebih baru → push
+        if(autoSync) await pushToCloud(true);
+        setStatus(`⬆️ Auto-sync — edit lokal lebih baru, sudah dorong ke cloud`, true);
       } else {
+        // waktu hampir sama → sinkronkan kalau ada yang belum ter-push
         if(autoSync && hasLocalUnsynced()) await pushToCloud(true);
         setStatus(`🔗 Sync OK — <b>${code}</b> • Auto-sync ON • data cloud ter-sync`, true);
       }
@@ -3857,15 +3888,29 @@ async function connectSync(){
           const rp=r._meta?.pushedAt||'';
           if(!rp || rp===lp) return;                    // sama → abaikan
           if(r._meta?.pushedFrom===navigator.userAgent.slice(0,60) && rp===lp) return;
-          if(rp < lp) return;                            // cloud lebih lama → abaikan
-          if(hasLocalUnsynced()){
-            pushToCloud(true);                           // ada edit lokal → lokal menang
-            setStatus('⬆️ Auto-sync — edit di device ini lebih baru, cloud diperbarui', true);
+          const localLastMod=localStorage.getItem('budget-last-modified')||'';
+          const localEditTime=Math.max(
+            localLastMod ? new Date(localLastMod).getTime() : 0,
+            lp ? new Date(lp).getTime() : 0
+          );
+          const remoteTime=new Date(rp).getTime();
+          // remote kosong & lokal ada data → push lokal, jangan timpa
+          if(isRemoteEmpty(r) && !isLocalEmpty()){
+            pushToCloud(true);
+            setStatus('⬆️ Auto-sync — data HP ini lebih baru, cloud diperbarui', true);
             return;
           }
-          // cloud menang & lokal bersih → terapkan (defer kalau sedang mengetik)
-          scheduleRemoteApply(r);
-          setStatus(`✅ Auto-sync — data dari device lain akan diterapkan @ ${new Date(rp).toLocaleTimeString('id-ID')}`, true);
+          if(remoteTime > localEditTime + 1000){
+            // cloud lebih baru → terapkan (defer kalau sedang mengetik)
+            scheduleRemoteApply(r);
+            setStatus(`✅ Auto-sync — data dari device lain akan diterapkan @ ${new Date(rp).toLocaleTimeString('id-ID')}`, true);
+          } else if(localEditTime > remoteTime + 1000){
+            // lokal lebih baru → push
+            pushToCloud(true);
+            setStatus('⬆️ Auto-sync — edit di device ini lebih baru, cloud diperbarui', true);
+          } else {
+            // hampir sama → abaikan
+          }
         }, (err)=>{
           console.warn('[onSnapshot] error:', err);
           setStatus('⚠️ Auto-sync listener error: '+err.message, false);
