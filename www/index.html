@@ -1083,12 +1083,18 @@ body.hide-nominal input.qty:focus {
         <div><label style="font-size:.70rem; font-weight:700; color:var(--muted); text-transform:uppercase">Kode Sync (buat & pakai di semua device)</label><input class="txt" id="syncCode" placeholder="mis: KELUARGA123" style="text-transform:uppercase"></div>
         <button class="btn btn-accent" id="btnSyncConnect" style="white-space:nowrap">🔗 Connect</button>
       </div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px">
+        <button class="btn btn-soft" id="btnSyncCopy" style="flex:1; font-size:.78rem">📋 Salin Kode</button>
+        <button class="btn btn-soft" id="btnSyncShare" style="flex:1; font-size:.78rem">🔗 Bagikan Kode</button>
+        <span id="syncCodeBadge" style="display:inline-flex; align-items:center; gap:4px; padding:6px 10px; border-radius:999px; background:#ECFDF5; color:#065F46; font-size:.72rem; font-weight:700; border:1px solid #A7F3D0">—</span>
+      </div>
       <div style="display:flex; gap:8px; flex-wrap:wrap">
         <button class="btn btn-soft" id="btnSyncPush" style="flex:1">⬆️ Push ke Cloud</button>
         <button class="btn btn-soft" id="btnSyncPull" style="flex:1">⬇️ Pull dari Cloud</button>
         <label style="display:flex; align-items:center; gap:6px; font-size:.78rem; font-weight:700"><input type="checkbox" id="chkAutoSync"> Auto-sync</label>
       </div>
       <div class="muted" style="margin-top:8px; font-size:.72rem" id="syncStatus">Belum connect — buat Kode Sync (6-12 huruf/angka), klik Connect. Auto-sync ON: data nyusul sendiri antar HP, Push/Pull tetap ada bila perlu manual.</div>
+      <div class="muted" style="margin-top:4px; font-size:.70rem" id="syncLastInfo">Terakhir sync: —</div>
       <div class="muted" style="font-size:.70rem; margin-top:4px">Butuh 1x setup Firebase gratis: <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a> → Create Project → Firestore → Create (test mode) → copy config ke <code>www/firebase-config.js</code> → push. Tanpa config, sync offline (localStorage saja).</div>
       <div style="display:none"><span id="syncLast"></span></div>
     </div>
@@ -3150,7 +3156,7 @@ setTimeout(()=>{ updateHeaderSubtitle(); updateDataUI(); }, 80);
 // perubahan berikutnya (termasuk perbaikan parser struk) tidak pernah sampai.
 // STAMP ini dipaksa naik setiap rilis. Kalau perangkat menemukan STAMP berbeda,
 // ia membersihkan semua cache + service worker lama lalu reload sekali.
-const APP_BUILD='2026-10-06-e';
+const APP_BUILD='2026-10-06-f';
 (function(){
   try{
     const prev=localStorage.getItem('budget-app-build');
@@ -3740,6 +3746,44 @@ function setStatus(msg, ok){
 function getCodeFromStorage(){
   try{ return localStorage.getItem('budget-sync-code')||''; }catch(e){ return ''; }
 }
+function updateSyncBadge(){
+  const badge=document.getElementById('syncCodeBadge');
+  const info=document.getElementById('syncLastInfo');
+  const code=getCodeFromStorage();
+  const last=localPushedAt();
+  if(badge){
+    if(code){ badge.textContent='🔗 '+code; badge.style.background='#ECFDF5'; badge.style.color='#065F46'; badge.style.borderColor='#A7F3D0'; }
+    else { badge.textContent='— belum ada kode'; badge.style.background='#FEF3C7'; badge.style.color='#92400E'; badge.style.borderColor='#FDE68A'; }
+  }
+  if(info){
+    info.textContent = 'Terakhir sync: ' + (last ? new Date(last).toLocaleString('id-ID') : '—') + (code ? ' • Kode aktif: '+code : '');
+  }
+}
+function copySyncCode(){
+  const code=getSyncCode() || getCodeFromStorage();
+  if(!code){ alert('Isi Kode Sync dulu'); return; }
+  try{
+    if(navigator.clipboard){ navigator.clipboard.writeText(code).then(()=> setStatus('📋 Kode '+code+' tersalin ke clipboard', true)); }
+    else { prompt('Salin kode ini:', code); }
+  }catch(e){ prompt('Salin kode ini:', code); }
+}
+async function shareSyncCode(){
+  const code=getSyncCode() || getCodeFromStorage();
+  if(!code){ alert('Isi Kode Sync dulu'); return; }
+  const text='Kode Sync Budget Keluarga: '+code+'\nBuka app lalu masukkan kode ini di menu Data → Sync Online.';
+  if(navigator.share){ try{ await navigator.share({title:'Kode Sync Budget', text}); setStatus('🔗 Kode dibagikan', true); return; }catch(e){} }
+  try{ if(navigator.clipboard){ await navigator.clipboard.writeText(code); setStatus('📋 Kode '+code+' tersalin (share tidak tersedia)', true); } }catch(e){ prompt('Salin kode ini:', code); }
+}
+// Guard anti-mismatch: peringatkan kalau kode berubah dari kode yang terakhir sukses
+function noteKnownCode(code){
+  try{
+    const known=localStorage.getItem('budget-sync-known-code')||'';
+    if(known && known!==code){
+      setStatus('⚠️ Kode berubah dari '+known+' → '+code+'. Data lama tidak akan muncul. Pastikan kode sama di semua device.', false);
+    }
+    localStorage.setItem('budget-sync-known-code', code);
+  }catch(e){}
+}
 if(document.getElementById('syncCode')){
   document.getElementById('syncCode').value=getCodeFromStorage();
 }
@@ -3777,6 +3821,7 @@ async function pushToCloud(silent){
     else { alert('Push gagal: '+e.message); setStatus('❌ Push gagal: '+e.message, false); console.error(e); }
   } finally {
     _pushInFlight=false;
+    try{ updateSyncBadge(); }catch(e){}
   }
 }
 async function pullFromCloud(){
@@ -3848,9 +3893,23 @@ function applyDataSilent(obj){
     setStatus(`✅ Auto-sync: data cloud diterapkan @ ${new Date().toLocaleTimeString('id-ID')}`, true);
   }catch(e){ console.error('apply silent fail', e); }
 }
+async function connectSyncWithRetry(attempt){
+  attempt = attempt || 1;
+  try{
+    await connectSync();
+  }catch(e){
+    if(attempt < 3){
+      setStatus('⚠️ Connect gagal, mencoba lagi ('+attempt+'/3)…', false);
+      setTimeout(()=> connectSyncWithRetry(attempt+1), 1500*attempt);
+    } else {
+      setStatus('❌ Connect gagal setelah 3x: '+e.message, false);
+    }
+  }
+}
 async function connectSync(){
   const code=getSyncCode();
   if(!code || code.length<4) return alert('Kode minimal 4 karakter');
+  noteKnownCode(code);
   localStorage.setItem('budget-sync-code', code);
   try{
     await ensureDb();
@@ -3931,12 +3990,15 @@ async function connectSync(){
       setStatus(`🔗 Connect OK — <b>${code}</b> belum ada di cloud → auto push data HP ini`, true);
       if(autoSync) await pushToCloud(true);
     }
-  }catch(e){ setStatus('❌ Connect gagal: '+e.message, false); }
+    updateSyncBadge();
+  }catch(e){ setStatus('❌ Connect gagal: '+e.message, false); updateSyncBadge(); throw e; }
 }
 
-document.getElementById('btnSyncConnect')?.addEventListener('click', connectSync);
+document.getElementById('btnSyncConnect')?.addEventListener('click', ()=> connectSyncWithRetry());
 document.getElementById('btnSyncPush')?.addEventListener('click', pushToCloud);
 document.getElementById('btnSyncPull')?.addEventListener('click', pullFromCloud);
+document.getElementById('btnSyncCopy')?.addEventListener('click', copySyncCode);
+document.getElementById('btnSyncShare')?.addEventListener('click', shareSyncCode);
 document.getElementById('chkAutoSync')?.addEventListener('change', (e)=>{
   autoSync=e.target.checked;
   localStorage.setItem('budget-auto-sync', autoSync?'1':'0');
@@ -3957,7 +4019,7 @@ try{
   autoSync=isOn;
   if(isOn && getCodeFromStorage()){
     setStatus('Auto-sync ON — menghubungkan ke cloud…', true);
-    setTimeout(connectSync, 700);   // auto connect + auto tarik data terbaru
+    setTimeout(()=>{ connectSyncWithRetry(1).catch(()=>{}); }, 700);   // auto connect + auto tarik data terbaru
   }
 }catch(e){}
 if(!isFirebaseReady()){
@@ -3965,6 +4027,7 @@ if(!isFirebaseReady()){
 } else {
   setStatus('Siap — masukkan Kode Sync lalu Connect', false);
 }
+try{ updateSyncBadge(); }catch(e){}
 
 // Auto push on calc if enabled (debounced) — Techno ↔ iPhone auto
 let _pushTimer=null;
