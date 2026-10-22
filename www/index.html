@@ -1253,11 +1253,14 @@ function num(id){
 }
 function saveCore(){
   const data={}; ids.forEach(id=> data[id]=num(id));
+  const newData=JSON.stringify(data);
+  let oldData=null; try{ oldData=localStorage.getItem('budget-data'); }catch(e){}
+  const changed = (oldData !== newData);
   try{ 
-    localStorage.setItem('budget-data', JSON.stringify(data)); 
+    localStorage.setItem('budget-data', newData); 
     // JANGAN bump last-modified saat init atau saat apply remote —
     // kalau tidak, setiap buka app dianggap "edit baru" dan menimpa cloud.
-    if(!window._initialLoad && !window._applyingRemote){
+    if(changed && !window._initialLoad && !window._applyingRemote && window._userInteracted){
       localStorage.setItem('budget-last-modified', new Date().toISOString()); 
     }
   }catch(e){}
@@ -2766,6 +2769,14 @@ function initActiveMode(){
 // init
 window._initialLoad = true;
 window._applyingRemote = false;
+window._userInteracted = false;
+try{
+  const markInteracted = ()=>{ window._userInteracted = true; };
+  document.addEventListener('input', markInteracted, true);
+  document.addEventListener('change', markInteracted, true);
+  document.addEventListener('click', markInteracted, true);
+  document.addEventListener('keydown', markInteracted, true);
+}catch(e){}
 loadCore();
 renderTambahan();
 renderVariabel();
@@ -3139,7 +3150,7 @@ setTimeout(()=>{ updateHeaderSubtitle(); updateDataUI(); }, 80);
 // perubahan berikutnya (termasuk perbaikan parser struk) tidak pernah sampai.
 // STAMP ini dipaksa naik setiap rilis. Kalau perangkat menemukan STAMP berbeda,
 // ia membersihkan semua cache + service worker lama lalu reload sekali.
-const APP_BUILD='2026-10-06-d';
+const APP_BUILD='2026-10-06-e';
 (function(){
   try{
     const prev=localStorage.getItem('budget-app-build');
@@ -3959,7 +3970,8 @@ if(!isFirebaseReady()){
 let _pushTimer=null;
 let _lastPushedAt=null;
 function markDirtyAndPush(){
-  try{ localStorage.setItem('budget-last-modified', new Date().toISOString()); }catch(e){}
+  // JANGAN bump last-modified di sini — markDirtyAndPush dipanggil tiap calc(),
+  // termasuk saat init/recompute. Bump hanya di save* (saat data benar-benar berubah).
   if(autoSync && !_applyingRemote && isFirebaseReady() && getSyncCode()){
     clearTimeout(_pushTimer);
     _pushTimer=setTimeout(async ()=>{
