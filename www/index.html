@@ -622,6 +622,13 @@ body.hide-nominal input.qty:focus {
       </div>
       <div id="dashBreakdown" style="margin-top:12px; display:grid; gap:5px"></div>
       <div style="margin-top:10px; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.22); border-radius:12px; padding:10px">
+        <div style="font-weight:800; color:#fff; margin-bottom:6px; font-size:.78rem">Transfer ke rekening bulanan</div>
+        <div style="display:flex; justify-content:space-between; font-size:.78rem; color:#fff"><span>⛽ Bensin + 🚗 Cicilan + 🏡 Rumah + Mutasi</span><b id="dashTransferBulanan">Rp0</b></div>
+        <div style="font-weight:800; color:#fff; margin:8px 0 6px; font-size:.78rem">Alokasi Anak</div>
+        <div style="display:flex; justify-content:space-between; font-size:.78rem; color:#fff"><span>👶 Popok</span><b id="dashPopokTotal">Rp0</b></div>
+        <div style="display:flex; justify-content:space-between; font-size:.78rem; color:#fff"><span>🥛 Susu</span><b id="dashSusuTotal">Rp0</b></div>
+      </div>
+      <div style="margin-top:10px; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.22); border-radius:12px; padding:10px">
         <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px"><span style="font-size:16px">🏆</span><span class="k" style="color:#fff; font-weight:800; opacity:.95">Top 3 Terbesar</span><span class="muted" style="color:#fff; opacity:.7; font-size:.72rem; margin-left:auto">dari pemasukan</span></div>
         <div class="top3-grid" id="top3Grid"></div>
         <div style="display:none"><span id="dashTerbesar"></span><span id="dashTerbesarSub"></span><span id="dashTerbesarPct"></span></div>
@@ -702,11 +709,13 @@ body.hide-nominal input.qty:focus {
         </details>
         <div style="font-size:.60rem; color:var(--muted); margin-top:6px; line-height:1.45">Sisa pinjaman berkurang sesuai nominal yang dibayar. "Koreksi sisa" untuk set ulang (mis. 41.000.000). Catatan tersimpan di riwayat.</div>
         <div style="font-size:.60rem; color:var(--muted); margin-top:2px; line-height:1.4">1 sesi periode = 1 angsuran wajib. Untuk angsuran tambahan pada periode yang sama, klik "+ Tambah Angsuran" dan input nominalnya (tercatat sebagai angsuran tambahan).</div>
-        <div style="font-size:.60rem; color:var(--muted); margin-top:2px; line-height:1.4">1 sesi periode = 1 angsuran wajib. Untuk angsuran tambahan pada periode yang sama, klik "+ Tambah Angsuran" dan input nominalnya (tercatat sebagai angsuran tambahan).</div>
         <div id="cicMobilRiwayat" style="margin-top:6px; max-height:80px; overflow:auto; font-size:.62rem; color:var(--muted)"></div>
       </div>
         <div class="row"><label>🏡 Rumah</label><input class="money" id="fixRumah" inputmode="numeric"></div>
+        <div class="row"><label>🏦 Mutasi ambil tabungan <span>— pindah ke tabungan (total tetap)</span></label><input class="money" id="mutasiTabungan" inputmode="numeric" style="width:150px"></div>
+        <div class="row"><label>📝 Keterangan mutasi</label><input class="txt" id="mutasiKet" placeholder="cth: Tutup minus belanja Agustus"></div>
         <div class="total-row"><span>Total Tetap</span><span id="totalFixed">Rp0</span></div>
+        <div class="total-row"><span>Transfer ke rekening bulanan (Bensin+Cicilan+Rumah+Mutasi)</span><span id="totalTransferBulanan">Rp0</span></div>
         <div style="margin-top:10px; background:#F8FAFC; border:1px solid var(--border); border-radius:10px; padding:10px">
           <div style="display:flex; gap:6px; align-items:end; flex-wrap:wrap">
             <div style="flex:1; min-width:140px"><label style="font-size:.70rem; font-weight:700; color:var(--muted); text-transform:uppercase">Nama Sesi Tetap</label><input class="txt" id="tetapSesiNama" placeholder="mis: Normal, Lebaran, Hemat"></div>
@@ -723,15 +732,6 @@ body.hide-nominal input.qty:focus {
         <div class="total-row"><span>Total Anak</span><span id="totalAnak">Rp0</span></div>
       </div>
     </div>
-        <div class="card" style="margin-top:14px; border-left:4px solid #E11D48">
-      <div class="card-head"><div class="icon rose">🏦</div><div><h2>Mutasi Tabungan</h2><p>Ambil dari tabungan — konteks ngurangin tabungan, nambah kas bulan ini</p></div><span class="badge" id="badgeMutasi" style="background:#FEF2F2; color:#991B1B; border-color:#FECACA">Rp0</span></div>
-      <div class="row"><label>🏦 Mutasi ambil tabungan <span>— ngurangin kas, pindah ke tabungan (total tetap)</span></label><input class="money" id="mutasiTabungan" inputmode="numeric" style="width:150px"></div>
-      <div class="row"><label>📝 Keterangan mutasi</label><input class="txt" id="mutasiKet" placeholder="cth: Tutup minus belanja Agustus"></div>
-      <div class="muted" style="margin-top:8px">ℹ️ <b>Logika:</b> <code>Total tetap = Gaji Will+Istri</code> → <code>Kas tersedia = Total − Mutasi</code> → Sisa Bruto = Kas tersedia − Tetap − Anak. Contoh: 5,4jt − mutasi 1jt − pengeluaran 4jt = sisa 400rb (total tetap 5,4jt). Kosongkan (=Rp0) jika tidak pakai. Real-time ke header & dashboard.</div>
-      <div class="total-row"><span>Kas tersedia setelah mutasi (gaji − mutasi)</span><span id="totalEfektif">Rp0</span></div>
-    </div>
-
-    <div class="card" style="margin-top:14px; border-left:4px solid #059669">
       <div class="card-head"><div class="icon teal">➕</div><div><h2>Pemasukan Tambahan</h2><p>Bonus, freelance, jualan, THR — tambah/edit/hapus, total langsung ke pemasukan</p></div><span class="badge" id="badgeTambahan" style="background:#ECFDF5; color:#065F46; border-color:#A7F3D0">Rp0</span></div>
       <div class="tmb-form" style="display:grid; gap:8px; align-items:end; margin-bottom:10px">
         <div><label style="font-size:.70rem; font-weight:700; color:var(--muted); text-transform:uppercase">Sumber</label><input class="txt" id="tmbSumber" placeholder="cth: Bonus Q3"></div>
@@ -2412,6 +2412,13 @@ const isOverAll = totalAlokasiForPagar > sisaBersih;
     const subP=document.getElementById('dashRekapPemasukanSub'); if(subP) subP.textContent='Will+Istri'+(pemasukanTambahan.length? ' + '+pemasukanTambahan.length+' tambahan':'');
     const elT=document.getElementById('dashRekapTerpakai'); if(elT) elT.textContent=rp(terpakai);
     const elS=document.getElementById('dashRekapSisa'); if(elS) elS.textContent=rp(sisaAkhir);
+    // Transfer ke rekening bulanan & Alokasi Anak (dashboard summary)
+    const _transferBulanan = fixed + mut;
+    const _popokDash = num('popokQty')*num('popokHarga');
+    const _susuDash = num('susuQty')*num('susuHarga');
+    const elTB=document.getElementById('dashTransferBulanan'); if(elTB) elTB.textContent=rp(_transferBulanan);
+    const elPop=document.getElementById('dashPopokTotal'); if(elPop) elPop.textContent=rp(_popokDash);
+    const elSusuD=document.getElementById('dashSusuTotal'); if(elSusuD) elSusuD.textContent=rp(_susuDash);
     const subT=document.getElementById('dashRekapTerpakaiSub'); if(subT) subT.textContent=pct(terpakai)+'% dari pemasukan';
     const subS=document.getElementById('dashRekapSisaSub'); if(subS) subS.textContent=pct(sisaAkhir)+'% dari pemasukan'+(overBudget? ' • ⚠️ over budget':'');
     const bdg=document.getElementById('badgeRekap'); if(bdg) bdg.textContent='live ●';
@@ -3246,7 +3253,7 @@ setTimeout(()=>{ updateHeaderSubtitle(); updateDataUI(); }, 80);
 // perubahan berikutnya (termasuk perbaikan parser struk) tidak pernah sampai.
 // STAMP ini dipaksa naik setiap rilis. Kalau perangkat menemukan STAMP berbeda,
 // ia membersihkan semua cache + service worker lama lalu reload sekali.
-const APP_BUILD='2026-10-06-n';
+const APP_BUILD='2026-10-06-o';
 (function(){
   try{
     const prev=localStorage.getItem('budget-app-build');
