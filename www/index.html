@@ -688,6 +688,7 @@ body.hide-nominal input.qty:focus {
           <span style="font-size:.60rem; color:var(--muted)">Bayar (Rp)</span>
           <input class="money" id="cicMobilBayar" inputmode="numeric" placeholder="1500000" style="width:110px; font-size:.72rem; padding:4px 6px">
           <button class="btn btn-accent" id="btnCicMobilBayar" style="font-size:.68rem; padding:4px 8px">Bayar</button>
+          <button class="btn btn-soft" id="btnCicMobilTambah" style="font-size:.68rem; padding:4px 8px">+ Tambah Angsuran</button>
           <button class="btn btn-soft" id="btnCicMobilSave" style="font-size:.68rem; padding:4px 8px">Simpan Total</button>
           <button class="btn btn-soft" id="btnCicMobilReset" style="font-size:.68rem; padding:4px 8px; background:#FEF2F2; color:#991B1B; border-color:#FECACA">Reset</button>
         </div>
@@ -697,6 +698,7 @@ body.hide-nominal input.qty:focus {
           <button class="btn btn-soft" id="btnCicMobilSetSisa" style="font-size:.68rem; padding:4px 8px">Set Sisa</button>
         </div>
         <div style="font-size:.60rem; color:var(--muted); margin-top:6px; line-height:1.45">Sisa pinjaman berkurang sesuai nominal yang dibayar. "Set Sisa" untuk koreksi/reset (mis. 41.000.000). Catatan tersimpan di riwayat.</div>
+        <div style="font-size:.60rem; color:var(--muted); margin-top:2px; line-height:1.4">1 sesi periode = 1 angsuran wajib. Untuk angsuran tambahan pada periode yang sama, klik "+ Tambah Angsuran" dan input nominalnya (tercatat sebagai angsuran tambahan).</div>
         <div id="cicMobilRiwayat" style="margin-top:6px; max-height:80px; overflow:auto; font-size:.62rem; color:var(--muted)"></div>
       </div>
         <div class="row"><label>🏡 Rumah</label><input class="money" id="fixRumah" inputmode="numeric"></div>
@@ -1345,7 +1347,7 @@ function deleteTetapSesi(id){
 // Model: total pinjaman (Rp) + sisa pinjaman (Rp) + riwayat pembayaran.
 // Angsuran/bulan diambil dari input "Cicilan mobil" di Menu Pemasukan & Tetap (fixCicilan).
 // Setiap pembayaran mengurangi sisa pinjaman. Sisa (bulan) = ceil(sisa / angsuran).
-let cicilanMobil = { total: 0, sisa: 0, payments: [], audit: [] };
+let cicilanMobil = { total: 0, sisa: 0, payments: [], audit: [], lastPeriod: '' };
 try{
   const _r = localStorage.getItem('budget-cicilan-mobil');
   if(_r){
@@ -1355,14 +1357,14 @@ try{
       if(o.mulai !== undefined && o.sisaAwal !== undefined && o.total === undefined){
         const angs = 1500000;
         const awal = isNaN(+o.sisaAwal) ? 0 : +o.sisaAwal;
-        cicilanMobil = { total: awal*angsuran, sisa: awal*angsuran, payments: [], audit: [{date:new Date().toISOString(), field:'migrasi', from:0, to:awal*angsuran, note:'dari tenor '+awal+' bln x '+angsuran}] };
+        cicilanMobil = { total: awal*angsuran, sisa: awal*angsuran, payments: [], audit: [{date:new Date().toISOString(), field:'migrasi', from:0, to:awal*angsuran, note:'dari tenor '+awal+' bln x '+angsuran}], lastPeriod: '' };
       }
       // migrasi dari model amount-based v1 (punya angsuran sendiri) -> pakai fixCicilan
       else if(o.angsuran !== undefined && o.total !== undefined){
-        cicilanMobil = { total: +o.total||0, sisa: +o.sisa||0, payments: Array.isArray(o.payments)?o.payments:[], audit: Array.isArray(o.audit)?o.audit:[] };
+        cicilanMobil = { total: +o.total||0, sisa: +o.sisa||0, payments: Array.isArray(o.payments)?o.payments:[], audit: Array.isArray(o.audit)?o.audit:[], lastPeriod: o.lastPeriod||'' };
       }
       else {
-        cicilanMobil = { total: +o.total||0, sisa: +o.sisa||0, payments: Array.isArray(o.payments)?o.payments:[], audit: Array.isArray(o.audit)?o.audit:[] };
+        cicilanMobil = { total: +o.total||0, sisa: +o.sisa||0, payments: Array.isArray(o.payments)?o.payments:[], audit: Array.isArray(o.audit)?o.audit:[], lastPeriod: o.lastPeriod||'' };
       }
     }
   }
@@ -1430,16 +1432,38 @@ function initCicilanMobil(){
   });
   const btnBayar = document.getElementById('btnCicMobilBayar');
   if(btnBayar) btnBayar.addEventListener('click', ()=>{
+    const period = (typeof getSessionKey === 'function') ? getSessionKey() : getBulanKey();
+    if(cicilanMobil.lastPeriod === period){
+      alert('Sudah ada angsuran untuk periode ' + period + '.\nUntuk angsuran tambahan, klik "+ Tambah Angsuran".');
+      return;
+    }
     const amt = toNumStr(bayarEl ? bayarEl.value : 0) || angsuranCicilan();
     if(!(amt > 0)){ alert('Isi nominal pembayaran (atau set angsuran di Cicilan mobil)'); return; }
     if(amt > cicilanMobil.sisa && cicilanMobil.sisa > 0){ if(!confirm('Nominal melebihi sisa pinjaman. Tetap lanjut?')) return; }
     cicilanMobil.sisa = Math.max(0, cicilanMobil.sisa - amt);
-    cicilanMobil.payments.push({date: new Date().toISOString(), amount: amt, note: ''});
-    cicilanMobil.audit.push({date:new Date().toISOString(), field:'bayar', from:amt, to:cicilanMobil.sisa, note:'pembayaran'});
+    cicilanMobil.payments.push({date: new Date().toISOString(), amount: amt, note: 'angsuran periode ' + period});
+    cicilanMobil.audit.push({date:new Date().toISOString(), field:'bayar', from:amt, to:cicilanMobil.sisa, note:'angsuran periode ' + period});
+    cicilanMobil.lastPeriod = period;
     saveCicilanMobil(); renderCicilanMobil();
     if(bayarEl) bayarEl.value = '';
     const h = hitungCicilanMobil();
-    alert('Pembayaran ' + rp(amt) + ' dicatat.\nSisa pinjaman: ' + rp(h.sisa) + ' (≈' + h.sisaBln + ' bulan)');
+    alert('Angsuran ' + rp(amt) + ' dicatat (periode ' + period + ').\nSisa pinjaman: ' + rp(h.sisa) + ' (≈' + h.sisaBln + ' bulan)');
+  });
+  // Tambah Angsuran (boleh berkali-kali dalam 1 periode, tercatat sebagai tambahan)
+  const btnTambah = document.getElementById('btnCicMobilTambah');
+  if(btnTambah) btnTambah.addEventListener('click', ()=>{
+    const period = (typeof getSessionKey === 'function') ? getSessionKey() : getBulanKey();
+    const v = prompt('Nominal angsuran tambahan (Rp):', angsuranCicilan() ? String(angsuranCicilan()) : '');
+    if(v === null) return;
+    const amt = toNumStr(v);
+    if(!(amt > 0)){ alert('Nominal tidak valid'); return; }
+    if(amt > cicilanMobil.sisa && cicilanMobil.sisa > 0){ if(!confirm('Nominal melebihi sisa pinjaman. Tetap lanjut?')) return; }
+    cicilanMobil.sisa = Math.max(0, cicilanMobil.sisa - amt);
+    cicilanMobil.payments.push({date: new Date().toISOString(), amount: amt, note: 'angsuran tambahan periode ' + period});
+    cicilanMobil.audit.push({date:new Date().toISOString(), field:'tambah', from:amt, to:cicilanMobil.sisa, note:'angsuran tambahan periode ' + period});
+    saveCicilanMobil(); renderCicilanMobil();
+    const h = hitungCicilanMobil();
+    alert('Angsuran tambahan ' + rp(amt) + ' dicatat (periode ' + period + ').\nSisa pinjaman: ' + rp(h.sisa) + ' (≈' + h.sisaBln + ' bulan)');
   });
   const btnSave = document.getElementById('btnCicMobilSave');
   if(btnSave) btnSave.addEventListener('click', ()=>{
@@ -3218,7 +3242,7 @@ setTimeout(()=>{ updateHeaderSubtitle(); updateDataUI(); }, 80);
 // perubahan berikutnya (termasuk perbaikan parser struk) tidak pernah sampai.
 // STAMP ini dipaksa naik setiap rilis. Kalau perangkat menemukan STAMP berbeda,
 // ia membersihkan semua cache + service worker lama lalu reload sekali.
-const APP_BUILD='2026-10-06-l';
+const APP_BUILD='2026-10-06-m';
 (function(){
   try{
     const prev=localStorage.getItem('budget-app-build');
