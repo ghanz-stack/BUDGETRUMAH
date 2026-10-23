@@ -622,13 +622,6 @@ body.hide-nominal input.qty:focus {
       </div>
       <div id="dashBreakdown" style="margin-top:12px; display:grid; gap:5px"></div>
       <div style="margin-top:10px; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.22); border-radius:12px; padding:10px">
-        <div style="font-weight:800; color:#fff; margin-bottom:6px; font-size:.78rem">Transfer ke rekening bulanan</div>
-        <div style="display:flex; justify-content:space-between; font-size:.78rem; color:#fff"><span>⛽ Bensin + 🚗 Cicilan + 🏡 Rumah + Mutasi</span><b id="dashTransferBulanan">Rp0</b></div>
-        <div style="font-weight:800; color:#fff; margin:8px 0 6px; font-size:.78rem">Alokasi Anak</div>
-        <div style="display:flex; justify-content:space-between; font-size:.78rem; color:#fff"><span>👶 Popok</span><b id="dashPopokTotal">Rp0</b></div>
-        <div style="display:flex; justify-content:space-between; font-size:.78rem; color:#fff"><span>🥛 Susu</span><b id="dashSusuTotal">Rp0</b></div>
-      </div>
-      <div style="margin-top:10px; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.22); border-radius:12px; padding:10px">
         <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px"><span style="font-size:16px">🏆</span><span class="k" style="color:#fff; font-weight:800; opacity:.95">Top 3 Terbesar</span><span class="muted" style="color:#fff; opacity:.7; font-size:.72rem; margin-left:auto">dari pemasukan</span></div>
         <div class="top3-grid" id="top3Grid"></div>
         <div style="display:none"><span id="dashTerbesar"></span><span id="dashTerbesarSub"></span><span id="dashTerbesarPct"></span></div>
@@ -714,16 +707,7 @@ body.hide-nominal input.qty:focus {
         <div class="row"><label>🏡 Rumah</label><input class="money" id="fixRumah" inputmode="numeric"></div>
         <div class="row"><label>🏦 Mutasi ambil tabungan <span>— pindah ke tabungan (total tetap)</span></label><input class="money" id="mutasiTabungan" inputmode="numeric" style="width:150px"></div>
         <div class="row"><label>📝 Keterangan mutasi</label><input class="txt" id="mutasiKet" placeholder="cth: Tutup minus belanja Agustus"></div>
-        <div class="total-row"><span>Total Tetap (Bensin+Cicilan+Rumah)</span><span id="totalFixed">Rp0</span></div>
-        <div class="total-row" style="background:#F0FDF4; border-radius:8px; padding:6px 8px"><span style="font-weight:800; color:#065F46">Transfer ke rekening bulanan (Tetap + Mutasi)</span><span id="totalTransferBulanan" style="font-weight:800; color:#065F46">Rp0</span></div>
-        <div class="total-row"><span>Alokasi Anak (Popok + Susu)</span><span id="totalAlokasiAnak">Rp0</span></div>
-        <div style="margin-top:6px; background:#F8FAFC; border:1px solid var(--border); border-radius:8px; padding:8px; font-size:.72rem">
-          <div style="font-weight:800; margin-bottom:4px">Ringkasan Sisa Bersih</div>
-          <div style="display:flex; justify-content:space-between"><span>Pemasukan</span><span id="rbPemasukan">Rp0</span></div>
-          <div style="display:flex; justify-content:space-between"><span>− Transfer ke rekening</span><span id="rbTransfer">Rp0</span></div>
-          <div style="display:flex; justify-content:space-between"><span>− Alokasi Anak</span><span id="rbAnak">Rp0</span></div>
-          <div style="display:flex; justify-content:space-between; font-weight:800; border-top:1px dashed var(--border); margin-top:4px; padding-top:4px"><span>= Sisa Bersih</span><span id="rbSisa">Rp0</span></div>
-        </div>
+        <div class="total-row"><span>Total Tetap</span><span id="totalFixed">Rp0</span></div>
         <div style="margin-top:10px; background:#F8FAFC; border:1px solid var(--border); border-radius:10px; padding:10px">
           <div style="display:flex; gap:6px; align-items:end; flex-wrap:wrap">
             <div style="flex:1; min-width:140px"><label style="font-size:.70rem; font-weight:700; color:var(--muted); text-transform:uppercase">Nama Sesi Tetap</label><input class="txt" id="tetapSesiNama" placeholder="mis: Normal, Lebaran, Hemat"></div>
@@ -2421,21 +2405,6 @@ const isOverAll = totalAlokasiForPagar > sisaBersih;
     const subP=document.getElementById('dashRekapPemasukanSub'); if(subP) subP.textContent='Will+Istri'+(pemasukanTambahan.length? ' + '+pemasukanTambahan.length+' tambahan':'');
     const elT=document.getElementById('dashRekapTerpakai'); if(elT) elT.textContent=rp(terpakai);
     const elS=document.getElementById('dashRekapSisa'); if(elS) elS.textContent=rp(sisaAkhir);
-    // Total Transfer ke rekening bulanan (Tetap card) = Bensin + Cicilan + Rumah + Mutasi
-    const elTRB=document.getElementById('totalTransferBulanan'); if(elTRB) elTRB.textContent=rp(fixed + mut);
-    const _alokasiAnak = anak;
-    const elAA=document.getElementById('totalAlokasiAnak'); if(elAA) elAA.textContent=rp(_alokasiAnak);
-    const elRBP=document.getElementById('rbPemasukan'); if(elRBP) elRBP.textContent=rp(base);
-    const elRBT=document.getElementById('rbTransfer'); if(elRBT) elRBT.textContent=rp(fixed + mut);
-    const elRBA=document.getElementById('rbAnak'); if(elRBA) elRBA.textContent=rp(_alokasiAnak);
-    const elRBS=document.getElementById('rbSisa'); if(elRBS) elRBS.textContent=rp(sisaBersih);
-    // Transfer ke rekening bulanan & Alokasi Anak (dashboard summary)
-    const _transferBulanan = fixed + mut;
-    const _popokDash = num('popokQty')*num('popokHarga');
-    const _susuDash = num('susuQty')*num('susuHarga');
-    const elTB=document.getElementById('dashTransferBulanan'); if(elTB) elTB.textContent=rp(_transferBulanan);
-    const elPop=document.getElementById('dashPopokTotal'); if(elPop) elPop.textContent=rp(_popokDash);
-    const elSusuD=document.getElementById('dashSusuTotal'); if(elSusuD) elSusuD.textContent=rp(_susuDash);
     const subT=document.getElementById('dashRekapTerpakaiSub'); if(subT) subT.textContent=pct(terpakai)+'% dari pemasukan';
     const subS=document.getElementById('dashRekapSisaSub'); if(subS) subS.textContent=pct(sisaAkhir)+'% dari pemasukan'+(overBudget? ' • ⚠️ over budget':'');
     const bdg=document.getElementById('badgeRekap'); if(bdg) bdg.textContent='live ●';
@@ -3270,7 +3239,7 @@ setTimeout(()=>{ updateHeaderSubtitle(); updateDataUI(); }, 80);
 // perubahan berikutnya (termasuk perbaikan parser struk) tidak pernah sampai.
 // STAMP ini dipaksa naik setiap rilis. Kalau perangkat menemukan STAMP berbeda,
 // ia membersihkan semua cache + service worker lama lalu reload sekali.
-const APP_BUILD='2026-10-06-s';
+const APP_BUILD='2026-10-06-t';
 (function(){
   try{
     const prev=localStorage.getItem('budget-app-build');
