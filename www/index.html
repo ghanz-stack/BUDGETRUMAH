@@ -677,21 +677,18 @@ body.hide-nominal input.qty:focus {
             <div id="cicMobilSisaBln" style="font-size:.84rem; font-weight:800; color:#1E3A8A">—</div>
           </div>
         </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px">
+        <div style="display:grid; grid-template-columns:1fr; gap:6px; margin-top:6px">
           <div>
-            <label style="font-size:.60rem; color:var(--muted)">Total pinjaman (Rp)</label>
+            <label style="font-size:.60rem; color:var(--muted)">Total pinjaman (Rp) — isi sekali</label>
             <input class="money" id="cicMobilTotal" inputmode="numeric" placeholder="39500000" style="width:100%; font-size:.72rem; padding:4px 6px">
           </div>
-          <div>
-            <label style="font-size:.60rem; color:var(--muted)">Angsuran/bulan (Rp)</label>
-            <input class="money" id="cicMobilAngsuran" inputmode="numeric" placeholder="1500000" style="width:100%; font-size:.72rem; padding:4px 6px">
-          </div>
         </div>
+        <div style="font-size:.62rem; color:var(--muted); margin-top:4px">Angsuran/bulan: <b id="cicMobilAngsuranInfo">Rp0</b> (diambil dari "Cicilan mobil" di Menu Pemasukan & Tetap — edit di sana)</div>
         <div style="display:flex; gap:6px; margin-top:6px; align-items:center; flex-wrap:wrap">
           <span style="font-size:.60rem; color:var(--muted)">Bayar (Rp)</span>
           <input class="money" id="cicMobilBayar" inputmode="numeric" placeholder="1500000" style="width:110px; font-size:.72rem; padding:4px 6px">
           <button class="btn btn-accent" id="btnCicMobilBayar" style="font-size:.68rem; padding:4px 8px">Bayar</button>
-          <button class="btn btn-soft" id="btnCicMobilSave" style="font-size:.68rem; padding:4px 8px">Simpan</button>
+          <button class="btn btn-soft" id="btnCicMobilSave" style="font-size:.68rem; padding:4px 8px">Simpan Total</button>
         </div>
         <div style="font-size:.60rem; color:var(--muted); margin-top:6px; line-height:1.45">Sisa pinjaman berkurang sesuai nominal yang dibayar. Catatan pembayaran tersimpan di riwayat.</div>
         <div id="cicMobilRiwayat" style="margin-top:6px; max-height:80px; overflow:auto; font-size:.62rem; color:var(--muted)"></div>
@@ -1338,10 +1335,11 @@ function deleteTetapSesi(id){
   saveTetapSessions(); renderTetapSessions();
 }
 
-// === TRACKER CICILAN MOBIL (payment-driven) ===
-// Model: total pinjaman (Rp) + angsuran/bulan (Rp) + sisa pinjaman (Rp) + riwayat pembayaran.
-// Sisa (bulan) = ceil(sisa / angsuran). Setiap pembayaran mengurangi sisa pinjaman.
-let cicilanMobil = { total: 0, angsuran: 0, sisa: 0, payments: [], audit: [] };
+// === TRACKER CICILAN MOBIL (payment-driven, terintegrasi dengan fixCicilan) ===
+// Model: total pinjaman (Rp) + sisa pinjaman (Rp) + riwayat pembayaran.
+// Angsuran/bulan diambil dari input "Cicilan mobil" di Menu Pemasukan & Tetap (fixCicilan).
+// Setiap pembayaran mengurangi sisa pinjaman. Sisa (bulan) = ceil(sisa / angsuran).
+let cicilanMobil = { total: 0, sisa: 0, payments: [], audit: [] };
 try{
   const _r = localStorage.getItem('budget-cicilan-mobil');
   if(_r){
@@ -1349,29 +1347,27 @@ try{
     if(o && typeof o === 'object'){
       // migrasi dari model lama (mulai + sisaAwal)
       if(o.mulai !== undefined && o.sisaAwal !== undefined && o.total === undefined){
-        const angs = (typeof num === 'function' ? num('fixCicilan') : 0) || 1500000;
+        const angs = 1500000;
         const awal = isNaN(+o.sisaAwal) ? 0 : +o.sisaAwal;
-        cicilanMobil = { total: awal*angsuran, angsuran: angsuran, sisa: awal*angsuran, payments: [], audit: [{date:new Date().toISOString(), field:'migrasi', from:0, to:awal*angsuran, note:'dari tenor '+awal+' bln'}] };
-      } else {
-        cicilanMobil = {
-          total: isNaN(+o.total) ? 0 : +o.total,
-          angsuran: isNaN(+o.angsuran) ? 0 : +o.angsuran,
-          sisa: isNaN(+o.sisa) ? 0 : +o.sisa,
-          payments: Array.isArray(o.payments) ? o.payments : [],
-          audit: Array.isArray(o.audit) ? o.audit : []
-        };
+        cicilanMobil = { total: awal*angsuran, sisa: awal*angsuran, payments: [], audit: [{date:new Date().toISOString(), field:'migrasi', from:0, to:awal*angsuran, note:'dari tenor '+awal+' bln x '+angsuran}] };
+      }
+      // migrasi dari model amount-based v1 (punya angsuran sendiri) -> pakai fixCicilan
+      else if(o.angsuran !== undefined && o.total !== undefined){
+        cicilanMobil = { total: +o.total||0, sisa: +o.sisa||0, payments: Array.isArray(o.payments)?o.payments:[], audit: Array.isArray(o.audit)?o.audit:[] };
+      }
+      else {
+        cicilanMobil = { total: +o.total||0, sisa: +o.sisa||0, payments: Array.isArray(o.payments)?o.payments:[], audit: Array.isArray(o.audit)?o.audit:[] };
       }
     }
   }
 }catch(e){}
+function angsuranCicilan(){ return Math.max(0, num('fixCicilan') || 0); }
 function saveCicilanMobil(){ try{ localStorage.setItem('budget-cicilan-mobil', JSON.stringify(cicilanMobil)); localStorage.setItem('budget-last-modified', new Date().toISOString()); }catch(e){} try{ window.markDirtyAndPush && window.markDirtyAndPush(); }catch(e){} }
-function _fmtBulan(ym){ const p=String(ym||'').split('-'); if(p.length!==2) return '—'; return new Date(+p[0], +p[1]-1, 1).toLocaleDateString('id-ID',{month:'short', year:'numeric'}); }
-function getBulanKey(d=new Date()){ return d.toISOString().slice(0,7); }
 function hitungCicilanMobil(){
   const total = Math.max(0, +cicilanMobil.total || 0);
-  const angsuran = Math.max(0, +cicilanMobil.angsuran || 0);
+  const angsuran = angsuranCicilan();
   let sisa = Math.max(0, +cicilanMobil.sisa || 0);
-  if(sisa > total) sisa = total;
+  if(sisa > total && total > 0) sisa = total;
   const paid = Math.max(0, total - sisa);
   const sisaBln = angsuran > 0 ? Math.ceil(sisa / angsuran) : 0;
   const pct = total > 0 ? Math.min(100, Math.round(paid / total * 100)) : 0;
@@ -1383,14 +1379,14 @@ function renderCicilanMobil(){
   const set = (id,v)=>{ const e=document.getElementById(id); if(e) e.textContent=v; };
   const bar = document.getElementById('cicMobilBar');
   const totalEl = document.getElementById('cicMobilTotal');
-  const angEl = document.getElementById('cicMobilAngsuran');
   if(totalEl && document.activeElement !== totalEl) totalEl.value = h.total ? fmtRibuan(h.total) : '';
-  if(angEl && document.activeElement !== angEl) angEl.value = h.angsuran ? fmtRibuan(h.angsuran) : '';
-  const sisaEl = document.getElementById('cicMobilSisa');
+  const angInfo = document.getElementById('cicMobilAngsuranInfo');
+  if(angInfo) angInfo.textContent = rp(h.angsuran) + (h.angsuran>0 ? '' : ' (isi di Cicilan mobil)');
   const sisaRpEl = document.getElementById('cicMobilSisaRp');
   const sisaBlnEl = document.getElementById('cicMobilSisaBln');
   if(sisaRpEl) sisaRpEl.textContent = rp(h.sisa);
-  if(sisaBlnEl) sisaBlnEl.textContent = h.sisaBln + ' bln';
+  if(sisaBlnEl) sisaBlnEl.textContent = (h.total>0 ? (h.sisaBln + ' bln') : '—');
+  const sisaEl = document.getElementById('cicMobilSisa');
   if(h.total <= 0){
     if(sisaEl) sisaEl.textContent = '— belum diatur';
     if(bar) bar.style.width = '0%';
@@ -1402,10 +1398,9 @@ function renderCicilanMobil(){
     if(bar) bar.style.width = h.pct + '%';
   }
   const info = document.getElementById('cicMobilInfo');
-  if(info) info.textContent = h.total > 0 ? ('Terbayar ' + rp(h.paid) + ' / ' + rp(h.total) + ' (' + h.pct + '%)') : 'Isi total pinjaman & angsuran';
+  if(info) info.textContent = h.total > 0 ? ('Terbayar ' + rp(h.paid) + ' / ' + rp(h.total) + ' (' + h.pct + '%)') : 'Isi total pinjaman';
   const selesai = document.getElementById('cicMobilSelesai');
   if(selesai) selesai.textContent = h.lunas ? '✅ Lunas' : (h.angsuran > 0 ? ('≈ ' + h.sisaBln + ' bulan lagi') : '');
-  // riwayat pembayaran
   const riw = document.getElementById('cicMobilRiwayat');
   if(riw){
     const ps = (cicilanMobil.payments || []).slice().reverse();
@@ -1413,35 +1408,25 @@ function renderCicilanMobil(){
       ? ps.map(p => '<div style="border-bottom:1px solid #E2E8F0; padding:2px 0">• ' + new Date(p.date).toLocaleDateString('id-ID') + ' — ' + rp(p.amount) + (p.note ? ' (' + p.note + ')' : '') + '</div>').join('')
       : '<span class="muted">Belum ada pembayaran</span>';
   }
-  // KPI
   const kpi = document.getElementById('kpiCicilan');
   if(kpi) kpi.title = 'Sisa pinjaman ' + rp(h.sisa) + ' (' + h.sisaBln + ' bln) dari total ' + rp(h.total);
 }
 function initCicilanMobil(){
   const totalEl = document.getElementById('cicMobilTotal');
-  const angEl = document.getElementById('cicMobilAngsuran');
   const bayarEl = document.getElementById('cicMobilBayar');
   if(totalEl) totalEl.addEventListener('change', ()=>{
     const v = toNumStr(totalEl.value);
     const old = cicilanMobil.total;
     cicilanMobil.total = v;
     if(v !== old) cicilanMobil.audit.push({date:new Date().toISOString(), field:'total', from:old, to:v});
-    // jika sisa belum diisi, set sisa = total
     if(!cicilanMobil.sisa && v > 0) cicilanMobil.sisa = v;
-    saveCicilanMobil(); renderCicilanMobil();
-  });
-  if(angEl) angEl.addEventListener('change', ()=>{
-    const v = toNumStr(angEl.value);
-    const old = cicilanMobil.angsuran;
-    cicilanMobil.angsuran = v;
-    if(v !== old) cicilanMobil.audit.push({date:new Date().toISOString(), field:'angsuran', from:old, to:v});
     saveCicilanMobil(); renderCicilanMobil();
   });
   const btnBayar = document.getElementById('btnCicMobilBayar');
   if(btnBayar) btnBayar.addEventListener('click', ()=>{
-    const amt = toNumStr(bayarEl ? bayarEl.value : 0);
-    if(!(amt > 0)){ alert('Isi nominal pembayaran dulu'); return; }
-    if(amt > cicilanMobil.sisa){ if(!confirm('Nominal melebihi sisa pinjaman. Tetap lanjut?')) return; }
+    const amt = toNumStr(bayarEl ? bayarEl.value : 0) || angsuranCicilan();
+    if(!(amt > 0)){ alert('Isi nominal pembayaran (atau set angsuran di Cicilan mobil)'); return; }
+    if(amt > cicilanMobil.sisa && cicilanMobil.sisa > 0){ if(!confirm('Nominal melebihi sisa pinjaman. Tetap lanjut?')) return; }
     cicilanMobil.sisa = Math.max(0, cicilanMobil.sisa - amt);
     cicilanMobil.payments.push({date: new Date().toISOString(), amount: amt, note: ''});
     cicilanMobil.audit.push({date:new Date().toISOString(), field:'bayar', from:amt, to:cicilanMobil.sisa, note:'pembayaran'});
@@ -1453,12 +1438,11 @@ function initCicilanMobil(){
   const btnSave = document.getElementById('btnCicMobilSave');
   if(btnSave) btnSave.addEventListener('click', ()=>{
     const t = toNumStr(totalEl ? totalEl.value : 0);
-    const a = toNumStr(angEl ? angEl.value : 0);
-    const oldT = cicilanMobil.total, oldA = cicilanMobil.angsuran;
+    const oldT = cicilanMobil.total;
     if(t > 0 && t !== oldT){ cicilanMobil.audit.push({date:new Date().toISOString(), field:'total', from:oldT, to:t}); cicilanMobil.total = t; if(!cicilanMobil.sisa) cicilanMobil.sisa = t; }
-    if(a > 0 && a !== oldA){ cicilanMobil.audit.push({date:new Date().toISOString(), field:'angsuran', from:oldA, to:a}); cicilanMobil.angsuran = a; }
     saveCicilanMobil(); renderCicilanMobil();
-    alert('✅ Cicilan mobil disimpan\nTotal: ' + rp(cicilanMobil.total) + '\nAngsuran: ' + rp(cicilanMobil.angsuran) + '\nSisa: ' + rp(cicilanMobil.sisa));
+    const h = hitungCicilanMobil();
+    alert('Disimpan.\nTotal: ' + rp(cicilanMobil.total) + '\nAngsuran/bulan: ' + rp(angsuranCicilan()) + ' (dari Cicilan mobil)\nSisa: ' + rp(cicilanMobil.sisa) + ' (≈' + h.sisaBln + ' bulan)');
   });
   renderCicilanMobil();
 }
@@ -3207,7 +3191,7 @@ setTimeout(()=>{ updateHeaderSubtitle(); updateDataUI(); }, 80);
 // perubahan berikutnya (termasuk perbaikan parser struk) tidak pernah sampai.
 // STAMP ini dipaksa naik setiap rilis. Kalau perangkat menemukan STAMP berbeda,
 // ia membersihkan semua cache + service worker lama lalu reload sekali.
-const APP_BUILD='2026-10-06-i';
+const APP_BUILD='2026-10-06-j';
 (function(){
   try{
     const prev=localStorage.getItem('budget-app-build');
