@@ -714,7 +714,9 @@ body.hide-nominal input.qty:focus {
         <div class="row"><label>🏡 Rumah</label><input class="money" id="fixRumah" inputmode="numeric"></div>
         <div class="row"><label>🏦 Mutasi ambil tabungan <span>— pindah ke tabungan (total tetap)</span></label><input class="money" id="mutasiTabungan" inputmode="numeric" style="width:150px"></div>
         <div class="row"><label>📝 Keterangan mutasi</label><input class="txt" id="mutasiKet" placeholder="cth: Tutup minus belanja Agustus"></div>
-        <div class="total-row"><span>Total Tetap (Bensin+Cicilan+Rumah+Mutasi)</span><span id="totalFixed">Rp0</span></div>
+        <div class="total-row"><span>Total Tetap (Bensin+Cicilan+Rumah)</span><span id="totalFixed">Rp0</span></div>
+        <div class="total-row" style="background:#F0FDF4; border-radius:8px; padding:6px 8px"><span style="font-weight:800; color:#065F46">Transfer ke rekening bulanan (Tetap + Mutasi)</span><span id="totalTransferBulanan" style="font-weight:800; color:#065F46">Rp0</span></div>
+        <div class="muted" style="margin-top:6px; font-size:.70rem">Sisa Bersih = Pemasukan − Transfer ke rekening bulanan. Mutasi (Rp1.000.000) ikut terpotong dari kas bulan ini.</div>
         <div style="margin-top:10px; background:#F8FAFC; border:1px solid var(--border); border-radius:10px; padding:10px">
           <div style="display:flex; gap:6px; align-items:end; flex-wrap:wrap">
             <div style="flex:1; min-width:140px"><label style="font-size:.70rem; font-weight:700; color:var(--muted); text-transform:uppercase">Nama Sesi Tetap</label><input class="txt" id="tetapSesiNama" placeholder="mis: Normal, Lebaran, Hemat"></div>
@@ -2224,7 +2226,8 @@ function calc(){
   })();
 
   document.getElementById("totalIncome").textContent=rp(income);
-  document.getElementById("totalFixed").textContent=rp(fixed + mut);
+  document.getElementById("totalFixed").textContent=rp(fixed);
+  const elTRB=document.getElementById('totalTransferBulanan'); if(elTRB) elTRB.textContent=rp(fixed + mut);
   document.getElementById("totalAnak").textContent=rp(anak);
   // Acuan di Menu Alokasi — Tabungan, Popok, Susu live dari sumber
   (function(){
@@ -2411,6 +2414,8 @@ const isOverAll = totalAlokasiForPagar > sisaBersih;
     const subP=document.getElementById('dashRekapPemasukanSub'); if(subP) subP.textContent='Will+Istri'+(pemasukanTambahan.length? ' + '+pemasukanTambahan.length+' tambahan':'');
     const elT=document.getElementById('dashRekapTerpakai'); if(elT) elT.textContent=rp(terpakai);
     const elS=document.getElementById('dashRekapSisa'); if(elS) elS.textContent=rp(sisaAkhir);
+    // Total Transfer ke rekening bulanan (Tetap card) = Bensin + Cicilan + Rumah + Mutasi
+    const elTRB=document.getElementById('totalTransferBulanan'); if(elTRB) elTRB.textContent=rp(fixed + mut);
     // Transfer ke rekening bulanan & Alokasi Anak (dashboard summary)
     const _transferBulanan = fixed + mut;
     const _popokDash = num('popokQty')*num('popokHarga');
@@ -3252,7 +3257,7 @@ setTimeout(()=>{ updateHeaderSubtitle(); updateDataUI(); }, 80);
 // perubahan berikutnya (termasuk perbaikan parser struk) tidak pernah sampai.
 // STAMP ini dipaksa naik setiap rilis. Kalau perangkat menemukan STAMP berbeda,
 // ia membersihkan semua cache + service worker lama lalu reload sekali.
-const APP_BUILD='2026-10-06-p';
+const APP_BUILD='2026-10-06-r';
 (function(){
   try{
     const prev=localStorage.getItem('budget-app-build');
