@@ -628,10 +628,16 @@ body.hide-nominal input.qty:focus {
       </div>
       <div style="display:none"><span id="sisa"></span><span id="sisaSetelahVariabel"></span><span id="sisaBersih"></span><span id="pctAlokasiHero"></span><div id="barFill"></div><div id="statusText"></div></div>
     </div>
-    <div class="card" style="margin-top:10px; border-left:4px solid #0E7490">
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px">
-        <div><div style="font-size:.72rem; font-weight:700; color:var(--muted); text-transform:uppercase">Transfer ke rekening bulanan</div><div style="font-size:.70rem; color:var(--muted)">⛽ Bensin + 🚗 Cicilan + 🏡 Rumah + Mutasi</div></div>
-        <div style="font-size:1.1rem; font-weight:800; color:#0E7490" id="dashTransferBulananCard">Rp0</div>
+    <div class="card" style="margin-top:10px; border-left:4px solid #0E7490; background:#F8FAFC">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap">
+        <div style="display:flex; align-items:center; gap:10px">
+          <div style="width:34px; height:34px; border-radius:10px; background:linear-gradient(135deg,#0E7490,#06B6D4); display:grid; place-items:center; font-size:16px; color:#fff; flex-shrink:0">💳</div>
+          <div>
+            <div style="font-size:.76rem; font-weight:800; color:var(--text); text-transform:uppercase; letter-spacing:.03em">TRANSFER KE REKENING BULANAN</div>
+            <div style="font-size:.70rem; color:var(--muted); margin-top:1px">⛽ Bensin mobil + 🚗 Cicilan mobil + 🏡 Rumah + 🏦 Mutasi Tabungan</div>
+          </div>
+        </div>
+        <div style="font-size:1.15rem; font-weight:900; color:#0E7490; letter-spacing:-.01em" id="dashTransferBulananCard" data-mask-nominal>Rp0</div>
       </div>
     </div>
 
@@ -2243,9 +2249,9 @@ function calc(){
 
   document.getElementById("totalIncome").textContent=rp(income);
   document.getElementById("totalFixed").textContent=rp(fixed);
-  const elTRB=document.getElementById('totalTransferBulanan'); if(elTRB) elTRB.textContent=rp(fixed + mut);
+  const elTRB=document.getElementById('totalTransferBulanan'); if(elTRB) elTRB.textContent=rp(fixed + mutasi);
   document.getElementById("totalAnak").textContent=rp(anak);
-  const elDTC=document.getElementById('dashTransferBulananCard'); if(elDTC) elDTC.textContent=rp(fixed + mut);
+  const elDTC=document.getElementById('dashTransferBulananCard'); if(elDTC) elDTC.textContent=rp(fixed + mutasi);
   // Acuan di Menu Alokasi — Tabungan, Popok, Susu live dari sumber
   (function(){
     const pq=num('popokQty'), ph=num('popokHarga'), sq=num('susuQty'), sh=num('susuHarga');
@@ -3348,7 +3354,7 @@ setTimeout(()=>{ updateHeaderSubtitle(); updateDataUI(); }, 80);
 // perubahan berikutnya (termasuk perbaikan parser struk) tidak pernah sampai.
 // STAMP ini dipaksa naik setiap rilis. Kalau perangkat menemukan STAMP berbeda,
 // ia membersihkan semua cache + service worker lama lalu reload sekali.
-const APP_BUILD='2026-10-06-y';
+const APP_BUILD='2026-10-23-a';
 (function(){
   try{
     const prev=localStorage.getItem('budget-app-build');
