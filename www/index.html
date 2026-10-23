@@ -683,13 +683,13 @@ body.hide-nominal input.qty:focus {
             </div>
           </div>
           <div style="display:flex; gap:6px; margin-top:7px; align-items:center; flex-wrap:wrap">
-            <span style="font-size:.66rem; color:var(--muted)">Mulai</span>
-            <input class="txt" id="cicMobilMulai" placeholder="YYYY-MM" style="width:84px; font-size:.72rem; padding:4px 6px">
-            <span style="font-size:.66rem; color:var(--muted)">Tenor (bln)</span>
-            <input class="qty" id="cicMobilSisaAwal" type="number" min="0" style="width:56px">
-            <button class="btn btn-soft" id="btnCicMobilSave" style="font-size:.68rem; padding:4px 8px">💾</button>
+            <span style="font-size:.66rem; color:var(--muted)">Mulai (YYYY-MM)</span>
+            <input class="txt" id="cicMobilMulai" placeholder="2025-01" style="width:92px; font-size:.72rem; padding:4px 6px">
+            <span style="font-size:.66rem; color:var(--muted)">Total tenor (bulan)</span>
+            <input class="qty" id="cicMobilSisaAwal" type="number" min="0" placeholder="36" style="width:60px" title="Jumlah bulan cicilan dari awal sampai lunas">
+            <button class="btn btn-soft" id="btnCicMobilSave" style="font-size:.68rem; padding:4px 8px">💾 Simpan</button>
           </div>
-          <div style="font-size:.60rem; color:var(--muted); margin-top:6px; line-height:1.45">Bar &amp; persen = <b>seberapa besar waktu cicilan yang sudah berjalan</b>, bukan persentase pelunasan nominal.</div>
+          <div style="font-size:.60rem; color:var(--muted); margin-top:6px; line-height:1.45">Contoh: mulai <b>2024-06</b>, tenor <b>36</b> bulan → lunas sekitar Juni 2027. Sisa &amp; tanggal lunas dihitung otomatis dari bulan berjalan. Bar = progres waktu yang sudah berjalan (bukan nominal).</div>
         </div>
         <div class="row"><label>🏡 Rumah</label><input class="money" id="fixRumah" inputmode="numeric"></div>
         <div class="total-row"><span>Total Tetap</span><span id="totalFixed">Rp0</span></div>
@@ -1363,9 +1363,9 @@ function renderCicilanMobil(){
   if(!document.getElementById('cicMobilSisa')) return;
   if(h.awal<=0){
     set('cicMobilSisa','— belum diatur');
-    set('cicMobilInfo','Isi "Tenor (bln)" di bawah');
+    set('cicMobilInfo','Isi mulai & total tenor di bawah');
     set('cicMobilSelesai','');
-    set('cicMobilStatJalan','—'); set('cicMobilStatSisa','—'); set('cicMobilStatTenor','—');
+    set('cicMobilStatJalan','-'); set('cicMobilStatSisa','-'); set('cicMobilStatTenor','-');
     if(bar) bar.style.width='0%';
   } else if(h.lunas){
     set('cicMobilSisa','✅ LUNAS');
@@ -1376,7 +1376,7 @@ function renderCicilanMobil(){
   } else {
     // "Bulan ke-N" memakai lewat+1 biar bulan pertama tidak terbaca "bulan ke-0"
     set('cicMobilSisa','Sisa '+h.sisa+' bln');
-    set('cicMobilInfo','Bulan ke-'+(h.lewat+1)+' dari '+h.awal+' • '+h.pct+'% waktu berjalan');
+    set('cicMobilInfo','Bulan ke-'+(h.lewat+1)+' dari '+h.awal+' - '+h.pct+'% waktu berjalan');
     set('cicMobilSelesai','Selesai '+_fmtBulan(h.selesaiKey));
     set('cicMobilStatJalan', h.lewat+' bln'); set('cicMobilStatSisa', h.sisa+' bln'); set('cicMobilStatTenor', h.awal+' bln');
     if(bar) bar.style.width=h.pct+'%';
@@ -1407,7 +1407,8 @@ function initCicilanMobil(){
     if(/^\d{4}-\d{2}$/.test(vMi)) cicilanMobil.mulai=vMi;
     if(!isNaN(vSa) && vSa>=0) cicilanMobil.sisaAwal=vSa;
     saveCicilanMobil(); renderCicilanMobil();
-    alert('✅ Cicilan mobil disimpan — sisa '+hitungCicilanMobil().sisa+' bulan');
+    const _h=hitungCicilanMobil();
+    alert('✅ Cicilan mobil disimpan\nMulai: '+_h.mulai+'\nTenor: '+_h.awal+' bulan\nSudah jalan: '+_h.lewat+' bulan\nSisa: '+_h.sisa+' bulan\nLunas: '+_fmtBulan(_h.selesaiKey));
   });
   renderCicilanMobil();
 }
@@ -3156,7 +3157,7 @@ setTimeout(()=>{ updateHeaderSubtitle(); updateDataUI(); }, 80);
 // perubahan berikutnya (termasuk perbaikan parser struk) tidak pernah sampai.
 // STAMP ini dipaksa naik setiap rilis. Kalau perangkat menemukan STAMP berbeda,
 // ia membersihkan semua cache + service worker lama lalu reload sekali.
-const APP_BUILD='2026-10-06-f';
+const APP_BUILD='2026-10-06-g';
 (function(){
   try{
     const prev=localStorage.getItem('budget-app-build');
