@@ -714,8 +714,7 @@ body.hide-nominal input.qty:focus {
         <div class="row"><label>🏡 Rumah</label><input class="money" id="fixRumah" inputmode="numeric"></div>
         <div class="row"><label>🏦 Mutasi ambil tabungan <span>— pindah ke tabungan (total tetap)</span></label><input class="money" id="mutasiTabungan" inputmode="numeric" style="width:150px"></div>
         <div class="row"><label>📝 Keterangan mutasi</label><input class="txt" id="mutasiKet" placeholder="cth: Tutup minus belanja Agustus"></div>
-        <div class="total-row"><span>Total Tetap</span><span id="totalFixed">Rp0</span></div>
-        <div class="total-row"><span>Transfer ke rekening bulanan (Bensin+Cicilan+Rumah+Mutasi)</span><span id="totalTransferBulanan">Rp0</span></div>
+        <div class="total-row"><span>Total Tetap (Bensin+Cicilan+Rumah+Mutasi)</span><span id="totalFixed">Rp0</span></div>
         <div style="margin-top:10px; background:#F8FAFC; border:1px solid var(--border); border-radius:10px; padding:10px">
           <div style="display:flex; gap:6px; align-items:end; flex-wrap:wrap">
             <div style="flex:1; min-width:140px"><label style="font-size:.70rem; font-weight:700; color:var(--muted); text-transform:uppercase">Nama Sesi Tetap</label><input class="txt" id="tetapSesiNama" placeholder="mis: Normal, Lebaran, Hemat"></div>
@@ -2225,7 +2224,7 @@ function calc(){
   })();
 
   document.getElementById("totalIncome").textContent=rp(income);
-  document.getElementById("totalFixed").textContent=rp(fixed);
+  document.getElementById("totalFixed").textContent=rp(fixed + mut);
   document.getElementById("totalAnak").textContent=rp(anak);
   // Acuan di Menu Alokasi — Tabungan, Popok, Susu live dari sumber
   (function(){
@@ -3253,7 +3252,7 @@ setTimeout(()=>{ updateHeaderSubtitle(); updateDataUI(); }, 80);
 // perubahan berikutnya (termasuk perbaikan parser struk) tidak pernah sampai.
 // STAMP ini dipaksa naik setiap rilis. Kalau perangkat menemukan STAMP berbeda,
 // ia membersihkan semua cache + service worker lama lalu reload sekali.
-const APP_BUILD='2026-10-06-o';
+const APP_BUILD='2026-10-06-p';
 (function(){
   try{
     const prev=localStorage.getItem('budget-app-build');
