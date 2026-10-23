@@ -1131,6 +1131,7 @@ body.hide-nominal input.qty:focus {
       <div class="card">
         <div class="card-head"><div class="icon rose">⬆️</div><div><h2>Restore & Reset</h2><p>Kembalikan data atau mulai dari nol</p></div></div>
         <label class="btn btn-soft" style="width:100%; cursor:pointer">📂 Import / Restore JSON Lengkap<input type="file" id="importFile" accept=".json" style="display:none"></label>
+        <label class="btn btn-soft" style="width:100%; margin-top:8px; cursor:pointer">🗂️ Import Backup sebagai Arsip (sesi lama, tidak timpa data sekarang)<input type="file" id="importArchiveFile" accept=".json" style="display:none"></label>
         <button class="btn btn-soft" id="btnRestoreSnap" style="width:100%; margin-top:8px">↩️ Restore Snapshot Terakhir</button>
         <button class="btn btn-soft" id="btnResetAll" style="width:100%; margin-top:8px; background:#FEF2F2; color:#991B1B; border-color:#FECACA">🗑️ Reset Semua ke 0</button>
         <div class="muted" style="margin-top:8px">Restore akan <b>memulihkan 100% transaksi, rencana, alokasi, laporan, dan pengaturan</b>, lalu auto-reload dan menghitung ulang seluruh dashboard & header.</div>
@@ -3231,6 +3232,47 @@ document.getElementById('importFile')?.addEventListener('change', (e)=>{
   r.readAsText(f);
   e.target.value='';
 });
+document.getElementById('importArchiveFile')?.addEventListener('change', (e)=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const obj=JSON.parse(r.result.trim().replace(/^\uFEFF/, ''));
+      if(!obj || typeof obj!=='object') throw new Error('Format tidak valid');
+      // tentukan kunci periode dari backup
+      let key = (obj._meta && (obj._meta.bulan || obj._meta.periode)) ? (obj._meta.bulan || obj._meta.periode) : '';
+      if(!key){ const d = obj._meta && obj._meta.exportedAt ? new Date(obj._meta.exportedAt) : new Date(); key = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+      key = String(key).trim();
+      if(!/^\d{4}-\d{2}$/.test(key)) key = getPeriodeKey();
+      const reports = loadReports();
+      // tandai sebagai arsip
+      const snap = Object.assign({}, obj);
+      if(!snap._meta) snap._meta = {};
+      snap._meta.selesai = true;
+      snap._meta.live = false;
+      snap._meta.dibuat = snap._meta.dibuat || new Date().toISOString();
+      snap._meta.ditutup = snap._meta.ditutup || new Date().toISOString();
+      snap._meta.periode = snap._meta.periode || labelPeriode(key);
+      snap._meta.bulan = key;
+      // merge: jangan timpa kalau sudah ada yang lebih baru
+      const existing = reports[key];
+      if(existing){
+        const ep = (existing._meta && (existing._meta.ditutup || existing._meta.dibuat)) || '';
+        const np = snap._meta.ditutup || '';
+        if(ep && np && np < ep){ alert('Arsip '+key+' sudah ada dan lebih baru. Tidak ditimpa.'); e.target.value=''; return; }
+      }
+      reports[key] = snap;
+      saveReports(reports);
+      refreshLaporanBulanSelect();
+      alert('✅ Backup diimport sebagai arsip sesi '+labelPeriode(key)+'.\nCek menu Laporan → pilih periode tersebut.');
+    }catch(err){
+      console.error('Import archive error', err);
+      alert('Gagal import arsip: '+err.message);
+    }
+  };
+  r.readAsText(f);
+  e.target.value='';
+});
 // init data UI after load
 setTimeout(()=>{ updateHeaderSubtitle(); updateDataUI(); }, 80);
 // === SELF-HEAL BUILD STAMP ===
@@ -3239,7 +3281,7 @@ setTimeout(()=>{ updateHeaderSubtitle(); updateDataUI(); }, 80);
 // perubahan berikutnya (termasuk perbaikan parser struk) tidak pernah sampai.
 // STAMP ini dipaksa naik setiap rilis. Kalau perangkat menemukan STAMP berbeda,
 // ia membersihkan semua cache + service worker lama lalu reload sekali.
-const APP_BUILD='2026-10-06-u';
+const APP_BUILD='2026-10-06-v';
 (function(){
   try{
     const prev=localStorage.getItem('budget-app-build');
