@@ -628,6 +628,12 @@ body.hide-nominal input.qty:focus {
       </div>
       <div style="display:none"><span id="sisa"></span><span id="sisaSetelahVariabel"></span><span id="sisaBersih"></span><span id="pctAlokasiHero"></span><div id="barFill"></div><div id="statusText"></div></div>
     </div>
+    <div class="card" style="margin-top:10px; border-left:4px solid #0E7490">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px">
+        <div><div style="font-size:.72rem; font-weight:700; color:var(--muted); text-transform:uppercase">Transfer ke rekening bulanan</div><div style="font-size:.70rem; color:var(--muted)">⛽ Bensin + 🚗 Cicilan + 🏡 Rumah + Mutasi</div></div>
+        <div style="font-size:1.1rem; font-weight:800; color:#0E7490" id="dashTransferBulananCard">Rp0</div>
+      </div>
+    </div>
 
     <div class="grid3" style="margin-top:14px">
       <div class="card"><div class="card-head"><div class="icon sky">💸</div><div><h2>Pengeluaran</h2><p id="dashVarCount">0 pos</p></div></div><div class="big" id="dashVarTotal">Rp0</div><div class="muted">Total per bulan</div><button class="btn btn-soft" style="width:100%; margin-top:10px" onclick="goPage('pengeluaran')">Kelola Variabel →</button></div>
@@ -2239,6 +2245,7 @@ function calc(){
   document.getElementById("totalFixed").textContent=rp(fixed);
   const elTRB=document.getElementById('totalTransferBulanan'); if(elTRB) elTRB.textContent=rp(fixed + mut);
   document.getElementById("totalAnak").textContent=rp(anak);
+  const elDTC=document.getElementById('dashTransferBulananCard'); if(elDTC) elDTC.textContent=rp(fixed + mut);
   // Acuan di Menu Alokasi — Tabungan, Popok, Susu live dari sumber
   (function(){
     const pq=num('popokQty'), ph=num('popokHarga'), sq=num('susuQty'), sh=num('susuHarga');
@@ -3341,7 +3348,7 @@ setTimeout(()=>{ updateHeaderSubtitle(); updateDataUI(); }, 80);
 // perubahan berikutnya (termasuk perbaikan parser struk) tidak pernah sampai.
 // STAMP ini dipaksa naik setiap rilis. Kalau perangkat menemukan STAMP berbeda,
 // ia membersihkan semua cache + service worker lama lalu reload sekali.
-const APP_BUILD='2026-10-06-x';
+const APP_BUILD='2026-10-06-y';
 (function(){
   try{
     const prev=localStorage.getItem('budget-app-build');
