@@ -3239,7 +3239,7 @@ setTimeout(()=>{ updateHeaderSubtitle(); updateDataUI(); }, 80);
 // perubahan berikutnya (termasuk perbaikan parser struk) tidak pernah sampai.
 // STAMP ini dipaksa naik setiap rilis. Kalau perangkat menemukan STAMP berbeda,
 // ia membersihkan semua cache + service worker lama lalu reload sekali.
-const APP_BUILD='2026-10-06-t';
+const APP_BUILD='2026-10-06-u';
 (function(){
   try{
     const prev=localStorage.getItem('budget-app-build');
@@ -3936,10 +3936,47 @@ function applyDataSilent(obj){
       });
       localStorage.setItem('budget-modes', JSON.stringify(migrated));
     }
-    if(obj.tetapSessions) localStorage.setItem('budget-tetap-sessions', JSON.stringify(obj.tetapSessions));
-    if(obj.cicilanMobil) localStorage.setItem('budget-cicilan-mobil', JSON.stringify(obj.cicilanMobil));
+    if(obj.tetapSessions){
+      // MERGE append-only: jangan timpa skenario lokal, union by id
+      try{
+        const local=JSON.parse(localStorage.getItem('budget-tetap-sessions')||'[]');
+        const remote=obj.tetapSessions||[];
+        const byId={};
+        local.forEach(s=>{ if(s&&s.id) byId[s.id]=s; });
+        remote.forEach(s=>{ if(s&&s.id) byId[s.id]=s; });
+        localStorage.setItem('budget-tetap-sessions', JSON.stringify(Object.values(byId)));
+      }catch(e){ localStorage.setItem('budget-tetap-sessions', JSON.stringify(obj.tetapSessions)); }
+    }
+    if(obj.cicilanMobil){
+      // MERGE: pertahankan pembayaran lokal yang belum ada di remote
+      try{
+        const local=JSON.parse(localStorage.getItem('budget-cicilan-mobil')||'{}');
+        const remote=obj.cicilanMobil||{};
+        const merged={ total: (remote.total||local.total||0), sisa: (remote.sisa!==undefined? remote.sisa : (local.sisa||0)), payments:[], audit:[], lastPeriod: remote.lastPeriod||local.lastPeriod||'' };
+        const payKey=p=> (p.date||'')+'|'+(p.amount||0);
+        const seen=new Set();
+        (local.payments||[]).concat(remote.payments||[]).forEach(p=>{ const k=payKey(p); if(!seen.has(k)){ seen.add(k); merged.payments.push(p); } });
+        (local.audit||[]).concat(remote.audit||[]).forEach(a=>{ merged.audit.push(a); });
+        localStorage.setItem('budget-cicilan-mobil', JSON.stringify(merged));
+      }catch(e){ localStorage.setItem('budget-cicilan-mobil', JSON.stringify(obj.cicilanMobil)); }
+    }
     if(obj.periode) localStorage.setItem('budget-periode', JSON.stringify(obj.periode));
-    if(obj.reports) localStorage.setItem('budget-reports', JSON.stringify(obj.reports));
+    if(obj.reports){
+      // MERGE append-only arsip sesi: union key, ambil yang lebih baru per key
+      try{
+        const local=JSON.parse(localStorage.getItem('budget-reports')||'{}');
+        const remote=obj.reports||{};
+        const merged=Object.assign({}, local);
+        Object.keys(remote).forEach(k=>{
+          const r=remote[k], l=local[k];
+          if(!l) { merged[k]=r; return; }
+          const rp=(r._meta&&r._meta.ditutup)||(r._meta&&r._meta.dibuat)||'';
+          const lp=(l._meta&&l._meta.ditutup)||(l._meta&&l._meta.dibuat)||'';
+          if(!lp || (rp && rp >= lp)) merged[k]=r;
+        });
+        localStorage.setItem('budget-reports', JSON.stringify(merged));
+      }catch(e){ localStorage.setItem('budget-reports', JSON.stringify(obj.reports)); }
+    }
     if(obj.page) localStorage.setItem('budget-page', obj.page);
     if(obj.settings){
       if(obj.settings.page) localStorage.setItem('budget-page', obj.settings.page);
