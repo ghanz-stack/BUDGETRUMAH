@@ -2470,7 +2470,7 @@ const isOverAll = totalAlokasiForPagar > sisaBersih;
     // kelompok 3: lainnya
     const lainnya=[];
     if(mut>0) lainnya.push({k:'Mutasi ke Tabungan', v:mut, c:'#E11D48'});
-    if(renTot>0) lainnya.push({k:'Rencana (nabung/bln)', v:renTot, c:'#EA580C'});
+    // Rencana (nabung/bln) dihilangkan dari dashboard sesuai permintaan user
     const keluarTab=getPengeluaranTabungan();
     if(keluarTab>0) lainnya.push({k:'Tarik Tabungan', v:keluarTab, c:'#BE185D'});
 
@@ -3354,7 +3354,7 @@ setTimeout(()=>{ updateHeaderSubtitle(); updateDataUI(); }, 80);
 // perubahan berikutnya (termasuk perbaikan parser struk) tidak pernah sampai.
 // STAMP ini dipaksa naik setiap rilis. Kalau perangkat menemukan STAMP berbeda,
 // ia membersihkan semua cache + service worker lama lalu reload sekali.
-const APP_BUILD='2026-10-23-a';
+const APP_BUILD='2026-10-23-b';
 (function(){
   try{
     const prev=localStorage.getItem('budget-app-build');
