@@ -3195,6 +3195,46 @@ document.getElementById('btnHardRefresh')?.addEventListener('click', async ()=>{
   }catch(e){}
   location.reload(true);
 });
+function buildSnapshotFromBackup(obj){
+  const core = (obj && obj.core) || {};
+  const numc = (k)=>{ const n=Number(core[k]); return isFinite(n)? n : 0; };
+  const tambahan = Array.isArray(obj.tambahan) ? obj.tambahan : [];
+  const variabel = Array.isArray(obj.variabel) ? obj.variabel : [];
+  const rencana = Array.isArray(obj.rencana) ? obj.rencana : [];
+  const tambahanNom = tambahan.reduce((a,t)=>a+(Number(t.nominal)||0),0);
+  const base = numc('incWill')+numc('incWife')+tambahanNom;
+  const mut = numc('mutasiTabungan')||0;
+  const fixed = numc('fixBensin')+numc('fixCicilan')+numc('fixRumah');
+  const anak = numc('popokQty')*numc('popokHarga')+numc('susuQty')*numc('susuHarga');
+  const varTot = variabel.filter(v=>ALOKASI_KATEGORI.includes(v.kategori)).reduce((a,v)=>a+monthlyOf(v),0);
+  const alVals = ALOKASI_IDS.map(k=>numc(k));
+  const alTot = alVals.reduce((a,b)=>a+b,0);
+  const terpakaiByAlokasi = {};
+  Object.entries(ALOKASI_MAP).forEach(([alId,kat])=>{
+    terpakaiByAlokasi[alId]=variabel.reduce((a,v)=>a+(v.kategori===kat? monthlyOf(v):0),0);
+  });
+  const terpakaiAlokasi = Object.values(terpakaiByAlokasi).reduce((a,b)=>a+b,0);
+  const sisaBersih = Math.max(0, base - mut - fixed - anak);
+  const renTot = Math.max(0, sisaBersih - alTot);
+  const terpakaiAll = fixed + anak + mut + renTot + varTot;
+  const sisa = base - terpakaiAll;
+  const danaTerkumpul = rencana.reduce((a,r)=>a+(Number(r.terkumpul)||0),0);
+  const pengeluaranTabungan = variabel.filter(v=>v.kategori===KATEGORI_TABUNGAN).reduce((a,v)=>a+monthlyOf(v),0);
+  const ch = (typeof hitungCicilanMobil==='function') ? hitungCicilanMobil() : {sisaBln:0, lunas:false, angsuran:0, total:0};
+  return {
+    _meta: { bulan:'', periode:'', dibuat: (obj._meta && obj._meta.exportedAt) || new Date().toISOString() },
+    base, mut, fixed, anak, varTot, renTot, alVals, alTot, terpakaiByAlokasi, terpakaiAlokasi,
+    terpakaiAll, sisa,
+    pemasukan: { will: numc('incWill'), istri: numc('incWife'), tambahan: [...tambahan] },
+    tetap: { bensin: numc('fixBensin'), cicilan: numc('fixCicilan'), rumah: numc('fixRumah') },
+    anakInfo: { qtyPopok: numc('popokQty'), hargaPopok: numc('popokHarga'), qtySusu: numc('susuQty'), hargaSusu: numc('susuHarga') },
+    variabel: [...variabel],
+    rencana: [...rencana],
+    alokasi: { dapur: numc('alDapur'), rekreasi: numc('alCemilan'), skincare: numc('alTabungan'), cadangan: numc('alCadangan'), will: numc('alWill'), istri: numc('alIstri'), laundry: numc('alLaundry'), art: numc('alART') },
+    rekap: { pengeluaran: fixed+anak+varTot+renTot, tabungan: mut, danaTerkumpul, pengeluaranTabungan, saldoTabungan: mut - pengeluaranTabungan, cicilanSisa: ch.sisaBln, cicilanLunas: !!ch.lunas, cicilanMulai: '', cicilanSisaAwal: ch.angsuran>0 ? Math.ceil(ch.total/ch.angsuran) : 0 }
+  };
+}
+
 document.getElementById('importFile')?.addEventListener('change', (e)=>{
   const f=e.target.files[0]; if(!f) return;
   const r=new FileReader();
@@ -3281,7 +3321,7 @@ setTimeout(()=>{ updateHeaderSubtitle(); updateDataUI(); }, 80);
 // perubahan berikutnya (termasuk perbaikan parser struk) tidak pernah sampai.
 // STAMP ini dipaksa naik setiap rilis. Kalau perangkat menemukan STAMP berbeda,
 // ia membersihkan semua cache + service worker lama lalu reload sekali.
-const APP_BUILD='2026-10-06-v';
+const APP_BUILD='2026-10-06-w';
 (function(){
   try{
     const prev=localStorage.getItem('budget-app-build');
