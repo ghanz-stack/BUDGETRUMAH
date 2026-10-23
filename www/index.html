@@ -692,12 +692,16 @@ body.hide-nominal input.qty:focus {
           <button class="btn btn-soft" id="btnCicMobilSave" style="font-size:.68rem; padding:4px 8px">Simpan Total</button>
           <button class="btn btn-soft" id="btnCicMobilReset" style="font-size:.68rem; padding:4px 8px; background:#FEF2F2; color:#991B1B; border-color:#FECACA">Reset</button>
         </div>
-        <div style="display:flex; gap:6px; margin-top:6px; align-items:center; flex-wrap:wrap">
-          <span style="font-size:.60rem; color:var(--muted)">Set sisa (Rp)</span>
-          <input class="money" id="cicMobilSetSisa" inputmode="numeric" placeholder="41000000" style="width:120px; font-size:.72rem; padding:4px 6px">
-          <button class="btn btn-soft" id="btnCicMobilSetSisa" style="font-size:.68rem; padding:4px 8px">Set Sisa</button>
-        </div>
-        <div style="font-size:.60rem; color:var(--muted); margin-top:6px; line-height:1.45">Sisa pinjaman berkurang sesuai nominal yang dibayar. "Set Sisa" untuk koreksi/reset (mis. 41.000.000). Catatan tersimpan di riwayat.</div>
+        <details style="margin-top:6px">
+          <summary style="font-size:.60rem; color:var(--muted); cursor:pointer; user-select:none">⚙️ Koreksi sisa (opsional)</summary>
+          <div style="display:flex; gap:6px; margin-top:4px; align-items:center; flex-wrap:wrap">
+            <span style="font-size:.60rem; color:var(--muted)">Set sisa (Rp)</span>
+            <input class="money" id="cicMobilSetSisa" inputmode="numeric" placeholder="41000000" style="width:120px; font-size:.72rem; padding:4px 6px">
+            <button class="btn btn-soft" id="btnCicMobilSetSisa" style="font-size:.68rem; padding:4px 8px">Set Sisa</button>
+          </div>
+        </details>
+        <div style="font-size:.60rem; color:var(--muted); margin-top:6px; line-height:1.45">Sisa pinjaman berkurang sesuai nominal yang dibayar. "Koreksi sisa" untuk set ulang (mis. 41.000.000). Catatan tersimpan di riwayat.</div>
+        <div style="font-size:.60rem; color:var(--muted); margin-top:2px; line-height:1.4">1 sesi periode = 1 angsuran wajib. Untuk angsuran tambahan pada periode yang sama, klik "+ Tambah Angsuran" dan input nominalnya (tercatat sebagai angsuran tambahan).</div>
         <div style="font-size:.60rem; color:var(--muted); margin-top:2px; line-height:1.4">1 sesi periode = 1 angsuran wajib. Untuk angsuran tambahan pada periode yang sama, klik "+ Tambah Angsuran" dan input nominalnya (tercatat sebagai angsuran tambahan).</div>
         <div id="cicMobilRiwayat" style="margin-top:6px; max-height:80px; overflow:auto; font-size:.62rem; color:var(--muted)"></div>
       </div>
@@ -3242,7 +3246,7 @@ setTimeout(()=>{ updateHeaderSubtitle(); updateDataUI(); }, 80);
 // perubahan berikutnya (termasuk perbaikan parser struk) tidak pernah sampai.
 // STAMP ini dipaksa naik setiap rilis. Kalau perangkat menemukan STAMP berbeda,
 // ia membersihkan semua cache + service worker lama lalu reload sekali.
-const APP_BUILD='2026-10-06-m';
+const APP_BUILD='2026-10-06-n';
 (function(){
   try{
     const prev=localStorage.getItem('budget-app-build');
