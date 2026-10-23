@@ -772,7 +772,14 @@ body.hide-nominal input.qty:focus {
         <button class="pill" data-add="morinaga">＋ Morinaga 400rb</button>
         <button class="pill" data-add="sekolah">＋ Sekolah 500rb</button>
       </div>
-      <div style="overflow:auto; border:1px solid var(--border); border-radius:12px">
+      <div style="display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap; align-items:center">
+        <input class="txt" id="varFilter" placeholder="🔍 Filter nama/kategori..." style="flex:1; min-width:160px; font-size:.78rem; padding:6px 10px">
+        <select id="varFilterKat" class="txt" style="width:180px; font-size:.78rem; padding:6px 8px">
+          <option value="">Semua kategori</option>
+          <option>Belanja Dapur & Masak</option><option>Jajan / Rekreasi</option><option>Skincare / Personal Care</option><option>Kuota</option><option>Uang Pegangan Will</option><option>Uang Pegangan Istri</option><option>Laundry</option><option>ART</option><option>Tabungan</option>
+        </select>
+      </div>
+      <div style="overflow:auto; border:1px solid var(--border); border-radius:12px; max-height:320px">
         <table class="var-table" id="varTable">
           <thead><tr><th>Nama</th><th>Kategori</th><th>Harga per Item</th><th>Periode</th><th>Keterangan</th><th style="width:70px">Aksi</th></tr></thead>
           <tbody id="varBody"></tbody>
@@ -1764,8 +1771,19 @@ function monthlyOf(v){
 }
 function renderVariabel(){
   const body=document.getElementById('varBody');
+  if(!body) return;
   body.innerHTML='';
-  variabel.forEach(v=>{
+  const q=(document.getElementById('varFilter')?.value||'').trim().toLowerCase();
+  const kat=(document.getElementById('varFilterKat')?.value||'').trim();
+  const filtered=variabel.filter(v=>{
+    if(kat && v.kategori!==kat) return false;
+    if(q){
+      const hay=(v.nama+' '+(v.kategori||'')+' '+(v.ket||'')).toLowerCase();
+      if(hay.indexOf(q)<0) return false;
+    }
+    return true;
+  });
+  filtered.forEach(v=>{
     const tr=document.createElement('tr');
     let tagClass='tidak';
     if(v.periode==='Bulanan') tagClass='bulanan';
@@ -2694,6 +2712,8 @@ document.getElementById('btnSaveTmb')?.addEventListener('click', addTmb);
 document.getElementById('btnCancelTmb')?.addEventListener('click', cancelTmb);
 document.getElementById('tmbNominal')?.addEventListener('input', e=>{ const r=rawDigits(e.target.value); e.target.value=r? fmtRibuan(Number(r)):""; });
 document.getElementById('btnAddVar').addEventListener('click', addVar);
+document.getElementById('varFilter')?.addEventListener('input', renderVariabel);
+document.getElementById('varFilterKat')?.addEventListener('change', renderVariabel);
 document.getElementById('varKategori').addEventListener('change', toggleVarTujuan);
 toggleVarTujuan();
 document.getElementById('btnSaveVar').addEventListener('click', saveEditVar);
@@ -3321,7 +3341,7 @@ setTimeout(()=>{ updateHeaderSubtitle(); updateDataUI(); }, 80);
 // perubahan berikutnya (termasuk perbaikan parser struk) tidak pernah sampai.
 // STAMP ini dipaksa naik setiap rilis. Kalau perangkat menemukan STAMP berbeda,
 // ia membersihkan semua cache + service worker lama lalu reload sekali.
-const APP_BUILD='2026-10-06-w';
+const APP_BUILD='2026-10-06-x';
 (function(){
   try{
     const prev=localStorage.getItem('budget-app-build');
