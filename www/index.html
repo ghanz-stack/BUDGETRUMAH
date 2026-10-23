@@ -656,41 +656,46 @@ body.hide-nominal input.qty:focus {
         <div class="card-head"><div class="icon violet">🏠</div><div><h2>Tetap</h2><p>Wajib tiap bulan</p></div><span class="badge" id="pctFixed">46%</span></div>
         <div class="row"><label>⛽ Bensin mobil</label><input class="money" id="fixBensin" inputmode="numeric"></div>
         <div class="row"><label>🚗 Cicilan mobil</label><input class="money" id="fixCicilan" inputmode="numeric"></div>
-        <div id="cicilanMobilBox" style="margin:-2px 0 6px; background:#EFF6FF; border:1px solid #BFDBFE; border-radius:10px; padding:9px">
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; font-size:.74rem">
-            <span style="font-weight:800; color:#1E40AF">🗓️ Cicilan mobil</span>
-            <span id="cicMobilSisa" style="font-weight:800; color:#1D4ED8; text-align:right">—</span>
-          </div>
-          <div style="height:7px; background:#E2E8F0; border-radius:999px; overflow:hidden; margin-top:6px">
-            <div id="cicMobilBar" style="width:0%; background:linear-gradient(90deg,#60A5FA,#1D4ED8); height:100%; transition:width .3s"></div>
-          </div>
-          <div style="display:flex; justify-content:space-between; gap:8px; font-size:.66rem; color:var(--muted); margin-top:4px">
-            <span id="cicMobilInfo">—</span><span id="cicMobilSelesai" style="text-align:right">—</span>
-          </div>
-          <!-- 3 kartu angka biar tidak ambigu: semua satuan BULAN -->
-          <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:5px; margin-top:7px">
-            <div style="background:#fff; border:1px solid #BFDBFE; border-radius:8px; padding:5px 4px; text-align:center">
-              <div style="font-size:.57rem; color:var(--muted); text-transform:uppercase; letter-spacing:.4px">Sudah jalan</div>
-              <div id="cicMobilStatJalan" style="font-size:.84rem; font-weight:800; color:#1E3A8A">—</div>
-            </div>
-            <div style="background:#fff; border:1px solid #BFDBFE; border-radius:8px; padding:5px 4px; text-align:center">
-              <div style="font-size:.57rem; color:var(--muted); text-transform:uppercase; letter-spacing:.4px">Sisa waktu</div>
-              <div id="cicMobilStatSisa" style="font-size:.84rem; font-weight:800; color:#1D4ED8">—</div>
-            </div>
-            <div style="background:#fff; border:1px solid #BFDBFE; border-radius:8px; padding:5px 4px; text-align:center">
-              <div style="font-size:.57rem; color:var(--muted); text-transform:uppercase; letter-spacing:.4px">Tenor total</div>
-              <div id="cicMobilStatTenor" style="font-size:.84rem; font-weight:800; color:#1E3A8A">—</div>
-            </div>
-          </div>
-          <div style="display:flex; gap:6px; margin-top:7px; align-items:center; flex-wrap:wrap">
-            <span style="font-size:.66rem; color:var(--muted)">Mulai (YYYY-MM)</span>
-            <input class="txt" id="cicMobilMulai" placeholder="2025-01" style="width:92px; font-size:.72rem; padding:4px 6px">
-            <span style="font-size:.66rem; color:var(--muted)">Total tenor (bulan)</span>
-            <input class="qty" id="cicMobilSisaAwal" type="number" min="0" placeholder="36" style="width:60px" title="Jumlah bulan cicilan dari awal sampai lunas">
-            <button class="btn btn-soft" id="btnCicMobilSave" style="font-size:.68rem; padding:4px 8px">💾 Simpan</button>
-          </div>
-          <div style="font-size:.60rem; color:var(--muted); margin-top:6px; line-height:1.45">Contoh: mulai <b>2024-06</b>, tenor <b>36</b> bulan → lunas Juni 2027. Sisa dihitung otomatis dari bulan berjalan. <b>Jangan ubah "Mulai" setelah disimpan</b> — kalau diubah, progres reset. Bar = progres waktu (bukan nominal).</div>
+      <div id="cicilanMobilBox" style="margin:-2px 0 6px; background:#EFF6FF; border:1px solid #BFDBFE; border-radius:10px; padding:9px">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; font-size:.74rem">
+          <span style="font-weight:800; color:#1E40AF">Cicilan mobil</span>
+          <span id="cicMobilSisa" style="font-weight:800; color:#1D4ED8; text-align:right">—</span>
         </div>
+        <div style="height:7px; background:#E2E8F0; border-radius:999px; overflow:hidden; margin-top:6px">
+          <div id="cicMobilBar" style="width:0%; background:linear-gradient(90deg,#60A5FA,#1D4ED8); height:100%; transition:width .3s"></div>
+        </div>
+        <div style="display:flex; justify-content:space-between; gap:8px; font-size:.66rem; color:var(--muted); margin-top:4px">
+          <span id="cicMobilInfo">—</span><span id="cicMobilSelesai" style="text-align:right">—</span>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:8px">
+          <div style="background:#fff; border:1px solid #BFDBFE; border-radius:8px; padding:6px">
+            <div style="font-size:.57rem; color:var(--muted); text-transform:uppercase">Sisa pinjaman (Rp)</div>
+            <div id="cicMobilSisaRp" style="font-size:.84rem; font-weight:800; color:#1D4ED8">Rp0</div>
+          </div>
+          <div style="background:#fff; border:1px solid #BFDBFE; border-radius:8px; padding:6px">
+            <div style="font-size:.57rem; color:var(--muted); text-transform:uppercase">Sisa (bulan)</div>
+            <div id="cicMobilSisaBln" style="font-size:.84rem; font-weight:800; color:#1E3A8A">—</div>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px">
+          <div>
+            <label style="font-size:.60rem; color:var(--muted)">Total pinjaman (Rp)</label>
+            <input class="money" id="cicMobilTotal" inputmode="numeric" placeholder="39500000" style="width:100%; font-size:.72rem; padding:4px 6px">
+          </div>
+          <div>
+            <label style="font-size:.60rem; color:var(--muted)">Angsuran/bulan (Rp)</label>
+            <input class="money" id="cicMobilAngsuran" inputmode="numeric" placeholder="1500000" style="width:100%; font-size:.72rem; padding:4px 6px">
+          </div>
+        </div>
+        <div style="display:flex; gap:6px; margin-top:6px; align-items:center; flex-wrap:wrap">
+          <span style="font-size:.60rem; color:var(--muted)">Bayar (Rp)</span>
+          <input class="money" id="cicMobilBayar" inputmode="numeric" placeholder="1500000" style="width:110px; font-size:.72rem; padding:4px 6px">
+          <button class="btn btn-accent" id="btnCicMobilBayar" style="font-size:.68rem; padding:4px 8px">Bayar</button>
+          <button class="btn btn-soft" id="btnCicMobilSave" style="font-size:.68rem; padding:4px 8px">Simpan</button>
+        </div>
+        <div style="font-size:.60rem; color:var(--muted); margin-top:6px; line-height:1.45">Sisa pinjaman berkurang sesuai nominal yang dibayar. Catatan pembayaran tersimpan di riwayat.</div>
+        <div id="cicMobilRiwayat" style="margin-top:6px; max-height:80px; overflow:auto; font-size:.62rem; color:var(--muted)"></div>
+      </div>
         <div class="row"><label>🏡 Rumah</label><input class="money" id="fixRumah" inputmode="numeric"></div>
         <div class="total-row"><span>Total Tetap</span><span id="totalFixed">Rp0</span></div>
         <div style="margin-top:10px; background:#F8FAFC; border:1px solid var(--border); border-radius:10px; padding:10px">
@@ -1333,83 +1338,127 @@ function deleteTetapSesi(id){
   saveTetapSessions(); renderTetapSessions();
 }
 
-// === TRACKER CICILAN MOBIL ===
-let cicilanMobil={mulai:'', sisaAwal:28};
-try{ const _r=localStorage.getItem('budget-cicilan-mobil'); if(_r){ const o=JSON.parse(_r); if(o&&typeof o==='object') cicilanMobil={mulai:o.mulai||'', sisaAwal:isNaN(+o.sisaAwal)?28:+o.sisaAwal}; } }catch(e){}
+// === TRACKER CICILAN MOBIL (payment-driven) ===
+// Model: total pinjaman (Rp) + angsuran/bulan (Rp) + sisa pinjaman (Rp) + riwayat pembayaran.
+// Sisa (bulan) = ceil(sisa / angsuran). Setiap pembayaran mengurangi sisa pinjaman.
+let cicilanMobil = { total: 0, angsuran: 0, sisa: 0, payments: [], audit: [] };
+try{
+  const _r = localStorage.getItem('budget-cicilan-mobil');
+  if(_r){
+    const o = JSON.parse(_r);
+    if(o && typeof o === 'object'){
+      // migrasi dari model lama (mulai + sisaAwal)
+      if(o.mulai !== undefined && o.sisaAwal !== undefined && o.total === undefined){
+        const angs = (typeof num === 'function' ? num('fixCicilan') : 0) || 1500000;
+        const awal = isNaN(+o.sisaAwal) ? 0 : +o.sisaAwal;
+        cicilanMobil = { total: awal*angsuran, angsuran: angsuran, sisa: awal*angsuran, payments: [], audit: [{date:new Date().toISOString(), field:'migrasi', from:0, to:awal*angsuran, note:'dari tenor '+awal+' bln'}] };
+      } else {
+        cicilanMobil = {
+          total: isNaN(+o.total) ? 0 : +o.total,
+          angsuran: isNaN(+o.angsuran) ? 0 : +o.angsuran,
+          sisa: isNaN(+o.sisa) ? 0 : +o.sisa,
+          payments: Array.isArray(o.payments) ? o.payments : [],
+          audit: Array.isArray(o.audit) ? o.audit : []
+        };
+      }
+    }
+  }
+}catch(e){}
 function saveCicilanMobil(){ try{ localStorage.setItem('budget-cicilan-mobil', JSON.stringify(cicilanMobil)); localStorage.setItem('budget-last-modified', new Date().toISOString()); }catch(e){} try{ window.markDirtyAndPush && window.markDirtyAndPush(); }catch(e){} }
-function _mkToNum(ym){ const p=String(ym||'').split('-'); return p.length===2? (+p[0])*12+(+p[1])-1 : null; }
-function _numToMk(n){ const y=Math.floor(n/12), m=n%12+1; return y+'-'+String(m).padStart(2,'0'); }
-function _fmtBulan(ym){ const p=String(ym||'').split('-'); if(p.length!==2) return '—';
-  return new Date(+p[0], +p[1]-1, 1).toLocaleDateString('id-ID',{month:'short', year:'numeric'}); }
-// HARUS di blok script INI (blok awal): dipakai initCicilanMobil()/renderCicilanMobil()
-// yang jalan di akhir blok ini — kalau didefinisikan di blok script belakangan,
-// ReferenceError → init terhenti → jam/periode/calc tidak pernah jalan.
+function _fmtBulan(ym){ const p=String(ym||'').split('-'); if(p.length!==2) return '—'; return new Date(+p[0], +p[1]-1, 1).toLocaleDateString('id-ID',{month:'short', year:'numeric'}); }
 function getBulanKey(d=new Date()){ return d.toISOString().slice(0,7); }
 function hitungCicilanMobil(){
-  const now=getBulanKey();
-  const mulai=cicilanMobil.mulai||now;
-  const awal=Math.max(0, parseInt(cicilanMobil.sisaAwal,10)||0);
-  const a=_mkToNum(mulai), b=_mkToNum(now);
-  let lewat=(a===null||b===null)?0:(b-a); if(lewat<0) lewat=0;
-  const sisa=Math.max(0, awal-lewat);
-  const selesaiKey=(a===null)? '': _numToMk(a+awal);
-  const pct=awal? Math.min(100, Math.round(lewat/awal*100)) : 100;
-  return {mulai, awal, lewat, sisa, selesaiKey, pct, lunas: awal>0 && sisa===0};
+  const total = Math.max(0, +cicilanMobil.total || 0);
+  const angsuran = Math.max(0, +cicilanMobil.angsuran || 0);
+  let sisa = Math.max(0, +cicilanMobil.sisa || 0);
+  if(sisa > total) sisa = total;
+  const paid = Math.max(0, total - sisa);
+  const sisaBln = angsuran > 0 ? Math.ceil(sisa / angsuran) : 0;
+  const pct = total > 0 ? Math.min(100, Math.round(paid / total * 100)) : 0;
+  const lunas = total > 0 && sisa <= 0;
+  return { total, angsuran, sisa, paid, sisaBln, pct, lunas };
 }
 function renderCicilanMobil(){
-  const h=hitungCicilanMobil();
-  const set=(id,v)=>{ const e=document.getElementById(id); if(e) e.textContent=v; };
-  const bar=document.getElementById('cicMobilBar');
-  if(!document.getElementById('cicMobilSisa')) return;
-  if(!cicilanMobil.mulai || h.awal<=0){
-    set('cicMobilSisa','— belum diatur');
-    set('cicMobilInfo','Isi mulai (YYYY-MM) & total tenor, lalu Simpan');
-    set('cicMobilSelesai','');
-    set('cicMobilStatJalan','-'); set('cicMobilStatSisa','-'); set('cicMobilStatTenor','-');
-    if(bar) bar.style.width='0%';
+  const h = hitungCicilanMobil();
+  const set = (id,v)=>{ const e=document.getElementById(id); if(e) e.textContent=v; };
+  const bar = document.getElementById('cicMobilBar');
+  const totalEl = document.getElementById('cicMobilTotal');
+  const angEl = document.getElementById('cicMobilAngsuran');
+  if(totalEl && document.activeElement !== totalEl) totalEl.value = h.total ? fmtRibuan(h.total) : '';
+  if(angEl && document.activeElement !== angEl) angEl.value = h.angsuran ? fmtRibuan(h.angsuran) : '';
+  const sisaEl = document.getElementById('cicMobilSisa');
+  const sisaRpEl = document.getElementById('cicMobilSisaRp');
+  const sisaBlnEl = document.getElementById('cicMobilSisaBln');
+  if(sisaRpEl) sisaRpEl.textContent = rp(h.sisa);
+  if(sisaBlnEl) sisaBlnEl.textContent = h.sisaBln + ' bln';
+  if(h.total <= 0){
+    if(sisaEl) sisaEl.textContent = '— belum diatur';
+    if(bar) bar.style.width = '0%';
   } else if(h.lunas){
-    set('cicMobilSisa','✅ LUNAS');
-    set('cicMobilInfo', h.awal+' dari '+h.awal+' bulan • 100% waktu berjalan');
-    set('cicMobilSelesai','Selesai '+_fmtBulan(h.selesaiKey));
-    set('cicMobilStatJalan', h.awal+' bln'); set('cicMobilStatSisa','0 bln'); set('cicMobilStatTenor', h.awal+' bln');
-    if(bar) bar.style.width='100%';
+    if(sisaEl) sisaEl.textContent = 'LUNAS';
+    if(bar) bar.style.width = '100%';
   } else {
-    // "Bulan ke-N" memakai lewat+1 biar bulan pertama tidak terbaca "bulan ke-0"
-    set('cicMobilSisa','Sisa '+h.sisa+' bln');
-    set('cicMobilInfo','Bulan ke-'+(h.lewat+1)+' dari '+h.awal+' - '+h.pct+'% waktu berjalan');
-    set('cicMobilSelesai','Selesai '+_fmtBulan(h.selesaiKey));
-    set('cicMobilStatJalan', h.lewat+' bln'); set('cicMobilStatSisa', h.sisa+' bln'); set('cicMobilStatTenor', h.awal+' bln');
-    if(bar) bar.style.width=h.pct+'%';
+    if(sisaEl) sisaEl.textContent = 'Sisa ' + rp(h.sisa);
+    if(bar) bar.style.width = h.pct + '%';
   }
-  const mi=document.getElementById('cicMobilMulai');
-  if(mi && document.activeElement!==mi) mi.value=cicilanMobil.mulai||'';
-  const sa=document.getElementById('cicMobilSisaAwal');
-  if(sa && document.activeElement!==sa) sa.value=String(cicilanMobil.sisaAwal);
-  // KPI header ikut update
-  const kpi=document.getElementById('kpiCicilan');
-  if(kpi) kpi.title='Sumber: Menu Pemasukan & Tetap → Cicilan mobil = '+rp(num('fixCicilan'))+(h.awal>0? (' • tenor '+h.awal+' bln • sudah jalan '+h.lewat+' bln • sisa '+h.sisa+' bln • selesai '+_fmtBulan(h.selesaiKey)) : '');
+  const info = document.getElementById('cicMobilInfo');
+  if(info) info.textContent = h.total > 0 ? ('Terbayar ' + rp(h.paid) + ' / ' + rp(h.total) + ' (' + h.pct + '%)') : 'Isi total pinjaman & angsuran';
+  const selesai = document.getElementById('cicMobilSelesai');
+  if(selesai) selesai.textContent = h.lunas ? '✅ Lunas' : (h.angsuran > 0 ? ('≈ ' + h.sisaBln + ' bulan lagi') : '');
+  // riwayat pembayaran
+  const riw = document.getElementById('cicMobilRiwayat');
+  if(riw){
+    const ps = (cicilanMobil.payments || []).slice().reverse();
+    riw.innerHTML = ps.length
+      ? ps.map(p => '<div style="border-bottom:1px solid #E2E8F0; padding:2px 0">• ' + new Date(p.date).toLocaleDateString('id-ID') + ' — ' + rp(p.amount) + (p.note ? ' (' + p.note + ')' : '') + '</div>').join('')
+      : '<span class="muted">Belum ada pembayaran</span>';
+  }
+  // KPI
+  const kpi = document.getElementById('kpiCicilan');
+  if(kpi) kpi.title = 'Sisa pinjaman ' + rp(h.sisa) + ' (' + h.sisaBln + ' bln) dari total ' + rp(h.total);
 }
 function initCicilanMobil(){
-  const mi=document.getElementById('cicMobilMulai');
-  // JANGAN auto-set mulai ke bulan sekarang — bikin sisa selalu = tenor (tidak pernah berkurang).
-  // User harus isi mulai cicilan yang sebenarnya (bulan pertama cicilan).
-  mi?.addEventListener('change', ()=>{
-    const v=(mi.value||'').trim();
-    if(!/^\d{4}-\d{2}$/.test(v)){ renderCicilanMobil(); return; }
-    cicilanMobil.mulai=v; saveCicilanMobil(); renderCicilanMobil();
-  });
-  const sa=document.getElementById('cicMobilSisaAwal');
-  sa?.addEventListener('change', ()=>{
-    const v=parseInt(sa.value,10);
-    cicilanMobil.sisaAwal=isNaN(v)||v<0?0:v; saveCicilanMobil(); renderCicilanMobil();
-  });
-  document.getElementById('btnCicMobilSave')?.addEventListener('click', ()=>{
-    const vMi=(mi?.value||'').trim(), vSa=parseInt(sa?.value,10);
-    if(/^\d{4}-\d{2}$/.test(vMi)) cicilanMobil.mulai=vMi;
-    if(!isNaN(vSa) && vSa>=0) cicilanMobil.sisaAwal=vSa;
+  const totalEl = document.getElementById('cicMobilTotal');
+  const angEl = document.getElementById('cicMobilAngsuran');
+  const bayarEl = document.getElementById('cicMobilBayar');
+  if(totalEl) totalEl.addEventListener('change', ()=>{
+    const v = toNumStr(totalEl.value);
+    const old = cicilanMobil.total;
+    cicilanMobil.total = v;
+    if(v !== old) cicilanMobil.audit.push({date:new Date().toISOString(), field:'total', from:old, to:v});
+    // jika sisa belum diisi, set sisa = total
+    if(!cicilanMobil.sisa && v > 0) cicilanMobil.sisa = v;
     saveCicilanMobil(); renderCicilanMobil();
-    const _h=hitungCicilanMobil();
-    alert('✅ Cicilan mobil disimpan\nMulai: '+_h.mulai+'\nTenor: '+_h.awal+' bulan\nSudah jalan: '+_h.lewat+' bulan\nSisa: '+_h.sisa+' bulan\nLunas: '+_fmtBulan(_h.selesaiKey));
+  });
+  if(angEl) angEl.addEventListener('change', ()=>{
+    const v = toNumStr(angEl.value);
+    const old = cicilanMobil.angsuran;
+    cicilanMobil.angsuran = v;
+    if(v !== old) cicilanMobil.audit.push({date:new Date().toISOString(), field:'angsuran', from:old, to:v});
+    saveCicilanMobil(); renderCicilanMobil();
+  });
+  const btnBayar = document.getElementById('btnCicMobilBayar');
+  if(btnBayar) btnBayar.addEventListener('click', ()=>{
+    const amt = toNumStr(bayarEl ? bayarEl.value : 0);
+    if(!(amt > 0)){ alert('Isi nominal pembayaran dulu'); return; }
+    if(amt > cicilanMobil.sisa){ if(!confirm('Nominal melebihi sisa pinjaman. Tetap lanjut?')) return; }
+    cicilanMobil.sisa = Math.max(0, cicilanMobil.sisa - amt);
+    cicilanMobil.payments.push({date: new Date().toISOString(), amount: amt, note: ''});
+    cicilanMobil.audit.push({date:new Date().toISOString(), field:'bayar', from:amt, to:cicilanMobil.sisa, note:'pembayaran'});
+    saveCicilanMobil(); renderCicilanMobil();
+    if(bayarEl) bayarEl.value = '';
+    const h = hitungCicilanMobil();
+    alert('Pembayaran ' + rp(amt) + ' dicatat.\nSisa pinjaman: ' + rp(h.sisa) + ' (≈' + h.sisaBln + ' bulan)');
+  });
+  const btnSave = document.getElementById('btnCicMobilSave');
+  if(btnSave) btnSave.addEventListener('click', ()=>{
+    const t = toNumStr(totalEl ? totalEl.value : 0);
+    const a = toNumStr(angEl ? angEl.value : 0);
+    const oldT = cicilanMobil.total, oldA = cicilanMobil.angsuran;
+    if(t > 0 && t !== oldT){ cicilanMobil.audit.push({date:new Date().toISOString(), field:'total', from:oldT, to:t}); cicilanMobil.total = t; if(!cicilanMobil.sisa) cicilanMobil.sisa = t; }
+    if(a > 0 && a !== oldA){ cicilanMobil.audit.push({date:new Date().toISOString(), field:'angsuran', from:oldA, to:a}); cicilanMobil.angsuran = a; }
+    saveCicilanMobil(); renderCicilanMobil();
+    alert('✅ Cicilan mobil disimpan\nTotal: ' + rp(cicilanMobil.total) + '\nAngsuran: ' + rp(cicilanMobil.angsuran) + '\nSisa: ' + rp(cicilanMobil.sisa));
   });
   renderCicilanMobil();
 }
@@ -3158,7 +3207,7 @@ setTimeout(()=>{ updateHeaderSubtitle(); updateDataUI(); }, 80);
 // perubahan berikutnya (termasuk perbaikan parser struk) tidak pernah sampai.
 // STAMP ini dipaksa naik setiap rilis. Kalau perangkat menemukan STAMP berbeda,
 // ia membersihkan semua cache + service worker lama lalu reload sekali.
-const APP_BUILD='2026-10-06-h';
+const APP_BUILD='2026-10-06-i';
 (function(){
   try{
     const prev=localStorage.getItem('budget-app-build');
@@ -4101,8 +4150,9 @@ function buildSnapshot(){
   const terpakaiAll=fixed+anak+mut+renTot+varTot;
   const sisa=base - terpakaiAll;
   const danaTerkumpul=rencana.reduce((a,r)=>a+(Number(r.terkumpul)||0),0);
-  const ch=hitungCicilanMobil();                 // OBJECT — ambil .sisa, jangan pakai objeknya
-  const cicilanSisa=ch.sisa;
+  const ch=hitungCicilanMobil();                 // .sisa = Rp, .sisaBln = bulan
+  const cicilanSisa=ch.sisaBln;
+  const cicilanSisaAwal=ch.angsuran>0 ? Math.ceil(ch.total/ch.angsuran) : 0;
   const kunci=getSessionKey();
   return {
     _meta:{ bulan:kunci, periode:labelPeriode(kunci), dibuat:new Date().toISOString() },
@@ -4112,7 +4162,7 @@ function buildSnapshot(){
     rekap:{ pengeluaran:fixed+anak+varTot+renTot, tabungan:mut, danaTerkumpul,
             pengeluaranTabungan:getPengeluaranTabungan(), saldoTabungan:getSaldoTabungan(),
             cicilanSisa, cicilanLunas:!!ch.lunas,
-            cicilanMulai:ch.mulai||'', cicilanSisaAwal:ch.awal||0 },
+            cicilanMulai:'', cicilanSisaAwal },
     pemasukan:{ will:num('incWill'), istri:num('incWife'), tambahan:[...pemasukanTambahan] },
     tetap:{ bensin:num('fixBensin'), cicilan:num('fixCicilan'), rumah:num('fixRumah') },
     anakInfo:{ qtyPopok:num('popokQty'), hargaPopok:num('popokHarga'), qtySusu:num('susuQty'), hargaSusu:num('susuHarga') },
