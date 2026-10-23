@@ -689,8 +689,14 @@ body.hide-nominal input.qty:focus {
           <input class="money" id="cicMobilBayar" inputmode="numeric" placeholder="1500000" style="width:110px; font-size:.72rem; padding:4px 6px">
           <button class="btn btn-accent" id="btnCicMobilBayar" style="font-size:.68rem; padding:4px 8px">Bayar</button>
           <button class="btn btn-soft" id="btnCicMobilSave" style="font-size:.68rem; padding:4px 8px">Simpan Total</button>
+          <button class="btn btn-soft" id="btnCicMobilReset" style="font-size:.68rem; padding:4px 8px; background:#FEF2F2; color:#991B1B; border-color:#FECACA">Reset</button>
         </div>
-        <div style="font-size:.60rem; color:var(--muted); margin-top:6px; line-height:1.45">Sisa pinjaman berkurang sesuai nominal yang dibayar. Catatan pembayaran tersimpan di riwayat.</div>
+        <div style="display:flex; gap:6px; margin-top:6px; align-items:center; flex-wrap:wrap">
+          <span style="font-size:.60rem; color:var(--muted)">Set sisa (Rp)</span>
+          <input class="money" id="cicMobilSetSisa" inputmode="numeric" placeholder="41000000" style="width:120px; font-size:.72rem; padding:4px 6px">
+          <button class="btn btn-soft" id="btnCicMobilSetSisa" style="font-size:.68rem; padding:4px 8px">Set Sisa</button>
+        </div>
+        <div style="font-size:.60rem; color:var(--muted); margin-top:6px; line-height:1.45">Sisa pinjaman berkurang sesuai nominal yang dibayar. "Set Sisa" untuk koreksi/reset (mis. 41.000.000). Catatan tersimpan di riwayat.</div>
         <div id="cicMobilRiwayat" style="margin-top:6px; max-height:80px; overflow:auto; font-size:.62rem; color:var(--muted)"></div>
       </div>
         <div class="row"><label>🏡 Rumah</label><input class="money" id="fixRumah" inputmode="numeric"></div>
@@ -1443,6 +1449,27 @@ function initCicilanMobil(){
     saveCicilanMobil(); renderCicilanMobil();
     const h = hitungCicilanMobil();
     alert('Disimpan.\nTotal: ' + rp(cicilanMobil.total) + '\nAngsuran/bulan: ' + rp(angsuranCicilan()) + ' (dari Cicilan mobil)\nSisa: ' + rp(cicilanMobil.sisa) + ' (≈' + h.sisaBln + ' bulan)');
+  });
+  const btnReset = document.getElementById('btnCicMobilReset');
+  if(btnReset) btnReset.addEventListener('click', ()=>{
+    if(!confirm('Reset cicilan mobil ke 0? Semua riwayat pembayaran & audit akan dihapus.')) return;
+    cicilanMobil = { total: 0, sisa: 0, payments: [], audit: [] };
+    saveCicilanMobil(); renderCicilanMobil();
+    if(totalEl) totalEl.value = '';
+    if(bayarEl) bayarEl.value = '';
+    alert('✅ Cicilan mobil direset ke 0.');
+  });
+  const btnSetSisa = document.getElementById('btnCicMobilSetSisa');
+  const setSisaEl = document.getElementById('cicMobilSetSisa');
+  if(btnSetSisa) btnSetSisa.addEventListener('click', ()=>{
+    const v = toNumStr(setSisaEl ? setSisaEl.value : 0);
+    if(v < 0){ alert('Nominal tidak valid'); return; }
+    const old = cicilanMobil.sisa;
+    cicilanMobil.sisa = v;
+    cicilanMobil.audit.push({date:new Date().toISOString(), field:'set-sisa', from:old, to:v, note:'koreksi manual'});
+    saveCicilanMobil(); renderCicilanMobil();
+    if(setSisaEl) setSisaEl.value = '';
+    alert('✅ Sisa pinjaman diset ke ' + rp(v));
   });
   renderCicilanMobil();
 }
@@ -3191,7 +3218,7 @@ setTimeout(()=>{ updateHeaderSubtitle(); updateDataUI(); }, 80);
 // perubahan berikutnya (termasuk perbaikan parser struk) tidak pernah sampai.
 // STAMP ini dipaksa naik setiap rilis. Kalau perangkat menemukan STAMP berbeda,
 // ia membersihkan semua cache + service worker lama lalu reload sekali.
-const APP_BUILD='2026-10-06-j';
+const APP_BUILD='2026-10-06-l';
 (function(){
   try{
     const prev=localStorage.getItem('budget-app-build');
